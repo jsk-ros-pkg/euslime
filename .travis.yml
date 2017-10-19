@@ -1,0 +1,19 @@
+---
+language: python
+sudo: false
+cache:
+  - pip
+  - apt
+addons:
+  apt:
+    packages:
+      - emacs24-nox
+matrix:
+  include:
+    - python: 2.7
+    - python: 3.5
+
+before_install:
+  - pip install . -U
+script:
+  - flake8
