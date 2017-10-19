@@ -38,7 +38,7 @@ class EUSwankHandler(object):
                 'name': 'irteusgl',
                 'prompt': 'irteusgl',
             },
-            'version': __version__,
+            'version': "2.19",  # swank version
         }
 
     def swank_buffer_first_change(self, filename):

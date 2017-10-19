@@ -39,7 +39,6 @@ class Buffer(object):
             return buf
         while True:
             ss = self.buffer.split(DELIM)
-            log.info("ss: %s" % ss)
             if len(ss) > 1 and ss[-2]:
                 break
             time.sleep(POLL_DURATION)

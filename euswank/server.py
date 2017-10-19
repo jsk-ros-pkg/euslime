@@ -4,6 +4,8 @@ except ImportError:
     import socketserver as S
 
 import socket
+from thread import start_new_thread
+import traceback
 
 from euswank.swank import Swank
 from euswank.handler import EUSwankHandler
@@ -29,18 +31,18 @@ class EUSwankRequestHandler(S.BaseRequestHandler, object):
         The basic Slime packet consists of a 6 char hex-string followed by a S-exp with newline on the end.
         e.g.) 000016(:return (:ok nil) 1)\n
         """
-        log.info("handle")
+        log.debug("handle")
         while True:
             try:
                 raw_packet = self.request.recv(HEADER_LENGTH)
-                log.info('raw: %s', raw_packet)
+                log.debug('raw header: %s', raw_packet)
                 if not raw_packet:
                     log.error('Empty header received')
                     self.request.close()
                     break
                 length = int(raw_packet, 16)
                 data = self.request.recv(length)
-                log.info('data: %s', data)
+                log.info('raw data: %s', data)
 
                 data = data.decode(self.encoding)
                 res = self.swank.process(data)
@@ -51,13 +53,20 @@ class EUSwankRequestHandler(S.BaseRequestHandler, object):
             except socket.timeout:
                 log.error('socket timeout')
                 break
+            except KeyboardInterrupt:
+                break
             except Exception as e:
                 log.error(e)
-                raise
+                log.error(traceback.format_exc())
+                break
+
+        # to kill daemon
+        def kill_server(s):
+            s.shutdown()
+        start_new_thread(kill_server, (self.server,))
 
 
 class EUSwankServer(S.TCPServer, object):
-    allow_reuse_address = True
     def __init__(self, server_address, handler_class=EUSwankRequestHandler,
                  port_filename=None, encoding='utf-8'):
         self.port_filename = port_filename
@@ -72,6 +81,12 @@ class EUSwankServer(S.TCPServer, object):
                 log.debug('writing port file: %s', port_filename)
                 f.write(str(port))
 
+    def server_bind(self):
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        self.socket.settimeout(3)
+        self.socket.bind(self.server_address)
+
 
 def serve(address='127.0.0.1', port=4005, port_filename=None, encoding='utt-8'):
     server = EUSwankServer((address, port),
@@ -80,7 +95,6 @@ def serve(address='127.0.0.1', port=4005, port_filename=None, encoding='utt-8'):
     try:
         server.serve_forever()
     except Exception as e:
-        import traceback
         log.error(e)
         log.error(traceback.format_exc())
     finally:

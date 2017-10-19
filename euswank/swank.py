@@ -37,14 +37,12 @@ class Swank(object):
             return self.make_error(id, str(e))
 
     def process(self, data):
-        print("orig:", data)
-        print("data:", loads(data))
         cmd, form, pkg, thread, comm_id = loads(data)
         func = form[0].value().replace(':', '_').replace('-', '_')
         args = form[1:]
 
-        print("func: %s", func)
-        print(args)
+        log.info("func: %s" % func)
+        log.info("args: %s" % args)
 
         try:
             resexp = getattr(self.handler, func)(*args)

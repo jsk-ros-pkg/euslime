@@ -6,7 +6,7 @@ from setuptools import setup
 setup(
     name='euswank',
     description='Swank proxy for Euslisp',
-    long_description=open('README.md').read()
+    long_description=open('README.md').read(),
     version=__version__,
     author='Yuki Furuta',
     author_email='furushchev@jsk.imi.i.u-tokyo.ac.jp',
