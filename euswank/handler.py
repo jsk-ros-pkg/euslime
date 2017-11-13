@@ -1,6 +1,7 @@
 import os
 import platform
 from sexpdata import dumps
+from sexpdata import Symbol
 
 from euswank import __version__
 from euswank.bridge import EuslispBridge
@@ -23,8 +24,8 @@ class EUSwankHandler(object):
             'encoding': {
                 'coding-systems': ['utf-8-unix', 'iso-latin-1-unix'],
             },
-            'lisp-implementation': {
-                'type': 'EUSLISP',
+            'lisp-implementation':{
+                'type': 'irteusgl',
                 'name': 'irteusgl',
                 'version': eus_call_once('(lisp-implementation-version)'),
                 'program': False,
@@ -41,6 +42,12 @@ class EUSwankHandler(object):
             'version': "2.19",  # swank version
         }
 
+    def swank_create_repl(self, sexp):
+        return ["irteusgl", "irteusgl"]
+
+    def swank_autodoc(self, sexp):
+        return [Symbol(":not-available"), True]
+
     def swank_buffer_first_change(self, filename):
         return False
 
@@ -55,8 +62,20 @@ class EUSwankHandler(object):
     def swank_interactive_eval_region(self, sexp):
         return self.swank_eval(sexp)
 
+    def swank_listener_eval(self, sexp):
+        return self.swank_eval(sexp)
+
     def swank_pprint_eval(self, sexp):
         return self.swank_eval(sexp)
+
+    def swank_fuzzy_completions(self, sexp):
+        return [[], []]  # TODO
+
+    def swank_simple_completions(self, sexp):
+        return [[], []]
+
+    def swank_quit_lisp(self, sexp):
+        self.bridge.stop()
 
     def swank_invoke_nth_restart_for_emacs(self, sexp):
         log.debug("input: %s", sexp)

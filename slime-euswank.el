@@ -1,4 +1,4 @@
-;;; euswank.el --- 
+;;; slime-euswank.el --- 
 
 ;; Copyright (C) 2017  Yuki Furuta
 
@@ -19,37 +19,26 @@
 
 ;;; Code:
 
-(defgroup euswank nil "Slime Extension for Euslisp"
-  :group 'euswank)
+(defgroup slime-euswank nil "Slime Extension for Euslisp"
+  :group 'slime-euswank)
 
-(defcustom slime-euswank-command "euswank"
+(defcustom slime-euswank-command "run.py"
   "Command for running the euswank server"
   :type 'string
-  :group 'euswank)
+  :group 'slime-euswank)
 
 (defcustom slime-euswank-args '()
   "Command arguments for running euswank server."
   :type '(repeat (string :tag "Arg"))
-  :group 'euswank)
+  :group 'slime-euswank)
 
-(define-slime-contrib euswank
+(define-slime-contrib slime-euswank
   "Support for Euswank on emacs-side"
   (:authors "Yuki Furuta")
   (:license "BSD")
   (:slime-dependencies slime-repl)
-  (:on-load (add-hook 'slime-event-hooks 'euswank-event-hook-function))
-  (:on-unload (add-hook 'slime-event-hooks 'euswank-event-hook-function)))
-
-(defvar slime-euswank-buffer 'nil)
-
-(defun slime-euswank-run ()
-  "Runs swank server"
-  (interactive)
-  (setq slime-euswank-buffer
-        (apply #'make-comint
-               "euswank"
-               (expand-file-name slime-euswank-command)
-               nil slime-euswank-args)))
+  (:on-load (add-hook 'slime-event-hooks 'slime-euswank-event-hook-function))
+  (:on-unload (add-hook 'slime-event-hooks 'slime-euswank-event-hook-function)))
 
 (defun slime-euswank-repl-update-package ()
   (let ((name (slime-curent-package)))
@@ -62,8 +51,31 @@
         (when (plusp previous-point)
           (goto-char (+ previous-point slime-repl-input-start-mark)))))))
 
+(defvar slime-euswank-buffer 'nil)
+
+(defun slime-euswank-run (&optional port-file)
+  "Runs swank server"
+  (interactive)
+  (setq slime-euswank-buffer
+        (apply #'make-comint
+               "euswank"
+               (expand-file-name slime-euswank-command)
+               nil port-file slime-euswank-args)))
+
+(defun slime-euswank-init (file encoding)
+  (slime-euswank-run file)
+  "")
+
+(setq slime-lisp-implementations
+      '((euswank ("euswank") :init slime-euswank-init :coding-system utf-8-unix)))
+
+(defun euswank ()
+  (interactive)
+  (slime 'euswank))
+
 (defun slime-euswank-event-hook-function (event)
-  (when (equal "EUS" (slime-lisp-implementation-type))
+  (when (equal "irteusgl" (slime-lisp-implementation-type))
+    (message "event: %s" event)
     (destructure-case event
      ((:new-package package prompt)
       (let ((buffer (slime-connection-output-buffer)))
@@ -79,15 +91,42 @@
         t))
      (t nil))))
 
+(defun slime-euswank-eval (str &optional cont)
+  (slime-eval-async `(swank:interactive-eval ,str) cont))
 
 (defun slime-euswank-send-defun ()
-  )
+  (interactive)
+  (save-excursion
+    (lexical-let ((start (beginning-of-defun))
+                  (end (end-of-defun)))
+      (slime-flash-region start end)
+      (slime-euswank-eval
+       (buffer-substring-no-properties start end)
+       #'(lambda (v)
+           (save-excursion
+             (goto-char start)
+             (let ((sent-func "<...>"))
+               (when (looking-at "[ \t]*defun \\([^ )]\\)")
+                 (setf sent-func (match-string 1)))
+               (message "Sent: %s" sent-func))))))))
 
 (defun slime-euswank-send-region (start end)
-  )
+  (interactive "r")
+  (save-excursion
+    (slime-flash-region start end)
+    (slime-euswank-eval
+     (buffer-substring-no-properties start end))
+    (message "Sent region")))
 
 (defun slime-euswank-send-buffer ()
-  )
+  (interactive)
+  (save-excursion
+    (let ((start (point-min))
+          (end (point-max)))
+      (slime-flash-region start end)
+      (slime-euswank-eval
+       (buffer-substring-no-properties start end))
+      (message "Sent buffer"))))
 
 (define-minor-mode slime-euswank-minor-mode
   "Toggle minor mode for Euswank"
@@ -99,5 +138,5 @@
     ("\C-c\C-z" . slime-switch-to-output-buffer)))
 
 
-(provide 'euswank)
-;;; euswank.el ends here
+(provide 'slime-euswank)
+;;; slime-euswank.el ends here

@@ -7,7 +7,7 @@ from euswank.logger import get_logger
 log = get_logger(__name__)
 
 
-class Swank(object):
+class Protocol(object):
     def __init__(self, handler, socket, prompt='irteusgl$ '):
         self.handler = handler(socket)
         self.prompt = prompt

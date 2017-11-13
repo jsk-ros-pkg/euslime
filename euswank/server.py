@@ -7,7 +7,7 @@ import socket
 from thread import start_new_thread
 import traceback
 
-from euswank.swank import Swank
+from euswank.protocol import Protocol
 from euswank.handler import EUSwankHandler
 from euswank.logger import get_logger
 
@@ -22,7 +22,7 @@ log = get_logger(__name__)
 
 class EUSwankRequestHandler(S.BaseRequestHandler, object):
     def __init__(self, request, client_address, server):
-        self.swank = Swank(EUSwankHandler, server.socket)
+        self.swank = Protocol(EUSwankHandler, server.socket)
         self.encoding = ENCODINGS.get(server.encoding, 'utf-8')
         super(EUSwankRequestHandler, self).__init__(request, client_address, server)
 
