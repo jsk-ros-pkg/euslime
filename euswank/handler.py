@@ -12,8 +12,7 @@ log = get_logger(__name__)
 
 
 class EUSwankHandler(object):
-    def __init__(self, socket):
-        self.socket = socket
+    def __init__(self):
         self.bridge = EuslispBridge()
         self.bridge.start()
 
@@ -31,7 +30,6 @@ class EUSwankHandler(object):
                 'program': False,
             },
             'machine': {
-                'instance': '%s [%d]' % self.socket.getsockname(),
                 'type': platform.machine().upper(),
                 'version': platform.machine().upper(),
             },
@@ -45,16 +43,12 @@ class EUSwankHandler(object):
     def swank_create_repl(self, sexp):
         return ["irteusgl", "irteusgl"]
 
-    def swank_autodoc(self, sexp):
-        return [Symbol(":not-available"), True]
-
     def swank_buffer_first_change(self, filename):
         return False
 
     def swank_eval(self, sexp):
-        log.debug("input: %s", sexp)
         self.bridge.write(sexp)
-        return self.bridge.read_out()
+        return [Symbol(":values"), self.bridge.read_out()]
 
     def swank_interactive_eval(self, sexp):
         return self.swank_eval(sexp)
@@ -62,17 +56,20 @@ class EUSwankHandler(object):
     def swank_interactive_eval_region(self, sexp):
         return self.swank_eval(sexp)
 
-    def swank_listener_eval(self, sexp):
+    def swank_repl_listener_eval(self, sexp):
         return self.swank_eval(sexp)
 
     def swank_pprint_eval(self, sexp):
         return self.swank_eval(sexp)
 
+    def swank_autodoc(self, *sexp):
+        return [Symbol(":not-available"), True]
+
     def swank_fuzzy_completions(self, sexp):
         return [[], []]  # TODO
 
     def swank_simple_completions(self, sexp):
-        return [[], []]
+        return [[], []]  # TODO
 
     def swank_quit_lisp(self, sexp):
         self.bridge.stop()
@@ -83,6 +80,15 @@ class EUSwankHandler(object):
         self.bridge = EuslispBridge()
         self.bridge.start()
         return None
+
+    def swank_swank_require(self, *sexp):
+        log.info(sexp)
+
+    def swank_init_presentations(self, *sexp):
+        log.info(sexp)
+
+    def swank_repl_create_repl(self, *sexp):
+        log.info(sexp)
 
 if __name__ == '__main__':
     h = EUSwankHandler()

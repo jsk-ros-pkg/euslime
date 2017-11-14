@@ -8,8 +8,8 @@ log = get_logger(__name__)
 
 
 class Protocol(object):
-    def __init__(self, handler, socket, prompt='irteusgl$ '):
-        self.handler = handler(socket)
+    def __init__(self, handler, prompt='irteusgl$ '):
+        self.handler = handler()
         self.prompt = prompt
 
     def make_error(self, id, msg):

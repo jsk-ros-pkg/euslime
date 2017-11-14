@@ -22,7 +22,7 @@ log = get_logger(__name__)
 
 class EUSwankRequestHandler(S.BaseRequestHandler, object):
     def __init__(self, request, client_address, server):
-        self.swank = Protocol(EUSwankHandler, server.socket)
+        self.swank = Protocol(EUSwankHandler)
         self.encoding = ENCODINGS.get(server.encoding, 'utf-8')
         super(EUSwankRequestHandler, self).__init__(request, client_address, server)
 
@@ -67,19 +67,15 @@ class EUSwankRequestHandler(S.BaseRequestHandler, object):
 
 
 class EUSwankServer(S.TCPServer, object):
-    def __init__(self, server_address, handler_class=EUSwankRequestHandler,
-                 port_filename=None, encoding='utf-8'):
-        self.port_filename = port_filename
+    def __init__(self, server_address,
+                 handler_class=EUSwankRequestHandler,
+                 encoding='utf-8'):
         self.encoding = encoding
 
         super(EUSwankServer, self).__init__(server_address, handler_class)
 
         addr, port = self.server_address
         log.info('Serving on %s:%d', addr, port)
-        if port_filename:
-            with open(port_filename, 'w') as f:
-                log.debug('writing port file: %s', port_filename)
-                f.write(str(port))
 
     def server_bind(self):
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -88,10 +84,18 @@ class EUSwankServer(S.TCPServer, object):
         self.socket.bind(self.server_address)
 
 
-def serve(address='127.0.0.1', port=4005, port_filename=None, encoding='utt-8'):
-    server = EUSwankServer((address, port),
-                           port_filename=port_filename,
+def serve(host='0.0.0.0', port=4005, port_filename=str(), encoding='utt-8'):
+    server = EUSwankServer((host, port),
                            encoding=encoding)
+
+    # writing port number to file
+    if port_filename:
+        try:
+            with open(port_filename, "w") as f:
+                f.write("%s" % port)
+        except Exception as e:
+            log.error("Failed to write port number: %s" % str(e))
+
     try:
         server.serve_forever()
     except Exception as e:

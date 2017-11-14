@@ -53,21 +53,8 @@
 
 (defvar slime-euswank-buffer 'nil)
 
-(defun slime-euswank-run (&optional port-file)
-  "Runs swank server"
-  (interactive)
-  (setq slime-euswank-buffer
-        (apply #'make-comint
-               "euswank"
-               (expand-file-name slime-euswank-command)
-               nil port-file slime-euswank-args)))
-
-(defun slime-euswank-init (file encoding)
-  (slime-euswank-run file)
-  "")
-
 (setq slime-lisp-implementations
-      '((euswank ("euswank") :init slime-euswank-init :coding-system utf-8-unix)))
+      '((euswank ("euswank") :coding-system utf-8-unix)))
 
 (defun euswank ()
   (interactive)
@@ -75,8 +62,7 @@
 
 (defun slime-euswank-event-hook-function (event)
   (when (equal "irteusgl" (slime-lisp-implementation-type))
-    (message "event: %s" event)
-    (destructure-case event
+    (slime-dcase event
      ((:new-package package prompt)
       (let ((buffer (slime-connection-output-buffer)))
         (setf (slime-lisp-package) package)

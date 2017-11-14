@@ -68,7 +68,7 @@ class EuslispBridge(object):
             bufsize=BUFF_SIZE,
             close_fds=IS_POSIX,
             env=os.environ.copy(),
-            preexec_fn=os.setpgrp(),
+            # preexec_fn=os.setpgrp(),
         )
 
         self.buff_out = Buffer()
