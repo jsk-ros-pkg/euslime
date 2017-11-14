@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import os
 import sys
 import errno
@@ -156,4 +158,4 @@ def eus_call_once(cmd):
 
 
 if __name__ == '__main__':
-    print "answer:", eus_call_once("(lisp-implementation-version)")
+    print("answer:", eus_call_once("(lisp-implementation-version)"))

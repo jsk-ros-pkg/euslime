@@ -4,10 +4,10 @@ sudo: false
 cache:
   - pip
   - apt
-addons:
-  apt:
-    packages:
-      - emacs24-nox
+# addons:
+#   apt:
+#     packages:
+#       - emacs24-nox
 matrix:
   include:
     - python: 2.7
@@ -18,4 +18,4 @@ before_install:
 install:
   - pip install . -U
 script:
-  - flake8 --ignore=E722 .
+  - flake8 --ignore=E722,F821 .

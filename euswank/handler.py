@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import os
 import platform
 from sexpdata import dumps
@@ -92,4 +94,4 @@ class EUSwankHandler(object):
 
 if __name__ == '__main__':
     h = EUSwankHandler()
-    print dumps(h.swank_connection_info())
+    print(dumps(h.swank_connection_info()))
