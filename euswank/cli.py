@@ -39,14 +39,15 @@ def main():
 
     if len(sys.argv) == 1:
         log.info("Launched with emacs mode")
-        init_sexp = sexpdata.loads(_input("Waiting for initialization command..."))
+        init_sexp = sexpdata.loads(
+            _input("Waiting for initialization command..."))
         port_filename = init_sexp[-1][-1]
         serve(port_filename=port_filename)
     else:
         args = p.parse_args()
-        serve(host=host, port=port,
-              port_filename=port_filename,
-              encoding=encoding)
+        serve(host=args.host, port=args.port,
+              port_filename=args.port_filename,
+              encoding=args.encoding)
 
 
 if __name__ == '__main__':

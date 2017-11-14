@@ -24,11 +24,14 @@ class EUSwankRequestHandler(S.BaseRequestHandler, object):
     def __init__(self, request, client_address, server):
         self.swank = Protocol(EUSwankHandler)
         self.encoding = ENCODINGS.get(server.encoding, 'utf-8')
-        super(EUSwankRequestHandler, self).__init__(request, client_address, server)
+        super(EUSwankRequestHandler, self).__init__(
+            request, client_address, server)
 
     def handle(self):
         """This method handles packets from swank client.
-        The basic Slime packet consists of a 6 char hex-string followed by a S-exp with newline on the end.
+        The basic Slime packet consists of a 6 char hex-string
+        followed by a S-exp with newline on the end.
+
         e.g.) 000016(:return (:ok nil) 1)\n
         """
         log.debug("handle")

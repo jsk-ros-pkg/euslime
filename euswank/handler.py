@@ -3,7 +3,6 @@ import platform
 from sexpdata import dumps
 from sexpdata import Symbol
 
-from euswank import __version__
 from euswank.bridge import EuslispBridge
 from euswank.bridge import eus_call_once
 from euswank.logger import get_logger
@@ -23,7 +22,7 @@ class EUSwankHandler(object):
             'encoding': {
                 'coding-systems': ['utf-8-unix', 'iso-latin-1-unix'],
             },
-            'lisp-implementation':{
+            'lisp-implementation': {
                 'type': 'irteusgl',
                 'name': 'irteusgl',
                 'version': eus_call_once('(lisp-implementation-version)'),
@@ -89,6 +88,7 @@ class EUSwankHandler(object):
 
     def swank_repl_create_repl(self, *sexp):
         log.info(sexp)
+
 
 if __name__ == '__main__':
     h = EUSwankHandler()

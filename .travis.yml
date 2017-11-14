@@ -18,4 +18,4 @@ before_install:
 install:
   - pip install . -U
 script:
-  - flake8
+  - flake8 --ignore=E722 .
