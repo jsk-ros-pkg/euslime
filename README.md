@@ -11,44 +11,44 @@ Yuki Fututa <<furushchev@jsk.imi.i.u-tokyo.ac.jp>>
 
 0. Install `pip`
 
-```bash
-sudo apt install python-setuptools
-sudo easy_install pip
-sudo pip install -U pip setuptools
-```
+  ```bash
+  sudo apt install python-setuptools
+  sudo easy_install pip
+  sudo pip install -U pip setuptools
+  ```
 
 1. Install `euswank`
 
-```bash
-git clone https://github.com/furushchev/euswank
-cd euswank
-sudo pip install -U -e .
-```
+  ```bash
+  git clone https://github.com/furushchev/euswank
+  cd euswank
+  sudo pip install -U -e .
+  ```
 
-This enable to run `euswank`.
+  This enable to run `euswank`.
 
-1. Add sctipt to init file
+1. Add script to your emacs init file
 
-```lisp
-;; ~/.emacs.el
-(require 'slime-autoload)
-(setq slime-contribs
-  '(slime-fancy slime-asdf slime-cl-indent))
-(setq inferior-lisp-program (executable-find "sbcl")
-      slime-net-coding-system 'utf-8-unix
-      slime-complete-symbol*-fancy t
-      slime-complete-symbol-function 'slime-fuzzy-complete-symbol)
-(slime-setup slime-contribs)
-(setq slime-lisp-implementations
-  '((euswank ("euswank") :coding-system utf-8-unix)))
-```
+  ```lisp
+  ;; ~/.emacs.el
+  (require 'slime-autoload)
+  (setq slime-contribs
+    '(slime-fancy slime-asdf slime-cl-indent))
+  (setq inferior-lisp-program (executable-find "sbcl")
+    slime-net-coding-system 'utf-8-unix
+    slime-complete-symbol*-fancy t
+    slime-complete-symbol-function 'slime-fuzzy-complete-symbol)
+  (slime-setup slime-contribs)
+  (setq slime-lisp-implementations
+    '((euswank ("euswank") :coding-system utf-8-unix)))
+  ```
 
 2. 紙に祈る
 
 3. Emacsを立ち上げる
 
-Type the command:
+  Type the command:
 
-```bash
-M-x slime
-```
+  ```bash
+  M-x slime
+  ```
