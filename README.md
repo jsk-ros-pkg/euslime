@@ -22,7 +22,7 @@ sudo pip install -U pip setuptools
 ```bash
 git clone https://github.com/furushchev/euswank
 cd euswank
-sudo pip install -e -U .
+sudo pip install -U -e .
 ```
 
 This enable to run `euswank`.
