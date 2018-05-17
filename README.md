@@ -7,22 +7,40 @@ Swank Proxy for Euslisp
 
 Yuki Fututa <<furushchev@jsk.imi.i.u-tokyo.ac.jp>>
 
-## 使い方（うろおぼえ）
+## 使い方（若干うろおぼえ）
+
+1. Install euswank
+
+```bash
+git clone https://github.com/furushchev/euswank
+cd euswank
+sudo pip install -e -U .
+```
+
+This enable to run `euswank`.
 
 1. Add sctipt to init file
 
-```
-;; ~/.emacs.d/init.el
-;;
-;; pathを通す
-(add-to-list 'load-path "/path/to/euswank") 
-;; SBCLをデフォルトのCommon Lisp処理系に設定
-(setq inferior-lisp-program "sbcl")
-;; ~/.emacs.d/slimeをload-pathに追加
-(add-to-list 'load-path (expand-file-name "~/.emacs.d/slime"))
-;; SLIMEのロード
-(require 'slime)
-(slime-setup '(slime-repl slime-fancy slime-banner slime-euswank)) 
+```lisp
+;; ~/.emacs.el
+(require 'slime-autoload)
+(setq slime-contribs
+  '(slime-fancy slime-asdf slime-cl-indent))
+(setq inferior-lisp-program (executable-find "sbcl")
+      slime-net-coding-system 'utf-8-unix
+      slime-complete-symbol*-fancy t
+      slime-complete-symbol-function 'slime-fuzzy-complete-symbol)
+(slime-setup slime-contribs)
+(setq slime-lisp-implementations
+  '((euswank ("euswank") :coding-system utf-8-unix)))
 ```
 
 2. 紙に祈る
+
+3. Emacsを立ち上げる
+
+Type the command:
+
+```bash
+M-x slime
+```

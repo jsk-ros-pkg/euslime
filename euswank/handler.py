@@ -64,13 +64,17 @@ class EUSwankHandler(object):
         return self.swank_eval(sexp)
 
     def swank_autodoc(self, *sexp):
+        # FIXME: maybe return the first line of the result of `pf <function>`?
         return [Symbol(":not-available"), True]
 
-    def swank_fuzzy_completions(self, sexp):
-        return [[], []]  # TODO
+    def swank_fuzzy_completions(self, *sexp):
+        # FIXME: tab completion
+        log.warn(sexp)
+        return [[], []]  # FIXME
 
-    def swank_simple_completions(self, sexp):
-        return [[], []]  # TODO
+    def swank_simple_completions(self, *sexp):
+        log.warn(sexp)
+        return [[], []]  # FIXME
 
     def swank_quit_lisp(self, sexp):
         self.bridge.stop()
@@ -89,7 +93,8 @@ class EUSwankHandler(object):
         log.info(sexp)
 
     def swank_repl_create_repl(self, *sexp):
-        log.info(sexp)
+        log.warn(sexp)
+        return self.swank_create_repl(sexp)
 
 
 if __name__ == '__main__':
