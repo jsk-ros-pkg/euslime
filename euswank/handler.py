@@ -93,8 +93,12 @@ class EUSwankHandler(object):
         log.info(sexp)
 
     def swank_repl_create_repl(self, *sexp):
-        log.warn(sexp)
         return self.swank_create_repl(sexp)
+
+    def swank_compile_string_for_emacs(self, sexp, *args):
+        # (sexp buffer-name (:position 1) (:line 1) () ())
+        # FIXME: This does not comple actually, just eval instead.
+        return self.swank_eval(sexp)
 
     # TODO: some other functions maybe missing?
 

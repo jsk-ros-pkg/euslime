@@ -32,7 +32,9 @@ Yuki Fututa <<furushchev@jsk.imi.i.u-tokyo.ac.jp>>
     ```lisp
     ;; ~/.emacs.el
     (add-to-list 'load-path "/path/to/slime")
+    (add-to-list 'load-path "/path/to/euswank")
     (require 'slime-autoloads)
+    (require 'euslisp-slime)
     (setq slime-contribs
       '(slime-fancy slime-asdf slime-cl-indent))
     (setq inferior-lisp-program (executable-find "sbcl")
@@ -40,8 +42,6 @@ Yuki Fututa <<furushchev@jsk.imi.i.u-tokyo.ac.jp>>
       slime-complete-symbol*-fancy t
       slime-complete-symbol-function 'slime-fuzzy-complete-symbol)
     (slime-setup slime-contribs)
-    (setq slime-lisp-implementations
-      '((euswank ("euswank") :coding-system utf-8-unix)))
     ```
 
 1. 紙に祈る
@@ -51,5 +51,5 @@ Yuki Fututa <<furushchev@jsk.imi.i.u-tokyo.ac.jp>>
     Type the command:
 
     ```bash
-    M-x slime
+    M-x euslisp-slime
     ```
