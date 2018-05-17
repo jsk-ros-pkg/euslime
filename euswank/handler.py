@@ -38,7 +38,7 @@ class EUSwankHandler(object):
                 'name': 'irteusgl',
                 'prompt': 'irteusgl',
             },
-            'version': "2.19",  # swank version
+            'version': "2.20",  # swank version
         }
 
     def swank_create_repl(self, sexp):
@@ -95,6 +95,8 @@ class EUSwankHandler(object):
     def swank_repl_create_repl(self, *sexp):
         log.warn(sexp)
         return self.swank_create_repl(sexp)
+
+    # TODO: some other functions maybe missing?
 
 
 if __name__ == '__main__':

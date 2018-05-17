@@ -9,7 +9,15 @@ Yuki Fututa <<furushchev@jsk.imi.i.u-tokyo.ac.jp>>
 
 ## 使い方（若干うろおぼえ）
 
-1. Install euswank
+0. Install `pip`
+
+```bash
+sudo apt install python-setuptools
+sudo easy_install pip
+sudo pip install -U pip setuptools
+```
+
+1. Install `euswank`
 
 ```bash
 git clone https://github.com/furushchev/euswank
