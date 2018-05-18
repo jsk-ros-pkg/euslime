@@ -121,7 +121,8 @@ class EUSwankHandler(object):
         log.info("result: %s" % result)
         errors = []
         seconds = 0.01
-        return [Symbol(":compilation-result"), errors, True, seconds, None, None]
+        return [Symbol(":compilation-result"), errors, True,
+                seconds, None, None]
 
     def swank_compile_notes_for_emacs(self, *args):
         log.warn(args)

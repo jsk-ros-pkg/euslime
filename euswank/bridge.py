@@ -198,7 +198,8 @@ class EuslispProcess(Process):
                 line = self.delim.join(self.output)
                 pos = line.find(token)
                 if pos != -1:
-                    return line[pos+len(token)+1:]
+                    start = pos + len(token) + 1
+                    return line[start:]
 
 
 def eus_eval_once(cmd):
