@@ -103,6 +103,11 @@ class EUSwankHandler(object):
             resexp, prefix = self.swank_simple_completions(prefix, pkg)
             return [resexp[:limit], prefix]
 
+    def swank_complete_form(self, *args):
+        # (swank:complete-form
+        #    (quote ("float-vector" swank::%cursor-marker%))
+        pass
+
     def swank_quit_lisp(self, *args):
         self.euslisp.stop()
 
@@ -155,11 +160,15 @@ class EUSwankHandler(object):
     def swank_find_definitions_for_emacs(self, keyword):
         pass
 
-    def swank_describe_symbol(self, symbol):
-        pass
+    def swank_describe_symbol(self, sym):
+        cmd = """(with-output-to-string (s) (describe '{0} s))""".format(sym)
+        res = self.euslisp.exec_command(cmd)
+        return res
 
     def swank_describe_function(self, func):
-        pass
+        cmd = """(documentation '{0})""".format(func)
+        result = self.euslisp.exec_command(cmd)
+        return result
 
     def swank_describe_definition_for_emacs(self, name, type):
         return self.swank_describe_symbol(name)
