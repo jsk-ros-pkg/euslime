@@ -69,19 +69,16 @@ class EUSwankHandler(object):
         # FIXME: maybe return the first line of the result of `pf <function>`?
         return [Symbol(":not-available"), True]
 
-    def swank_fuzzy_completions(self, *sexp):
-        # FIXME: tab completion
-        log.warn(sexp)
-        return [[], []]  # FIXME
-
-    def swank_simple_completions(self, prefix, *args):
-        # vec -> ("vec" 'irteusgl)
+    def swank_simple_completions(self, prefix, pkg):
+        # (swank:simple-completions "vector-" (quote "irteusgl"))
+        pkg = pkg[1]
         if prefix.find(":") > 0:
             ns = prefix.split(":")[0]
             func = ":".join(prefix.replace(":", " ").split()[1:])
             # use #'functions
             cmd = """(functions "{0}" '{1})""".format(func, ns)
         else:
+            # use #'apropos-list
             cmd = """(remove-if-not
                        '(lambda (x)
                          (string= "{0}" (subseq (string x) 0 (length "{0}"))))
@@ -97,21 +94,28 @@ class EUSwankHandler(object):
             retval = [resexp, resexp[0]]
         else:
             retval = [resexp, prefix]
-        log.info(retval)
         return retval
 
-    def swank_quit_lisp(self, sexp):
+    def swank_fuzzy_completions(self, prefix, pkg, _, limit, *args):
+        # (swank:fuzzy-completions "a" "irteusgl"
+        #       :limit 300 :time-limit-in-msec 1500)
+        if len(prefix) >= 2:
+            resexp, prefix = self.swank_simple_completions(prefix, pkg)
+            return [resexp[:limit], prefix]
+
+    def swank_quit_lisp(self, *args):
         self.euslisp.stop()
 
-    def swank_invoke_nth_restart_for_emacs(self, sexp):
-        log.debug("input: %s", sexp)
-        self.euslisp.stop()
-        self.euslisp = EuslispProcess()
-        self.euslisp.start()
-        return None
+    def swank_invoke_nth_restart_for_emacs(self, level, num):
+        if num == 0:  # QUIT
+            pass
+        elif num == 1:  # RESTART
+            self.euslisp.stop()
+            self.euslisp = EuslispProcess()
+            self.euslisp.start()
 
     def swank_swank_require(self, *sexp):
-        log.info(sexp)
+        pass
 
     def swank_init_presentations(self, *sexp):
         log.info(sexp)
@@ -130,26 +134,35 @@ class EUSwankHandler(object):
                 seconds, None, None]
 
     def swank_compile_notes_for_emacs(self, *args):
-        log.warn(args)
         return self.swank_compile_string_for_emacs(*args)
 
     def swank_compile_file_for_emacs(self, *args):
-        log.warn(args)
         return self.swank_compile_string_for_emacs(*args)
 
-    def swank_operator_arglist(self, func, *args):
+    def swank_operator_arglist(self, func, pkg):
         #  (swank:operator-arglist "format" "irteusgl")
-        log.warn(func)
-        log.warn(args)
         cmd = """(with-output-to-string (s) (pf {0} s))""".format(func)
         result = self.euslisp.exec_command(cmd)
         return result
 
-    def swank_sldb_abort(self, *args):
-        log.info(args)
-        return None
+    def swank_inspect_current_condition(self):
+        # (swank:inspect-current-condition)
+        pass
 
-    # TODO: some other functions maybe missing?
+    def swank_sldb_abort(self, *args):
+        pass
+
+    def swank_find_definitions_for_emacs(self, keyword):
+        pass
+
+    def swank_describe_symbol(self, symbol):
+        pass
+
+    def swank_describe_function(self, func):
+        pass
+
+    def swank_describe_definition_for_emacs(self, name, type):
+        return self.swank_describe_symbol(name)
 
 
 if __name__ == '__main__':
