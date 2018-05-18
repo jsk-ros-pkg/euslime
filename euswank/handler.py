@@ -76,16 +76,22 @@ class EUSwankHandler(object):
 
     def swank_simple_completions(self, prefix, *args):
         # vec -> ("vec" 'irteusgl)
-        cmd = '''(remove-if-not
-                   \'(lambda (x)
-                        (string= "{0}" (subseq (string x) 0 (length "{0}"))))
-                   (apropos-list "{0}"))'''.format(prefix.upper())
+        if prefix.find(":") > 0:
+            ns = prefix.split(":")[0]
+            func = ":".join(prefix.replace(":", " ").split()[1:])
+            # use #'functions
+            cmd = """(functions "{0}" '{1})""".format(func, ns)
+        else:
+            cmd = """(remove-if-not
+                       '(lambda (x)
+                         (string= "{0}" (subseq (string x) 0 (length "{0}"))))
+                       (apropos-list "{0}"))""".format(prefix.upper())
         result = self.euslisp.exec_command(cmd)
         resexp = list()
         for s in loads(result):
             if isinstance(s, Symbol):
-                resexp.append(s.value())
-            else:
+                s = s.value()
+            if not s.startswith(":"):
                 resexp.append(s)
         if len(resexp) == 1:
             retval = [resexp, resexp[0]]
@@ -93,7 +99,6 @@ class EUSwankHandler(object):
             retval = [resexp, prefix]
         log.info(retval)
         return retval
-        # return [[], []]  # FIXME
 
     def swank_quit_lisp(self, sexp):
         self.euslisp.stop()
@@ -126,15 +131,22 @@ class EUSwankHandler(object):
 
     def swank_compile_notes_for_emacs(self, *args):
         log.warn(args)
-        return None
+        return self.swank_compile_string_for_emacs(*args)
 
     def swank_compile_file_for_emacs(self, *args):
         log.warn(args)
-        return None
+        return self.swank_compile_string_for_emacs(*args)
 
-    def swank_operator_arglist(self, *args):
-        #  (swank:operator-arglist ":vector" "irteusgl")
+    def swank_operator_arglist(self, func, *args):
+        #  (swank:operator-arglist "format" "irteusgl")
+        log.warn(func)
         log.warn(args)
+        cmd = """(with-output-to-string (s) (pf {0} s))""".format(func)
+        result = self.euslisp.exec_command(cmd)
+        return result
+
+    def swank_sldb_abort(self, *args):
+        log.info(args)
         return None
 
     # TODO: some other functions maybe missing?
