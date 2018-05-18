@@ -3,159 +3,217 @@ from __future__ import print_function
 import os
 import sys
 import errno
+import re
 import subprocess
 import time
 from threading import Thread
 from threading import Lock
+from Queue import Queue, Empty
+from sexpdata import dumps, loads, Symbol
+from uuid import uuid1
 
 from euswank.logger import get_logger
 
 log = get_logger(__name__)
 IS_POSIX = 'posix' in sys.builtin_module_names
-BUFF_SIZE = 1
-POLL_DURATION = 0.01
+BUFSIZE = 1
+POLL_RATE = 1.0
 DELIM = os.linesep
+REGEX_ANSI = re.compile(r'\x1b[^m]*m')
 
 
-class EuslispCallError(Exception):
-    pass
-
-
-class Buffer(object):
-    def __init__(self):
+class Process(object):
+    def __init__(self, cmd,
+                 on_output=None,
+                 on_error=None,
+                 poll_rate=None,
+                 bufsize=None,
+                 delim=None,):
+        self.cmd = cmd
+        self.on_output = on_output or self.default_print_callback
+        self.on_erorr = on_error or self.default_print_callback
+        self.poll_rate = poll_rate or POLL_RATE
+        self.bufsize = bufsize or BUFSIZE
+        self.delim = delim or DELIM
         self.lock = Lock()
-        self.buffer = str()
-
-    def put(self, s):
-        with self.lock:
-            self.buffer += s
-
-    def empty(self):
-        return len(self.buffer) == 0
-
-    def get(self, wait=True):
-        if not wait:
-            with self.lock:
-                buf = self.buffer
-                self.buffer = str()
-            return buf
-        while True:
-            ss = self.buffer.split(DELIM)
-            if len(ss) > 1 and ss[-2]:
-                break
-            time.sleep(POLL_DURATION)
-        with self.lock:
-            log.debug(self.buffer)
-            buf = self.buffer.split(DELIM)[-2]
-            self.buffer = str()
-        return buf
-
-
-class EuslispBridge(object):
-    def __init__(self):
         self.process = None
-        self.buff_out = None
-        self.buff_err = None
-        self.buff_in = None
         self.threads = None
+        self.input_queue = None
 
-    def start(self, cmd=None, blocking=False):
-        if cmd is None:
-            cmd = ['rosrun', 'roseus', 'roseus']
+    def start(self, daemon=True):
+        self.input_queue = Queue()
+
         self.process = subprocess.Popen(
-            cmd,
+            self.cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             stdin=subprocess.PIPE,
-            bufsize=BUFF_SIZE,
+            bufsize=self.bufsize,
             close_fds=IS_POSIX,
             env=os.environ.copy(),
-            # preexec_fn=os.setpgrp(),
         )
 
-        self.buff_out = Buffer()
-        self.buff_err = Buffer()
-        self.buff_in = Buffer()
-
         self.threads = [
-            Thread(target=self._get_output,
-                   args=(self.process.stdout, self.buff_out)),
-            Thread(target=self._get_output,
-                   args=(self.process.stderr, self.buff_err)),
+            Thread(target=self._get_stream_thread,
+                   args=("stdout", self.process.stdout, self.on_output)),
+            Thread(target=self._get_stream_thread,
+                   args=("stderr", self.process.stderr, self.on_error)),
+            Thread(target=self._put_stream_thread,
+                   args=("stdin", self.process.stdin)),
         ]
-        if not blocking:
-            self.threads.insert(0, Thread(target=self._loop))
-        for t in self.threads:
+        for i, t in enumerate(self.threads):
             t.daemon = True
             t.start()
-        if blocking:
-            self._loop()
+        main = Thread(target=self._main_thread)
+        self.threads.append(main)
+        if not daemon:
+            main.daemon = True
+        main.start()
 
     def stop(self):
-        try:
-            self.process.terminate()
-        except:
-            self.process.kill()
+        if self.process.poll() is None:
+            try:
+                self.process.terminate()
+                self.process.communicate()
+            except Exception as e:
+                log.warn("failed to terminate: %s" % e)
+        if self.process.poll() is None:
+            try:
+                self.process.kill()
+                self.process.communicate()
+            except Exception as e:
+                log.warn("Failed to kill: %s" % e)
+        if self.process.poll() is None:
+            log.warn("Failed to kill process %s?" % self.process)
 
         for t in self.threads:
             if t.is_alive:
                 t.join()
+        log.debug("Stop Finished")
 
-    def write(self, cmd):
-        cmd = cmd.strip()
-        if not cmd.endswith(os.linesep):
-            cmd += os.linesep
-        self.buff_in.put(cmd)
-
-    def read_out(self):
-        return self.buff_out.get().strip()
-
-    def read_err(self):
-        return self.buff_err.get(wait=False).strip()
-
-    def _get_output(self, fp, buf):
+    def _get_stream_thread(self, name, stream, callback):
+        buf = str()
         while self.process.poll() is None:
-            data = fp.read(BUFF_SIZE)
-            if data:
-                buf.put(str(data))
-            time.sleep(POLL_DURATION)
-        else:
-            log.debug("thread is dead: %s", fp)
-
-    def _capsulize(self, sexp):
-        return '(let ((retvalval %s)) (format t "~%%") retvalval)' % sexp
-
-    def _loop(self):
-        while self.process.poll() is None:
-            # put to stdin
-            if not self.buff_in.empty():
+            try:
+                c = stream.read(1)
+            except ValueError:
+                break
+            if c == self.delim:
                 try:
-                    cmd = self.buff_in.get()
-                    log.debug("cmd: %s", cmd)
-                    log.debug("cap: %s", self._capsulize(cmd))
-                    self.process.stdin.write(self._capsulize(cmd) + os.linesep)
-                    self.process.stdin.flush()
-                except IOError as e:
-                    if e.errno == errno.EINTR:
-                        pass
+                    callback(buf)
                 except Exception as e:
-                    log.warn(e)
-            time.sleep(POLL_DURATION)
+                    log.error(e)
+                buf = str()
+            else:
+                buf += c
         else:
-            log.debug("process stopped")
+            try:
+                buf += stream.read()
+            except ValueError:
+                pass
+            if buf:
+                callback(buf)
+            log.debug("Thread %s is dead" % name)
 
-        if self.process.returncode != 0:
-            log.info("process exited (code: %d)" % self.process.returncode)
+    def _put_stream_thread(self, name, stream):
+        while self.process.poll() is None:
+            try:
+                buf = self.input_queue.get(block=True, timeout=1)
+            except Empty:
+                continue
+            try:
+                if buf:
+                    stream.write(buf)
+                    stream.flush()
+            except IOError as e:
+                if e.errno == errno.EINTR:
+                    pass
+            except Exception as e:
+                log.error(e)
+        else:
+            log.debug("Thread %s is dead" % name)
+
+    def _main_thread(self):
+        while self.process.poll() is None:
+            time.sleep(self.poll_rate)
+
+        if self.process.returncode == 0:
+            log.info("process exited successfully")
+        else:
+            log.warn("process exited (code: %d)" % self.process.returncode)
+
+    def input(self, cmd):
+        cmd = cmd.strip()
+        if not cmd.endswith(self.delim):
+            cmd += self.delim
+        self.input_queue.put(cmd)
 
 
-def eus_call_once(cmd):
-    bridge = EuslispBridge()
-    bridge.start()
-    bridge.write(cmd)
-    result = bridge.read_out()
-    bridge.stop()
+class EuslispError(Exception):
+    pass
+
+
+class EuslispProcess(Process):
+    def __init__(self):
+        super(EuslispProcess, self).__init__(
+            cmd=["rosrun", "roseus", "roseus"],
+            on_output=self.on_output,
+            on_error=self.on_error,
+        )
+
+        self.output = None
+        self.error = None
+
+    def on_output(self, msg):
+        msg = REGEX_ANSI.sub(str(), msg)
+        log.debug("output: %s" % msg)
+        self.output.append(msg)
+
+    def on_error(self, msg):
+        msg = REGEX_ANSI.sub(str(), msg)
+        log.debug("error: %s" % msg)
+        if not msg.startswith(";"):
+            self.error.append(msg)
+
+    def exec_command(self, cmd_str):
+        token = "token-" + str(uuid1())
+        sexp = loads(cmd_str)
+        sexp = [
+            Symbol('let'),
+            [[Symbol(token), sexp]],
+            [Symbol('format'), True, "~%%%s~%%" % token],
+            Symbol(token),
+        ]
+        cmd_str = dumps(sexp)
+        self.output = list()
+        self.error = list()
+
+        self.input(cmd_str)
+
+        while self.process.poll() is None:
+            time.sleep(0.1)
+            if self.error:
+                raise EuslispError(self.delim.join(self.error))
+            if self.output:
+                line = self.delim.join(self.output)
+                pos = line.find(token)
+                if pos != -1:
+                    return line[pos+len(token)+1:]
+
+
+def eus_eval_once(cmd):
+    euslisp = EuslispProcess()
+    euslisp.start()
+    result = None
+    try:
+        result = euslisp.exec_command(cmd)
+    except EuslispError as e:
+        log.error("Failed to exec: %s" % e)
+    finally:
+        euslisp.stop()
     return result
 
 
 if __name__ == '__main__':
-    print("answer:", eus_call_once("(lisp-implementation-version)"))
+    print("answer:", eus_eval_once("(lisp-implementation-version)"))
+    print("answer:", eus_eval_once('(apropos-list "vec")'))
