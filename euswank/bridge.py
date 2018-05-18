@@ -20,6 +20,7 @@ BUFSIZE = 1
 POLL_RATE = 1.0
 DELIM = os.linesep
 REGEX_ANSI = re.compile(r'\x1b[^m]*m')
+EXEC_TIMEOUT = 10
 
 
 class Process(object):
@@ -154,7 +155,7 @@ class EuslispError(Exception):
 
 
 class EuslispProcess(Process):
-    def __init__(self):
+    def __init__(self, timeout=None):
         super(EuslispProcess, self).__init__(
             cmd=["rosrun", "roseus", "roseus"],
             on_output=self.on_output,
@@ -163,6 +164,7 @@ class EuslispProcess(Process):
 
         self.output = None
         self.error = None
+        self.timeout = timeout or EXEC_TIMEOUT
 
     def on_output(self, msg):
         msg = REGEX_ANSI.sub(str(), msg)
@@ -190,6 +192,7 @@ class EuslispProcess(Process):
 
         self.input(cmd_str)
 
+        start = time.time()
         while self.process.poll() is None:
             time.sleep(0.1)
             if self.error:
@@ -200,6 +203,8 @@ class EuslispProcess(Process):
                 if pos != -1:
                     start = pos + len(token) + 1
                     return line[start:]
+            if time.time() - start > self.timeout:
+                raise EuslispError("Timed out")
 
 
 def eus_eval_once(cmd):
