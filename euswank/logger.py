@@ -1,18 +1,28 @@
 import json
 import logging
 import logging.config
+from logging import DEBUG, INFO, WARN, ERROR, FATAL  # NOQA
 
 
-DEFAULT_CONFIG = {
+LOG_LEVELS = {
+    "debug": DEBUG,
+    "info": INFO,
+    "warn": WARN,
+    "error": ERROR,
+    "fatal": FATAL,
+}
+
+
+_DEFAULT_CONFIG = {
     'version': 1,
     'root': {
-        'level': 'INFO',
+        'level': 'DEBUG',
         'handlers': ['console'],
     },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'level': 'INFO',
+            'level': 'DEBUG',
             'formatter': 'simple',
         },
     },
@@ -24,6 +34,7 @@ DEFAULT_CONFIG = {
 }
 
 _LOG_CONFIGURED = False
+_LOGGERS = {}
 
 
 def get_logger(ns=__name__, cfg_path=None):
@@ -35,6 +46,15 @@ def get_logger(ns=__name__, cfg_path=None):
                                 parse_int=True, parse_float=True)
                 logging.config.dictConfig(cfg)
         except:
-            logging.config.dictConfig(DEFAULT_CONFIG)
+            logging.config.dictConfig(_DEFAULT_CONFIG)
         _LOG_CONFIGURED = True
-    return logging.getLogger(ns)
+    if ns not in _LOGGERS:
+        _LOGGERS[ns] = logging.getLogger(ns)
+    return _LOGGERS[ns]
+
+
+def set_log_level(level):
+    if isinstance(level, str):
+        level = LOG_LEVELS[level]
+    for l in _LOGGERS.values():
+        l.setLevel(level)

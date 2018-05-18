@@ -7,7 +7,7 @@ import sys
 
 import euswank
 import sexpdata
-from euswank.logger import get_logger
+from euswank.logger import get_logger, set_log_level, LOG_LEVELS
 from euswank.server import serve
 
 try:
@@ -36,6 +36,9 @@ def main():
     p.add_argument("--port-filename", "-w", type=str,
                    help="Path to file where port number is written",
                    default=str())
+    p.add_argument("--level", "-l", type=str,
+                   help="Log Level", default="info",
+                   choices=LOG_LEVELS.keys())
 
     if len(sys.argv) == 1:
         log.info("Launched with emacs mode")
@@ -45,6 +48,7 @@ def main():
         serve(port_filename=port_filename)
     else:
         args = p.parse_args()
+        set_log_level(args.level)
         serve(host=args.host, port=args.port,
               port_filename=args.port_filename,
               encoding=args.encoding)
