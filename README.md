@@ -7,7 +7,7 @@ Swank Proxy for Euslisp
 
 Yuki Fututa <<furushchev@jsk.imi.i.u-tokyo.ac.jp>>
 
-## 使い方（若干うろおぼえ）
+## Setup
 
 1. Install `pip`
 
@@ -35,18 +35,11 @@ Yuki Fututa <<furushchev@jsk.imi.i.u-tokyo.ac.jp>>
     (add-to-list 'load-path "/path/to/euswank")
     (require 'slime-autoloads)
     (require 'euslisp-slime)
-    (setq slime-contribs
-      '(slime-fancy slime-asdf slime-cl-indent))
-    (setq inferior-lisp-program (executable-find "sbcl")
-      slime-net-coding-system 'utf-8-unix
-      slime-complete-symbol*-fancy t
-      slime-complete-symbol-function 'slime-fuzzy-complete-symbol)
-    (slime-setup slime-contribs)
+    (setq slime-contribs '(slime-fancy))
+    (setq inferior-lisp-program "sbcl")
     ```
 
-1. 紙に祈る
-
-1. Emacsを立ち上げる
+1. Launch emacs
 
     Type the command:
 
