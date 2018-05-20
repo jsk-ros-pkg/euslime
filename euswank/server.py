@@ -37,22 +37,25 @@ class EUSwankRequestHandler(S.BaseRequestHandler, object):
         log.debug("handle")
         while True:
             try:
-                raw_packet = self.request.recv(HEADER_LENGTH)
-                log.debug('raw header: %s', raw_packet)
-                if not raw_packet:
-                    log.error('Empty header received')
+                head_data = self.request.recv(HEADER_LENGTH)
+                log.debug('raw header: %s', head_data)
+                if not head_data:
+                    log.error('Empty header received. Closing socket.')
                     self.request.close()
                     break
-                length = int(raw_packet, 16)
-                data = self.request.recv(length)
-                log.info('raw data: %s', data)
-
-                data = data.decode(self.encoding)
-                res = self.swank.process(data)
-
-                log.info('response: %s', res)
-                res = res.encode(self.encoding)
-                self.request.send(res)
+                length = int(head_data, 16)
+                recv_data = self.request.recv(length)
+                log.info('raw data: %s', recv_data)
+                recv_data = recv_data.decode(self.encoding)
+                result = self.swank.process(recv_data)
+                while True:
+                    try:
+                        send_data = result.next()
+                        log.info('response: %s', send_data)
+                        send_data = send_data.encode(self.encoding)
+                        self.request.send(send_data)
+                    except StopIteration:
+                        break
             except socket.timeout:
                 log.error('socket timeout')
                 break
@@ -62,6 +65,8 @@ class EUSwankRequestHandler(S.BaseRequestHandler, object):
                 log.error(e)
                 log.error(traceback.format_exc())
                 break
+
+        log.info("Server is shutting down")
 
         # to kill daemon
         def kill_server(s):

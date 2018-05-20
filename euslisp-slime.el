@@ -25,12 +25,13 @@
 (defvar slime-euswank-path "euswank"
   "Path to euswank executable for with Euslisp SLIME.")
 
-(defvar slime-lisp-implementations nil)
-(setq slime-lisp-implementations
-      (cons `(euslisp (,slime-euswank-path)
-                      :init euslisp-slime-init
-                      :coding-system utf-8-unix)
-            slime-lisp-implementations))
+(defvar slime-lisp-implementations
+  '((sbcl ("sbcl") :coding-system utf-8-unix)))
+(nconc slime-lisp-implementations
+       (list `(euslisp (,slime-euswank-path)
+                       :init euslisp-slime-init
+                       :coding-system utf-8-unix)))
+;;            slime-lisp-implementations))
 
 (defvar slime-euswank-port 4005
   "Port number to use for communicating to the swank server.")

@@ -1,6 +1,7 @@
 from sexpdata import dumps
 from sexpdata import loads
 from sexpdata import Symbol
+import traceback
 
 from euswank.bridge import EuslispError
 from euswank.logger import get_logger
@@ -77,10 +78,20 @@ class Protocol(object):
         log.info("args: %s" % args)
 
         try:
-            resexp = getattr(self.handler, func)(*args)
-            return self.make_response(comm_id, resexp)
+            gen = getattr(self.handler, func)(*args)
+            if not gen:
+                yield self.make_response(comm_id, gen)
+                return
+            last_resp = gen.next()
+            while True:
+                try:
+                    resp = gen.next()
+                    yield last_resp
+                    last_resp = resp
+                except StopIteration:
+                    yield self.make_response(comm_id, last_resp)
+                    return
         except Exception as e:
-            import traceback
             log.error(e)
             log.error(traceback.format_exc())
-            return self.make_error(comm_id, e)
+            yield self.make_error(comm_id, e)
