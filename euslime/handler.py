@@ -6,9 +6,9 @@ import traceback
 from sexpdata import dumps
 from sexpdata import Symbol
 
-from euswank.bridge import EuslispProcess
-from euswank.bridge import eus_eval_once
-from euswank.logger import get_logger
+from euslime.bridge import EuslispProcess
+from euslime.bridge import eus_eval_once
+from euslime.logger import get_logger
 
 log = get_logger(__name__)
 
@@ -36,7 +36,7 @@ def current_scope(sexp):
     return scope, cursor
 
 
-class EUSwankHandler(object):
+class EuslimeHandler(object):
     def __init__(self):
         self.euslisp = EuslispProcess()
         self.euslisp.start()
@@ -216,5 +216,5 @@ class EUSwankHandler(object):
 
 
 if __name__ == '__main__':
-    h = EUSwankHandler()
+    h = EuslimeHandler()
     print(dumps(h.swank_connection_info().next()))

@@ -4,8 +4,8 @@ from sexpdata import loads
 from sexpdata import Symbol
 import traceback
 
-from euswank.bridge import EuslispError
-from euswank.logger import get_logger
+from euslime.bridge import EuslispError
+from euslime.logger import get_logger
 
 log = get_logger(__name__)
 
