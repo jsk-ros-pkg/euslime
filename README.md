@@ -1,7 +1,7 @@
-euswank
+euslime
 =======
 
-Swank Proxy for Euslisp
+Slime for Euslisp
 
 ## Author
 
@@ -17,24 +17,24 @@ Yuki Fututa <<furushchev@jsk.imi.i.u-tokyo.ac.jp>>
     sudo pip install -U pip setuptools
     ```
 
-1. Install `euswank`
+1. Install `euslime`
 
     ```bash
-    git clone https://github.com/furushchev/euswank
-    cd euswank
+    git clone https://github.com/furushchev/euslime
+    cd euslime
     sudo pip install -U -e .
     ```
 
-    This enable to run `euswank`.
+    This enable to run `euslime`.
 
 1. Add script to your emacs init file
 
     ```lisp
     ;; ~/.emacs.el
     (add-to-list 'load-path "/path/to/slime")
-    (add-to-list 'load-path "/path/to/euswank")
+    (add-to-list 'load-path "/path/to/euslime")
     (require 'slime-autoloads)
-    (require 'euslisp-slime)
+    (require 'euslime)
     (setq slime-contribs '(slime-fancy))
     (setq inferior-lisp-program "sbcl")
     ```
@@ -44,5 +44,5 @@ Yuki Fututa <<furushchev@jsk.imi.i.u-tokyo.ac.jp>>
     Type the command:
 
     ```bash
-    M-x euslisp-slime
+    M-x euslime
     ```

@@ -12,7 +12,7 @@ from Queue import Queue, Empty
 from sexpdata import dumps, loads, Symbol
 from uuid import uuid1
 
-from euswank.logger import get_logger
+from euslime.logger import get_logger
 
 log = get_logger(__name__)
 IS_POSIX = 'posix' in sys.builtin_module_names

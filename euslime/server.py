@@ -7,9 +7,9 @@ import socket
 from thread import start_new_thread
 import traceback
 
-from euswank.protocol import Protocol
-from euswank.handler import EUSwankHandler
-from euswank.logger import get_logger
+from euslime.protocol import Protocol
+from euslime.handler import EuslimeHandler
+from euslime.logger import get_logger
 
 ENCODINGS = {
     'iso-latin-1-unix': 'latin-1',
@@ -20,11 +20,11 @@ HEADER_LENGTH = 6
 log = get_logger(__name__)
 
 
-class EUSwankRequestHandler(S.BaseRequestHandler, object):
+class EuslimeRequestHandler(S.BaseRequestHandler, object):
     def __init__(self, request, client_address, server):
-        self.swank = Protocol(EUSwankHandler)
+        self.swank = Protocol(EuslimeHandler)
         self.encoding = ENCODINGS.get(server.encoding, 'utf-8')
-        super(EUSwankRequestHandler, self).__init__(
+        super(EuslimeRequestHandler, self).__init__(
             request, client_address, server)
 
     def handle(self):
@@ -69,13 +69,13 @@ class EUSwankRequestHandler(S.BaseRequestHandler, object):
         start_new_thread(kill_server, (self.server,))
 
 
-class EUSwankServer(S.TCPServer, object):
+class EuslimeServer(S.TCPServer, object):
     def __init__(self, server_address,
-                 handler_class=EUSwankRequestHandler,
+                 handler_class=EuslimeRequestHandler,
                  encoding='utf-8'):
         self.encoding = encoding
 
-        super(EUSwankServer, self).__init__(server_address, handler_class)
+        super(EuslimeServer, self).__init__(server_address, handler_class)
 
         addr, port = self.server_address
         log.info('Serving on %s:%d', addr, port)
@@ -88,7 +88,7 @@ class EUSwankServer(S.TCPServer, object):
 
 
 def serve(host='0.0.0.0', port=4005, port_filename=str(), encoding='utt-8'):
-    server = EUSwankServer((host, port),
+    server = EuslimeServer((host, port),
                            encoding=encoding)
 
     # writing port number to file

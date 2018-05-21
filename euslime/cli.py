@@ -5,10 +5,10 @@
 import argparse
 import sys
 
-import euswank
+import euslime
 import sexpdata
-from euswank.logger import get_logger, set_log_level, LOG_LEVELS
-from euswank.server import serve
+from euslime.logger import get_logger, set_log_level, LOG_LEVELS
+from euslime.server import serve
 
 try:
     _input = raw_input
@@ -21,9 +21,9 @@ log = get_logger(__name__)
 
 def main():
     p = argparse.ArgumentParser(
-        prog=euswank.__name__,
-        version=euswank.__version__,
-        description=euswank.__doc__)
+        prog=euslime.__name__,
+        version=euslime.__version__,
+        description=euslime.__doc__)
     p.add_argument("--host", type=str,
                    help="Host to serve",
                    default="0.0.0.0")

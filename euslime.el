@@ -1,4 +1,4 @@
-;;; eus-slime.el ---                                 -*- lexical-binding: t; -*-
+;;; euslime.el ---                                 -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2018  furushchev
 
@@ -22,29 +22,29 @@
 
 ;;; Code:
 
-(defvar slime-euswank-path "euswank"
-  "Path to euswank executable for with Euslisp SLIME.")
+(defvar slime-euslime-path "euslime"
+  "Path to euslime executable for with Euslisp SLIME.")
 
 (defvar slime-lisp-implementations
   '((sbcl ("sbcl") :coding-system utf-8-unix)))
 (nconc slime-lisp-implementations
-       (list `(euslisp (,slime-euswank-path)
-                       :init euslisp-slime-init
+       (list `(euslisp (,slime-euslime-path)
+                       :init euslime-init
                        :coding-system utf-8-unix)))
-;;            slime-lisp-implementations))
 
-(defvar slime-euswank-port 4005
+(defvar slime-euslime-port 4005
   "Port number to use for communicating to the swank server.")
 
-(defun euslisp-slime-init (file _)
+(defun euslime-init (file _)
   (setq slime-protocol-version 'ignore)
   (format "%S\n"
           `(begin '(require-extension slime)
-                  (swank-server-start ,slime-euswank-port ,file))))
+                  (swank-server-start ,slime-euslime-port ,file))))
 
-(defun euslisp-slime ()
+(defun euslime ()
+  "euslime"
   (interactive)
   (slime 'euslisp))
 
-(provide 'euslisp-slime)
-;;; eus-slime.el ends here
+(provide 'euslime)
+;;; euslime.el ends here
