@@ -2,7 +2,8 @@ from __future__ import print_function
 
 import os
 import platform
-from sexpdata import dumps, loads
+import traceback
+from sexpdata import dumps
 from sexpdata import Symbol
 
 from euswank.bridge import EuslispProcess
@@ -12,13 +13,36 @@ from euswank.logger import get_logger
 log = get_logger(__name__)
 
 
+def findp(s, l):
+    assert isinstance(l, list)
+    lt = [e for e in l if e not in ['', u'']]
+    for e in lt:
+        if e == s:
+            return lt
+        elif isinstance(e, list):
+            return findp(s, e)
+    return list()
+
+
+def current_scope(sexp):
+    marker = Symbol(u'swank::%cursor-marker%')
+    scope = findp(marker, sexp)
+    cursor = -1
+    if len(scope) <= 1:
+        raise ValueError("scope not found in %s" % scope)
+    for i, e in enumerate(scope):
+        if marker == e:
+            cursor = i
+    return scope, cursor
+
+
 class EUSwankHandler(object):
     def __init__(self):
         self.euslisp = EuslispProcess()
         self.euslisp.start()
 
     def swank_connection_info(self):
-        return {
+        yield {
             'pid': os.getpid(),
             'style': False,
             'encoding': {
@@ -42,66 +66,88 @@ class EUSwankHandler(object):
         }
 
     def swank_create_repl(self, sexp):
-        return ["irteusgl", "irteusgl"]
+        yield ["irteusgl", "irteusgl"]
+
+    def swank_repl_create_repl(self, *sexp):
+        for r in self.swank_create_repl(sexp):
+            yield r
 
     def swank_buffer_first_change(self, filename):
-        return False
+        yield False
 
     def swank_eval(self, sexp):
-        if not sexp.strip():
-            sexp = 'nil'
-        result = self.euslisp.exec_command(sexp)
-        return [Symbol(":values"), result]
+        last_msg = None
+        for out in self.euslisp.eval(sexp):
+            if last_msg is not None:
+                yield [Symbol(":write-string"), last_msg]
+            last_msg = out
+        yield [Symbol(":values"), last_msg]
 
     def swank_interactive_eval(self, sexp):
-        return self.swank_eval(sexp)
+        for r in self.swank_eval(sexp):
+            yield r
 
     def swank_interactive_eval_region(self, sexp):
-        return self.swank_eval(sexp)
+        for r in self.swank_eval(sexp):
+            yield r
 
     def swank_repl_listener_eval(self, sexp):
-        return self.swank_eval(sexp)
+        for r in self.swank_eval(sexp):
+            yield r
 
     def swank_pprint_eval(self, sexp):
-        return self.swank_eval(sexp)
+        for r in self.swank_eval(sexp):
+            yield r
 
-    def swank_autodoc(self, *sexp):
-        # FIXME: maybe return the first line of the result of `pf <function>`?
-        return [Symbol(":not-available"), True]
+    def swank_autodoc(self, sexp, _, line_width):
+        """
+(:emacs-rex
+ (swank:autodoc
+  '("ql:quickload" "" swank::%cursor-marker%)
+  :print-right-margin 102)
+ "COMMON-LISP-USER" :repl-thread 19)
+(:return
+ (:ok
+  ("(quickload ===> systems <=== &key
+     (verbose quicklisp-client:*quickload-verbose*) silent\n
+     (prompt quicklisp-client:*quickload-prompt*) explain &allow-other-keys)"
+   t))
+ 19)
+        """
+        try:
+            sexp = sexp[1]  # unquote
+            scope, cursor = current_scope(sexp)
+            func = str(scope[0])
+            log.info("scope: %s, cursor: %s" % (scope, cursor))
+            result = self.euslisp.arglist(func, cursor=cursor)
+            assert result
+            yield [result, True]
+        except Exception as e:
+            log.error(e)
+            log.error(traceback.format_exc())
+            yield [Symbol(":not-available"), True]
 
-    def swank_simple_completions(self, prefix, pkg):
+    def swank_simple_completions(self, start, pkg):
         # (swank:simple-completions "vector-" (quote "irteusgl"))
+        # TODO: support eus method
         pkg = pkg[1]
-        if prefix.find(":") > 0:
-            ns = prefix.split(":")[0]
-            func = ":".join(prefix.replace(":", " ").split()[1:])
-            # use #'functions
-            cmd = """(functions "{0}" '{1})""".format(func, ns)
+        result = self.euslisp.find_function(start, pkg)
+        if len(result) == 1:
+            yield [result, result[0]]
         else:
-            # use #'apropos-list
-            cmd = """(remove-if-not
-                       '(lambda (x)
-                         (string= "{0}" (subseq (string x) 0 (length "{0}"))))
-                       (apropos-list "{0}"))""".format(prefix.upper())
-        result = self.euslisp.exec_command(cmd)
-        resexp = list()
-        for s in loads(result):
-            if isinstance(s, Symbol):
-                s = s.value()
-            if not s.startswith(":"):
-                resexp.append(s)
-        if len(resexp) == 1:
-            retval = [resexp, resexp[0]]
-        else:
-            retval = [resexp, prefix]
-        return retval
+            yield [result, start]
 
     def swank_fuzzy_completions(self, prefix, pkg, _, limit, *args):
         # (swank:fuzzy-completions "a" "irteusgl"
         #       :limit 300 :time-limit-in-msec 1500)
         if len(prefix) >= 2:
-            resexp, prefix = self.swank_simple_completions(prefix, pkg)
-            return [resexp[:limit], prefix]
+            for resexp, prefix in self.swank_simple_completions(prefix, pkg):
+                yield [resexp[:limit], prefix]
+
+    def swank_complete_form(self, *args):
+        # (swank:complete-form
+        #    (quote ("float-vector" swank::%cursor-marker%))
+        return
 
     def swank_quit_lisp(self, *args):
         self.euslisp.stop()
@@ -115,56 +161,60 @@ class EUSwankHandler(object):
             self.euslisp.start()
 
     def swank_swank_require(self, *sexp):
-        pass
+        return
 
     def swank_init_presentations(self, *sexp):
         log.info(sexp)
 
-    def swank_repl_create_repl(self, *sexp):
-        return self.swank_create_repl(sexp)
-
     def swank_compile_string_for_emacs(self, sexp, *args):
         # (sexp buffer-name (:position 1) (:line 1) () ())
         # FIXME: This does not comple actually, just eval instead.
-        result = self.swank_eval(sexp)
-        log.info("result: %s" % result)
+        for out in self.euslisp.eval(sexp):
+            log.info(out)
+            yield [Symbol(":write-string"), out]
         errors = []
         seconds = 0.01
-        return [Symbol(":compilation-result"), errors, True,
-                seconds, None, None]
+        yield [Symbol(":compilation-result"), errors, True,
+               seconds, None, None]
 
     def swank_compile_notes_for_emacs(self, *args):
-        return self.swank_compile_string_for_emacs(*args)
+        for r in self.swank_compile_string_for_emacs(*args):
+            yield r
 
     def swank_compile_file_for_emacs(self, *args):
-        return self.swank_compile_string_for_emacs(*args)
+        for r in self.swank_compile_string_for_emacs(*args):
+            yield r
 
     def swank_operator_arglist(self, func, pkg):
         #  (swank:operator-arglist "format" "irteusgl")
-        cmd = """(with-output-to-string (s) (pf {0} s))""".format(func)
-        result = self.euslisp.exec_command(cmd)
-        return result
+        # TODO: support eus method
+        try:
+            yield self.euslisp.arglist(func, pkg)
+        except:
+            yield ["", True]
 
     def swank_inspect_current_condition(self):
         # (swank:inspect-current-condition)
-        pass
+        return
 
     def swank_sldb_abort(self, *args):
-        pass
+        return
 
     def swank_find_definitions_for_emacs(self, keyword):
-        pass
+        return
 
-    def swank_describe_symbol(self, symbol):
-        pass
+    def swank_describe_symbol(self, sym):
+        cmd = """(with-output-to-string (s) (describe '{0} s))""".format(sym)
+        yield self.euslisp.eval_block(cmd, only_result=True)
 
     def swank_describe_function(self, func):
-        pass
+        cmd = """(documentation '{0})""".format(func)
+        yield self.euslisp.eval_block(cmd, only_result=True)
 
     def swank_describe_definition_for_emacs(self, name, type):
-        return self.swank_describe_symbol(name)
+        yield self.swank_describe_symbol(name)
 
 
 if __name__ == '__main__':
     h = EUSwankHandler()
-    print(dumps(h.swank_connection_info()))
+    print(dumps(h.swank_connection_info().next()))
