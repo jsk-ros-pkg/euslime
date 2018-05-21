@@ -2,7 +2,8 @@ from __future__ import print_function
 
 import os
 import platform
-from sexpdata import dumps, loads
+import traceback
+from sexpdata import dumps
 from sexpdata import Symbol
 
 from euswank.bridge import EuslispProcess
@@ -27,6 +28,8 @@ def current_scope(sexp):
     marker = Symbol(u'swank::%cursor-marker%')
     scope = findp(marker, sexp)
     cursor = -1
+    if len(scope) <= 1:
+        raise ValueError("scope not found in %s" % scope)
     for i, e in enumerate(scope):
         if marker == e:
             cursor = i
@@ -73,8 +76,12 @@ class EUSwankHandler(object):
         yield False
 
     def swank_eval(self, sexp):
-        # TODO: support :write-string
-        yield [Symbol(":values"), self.euslisp.eval(sexp)]
+        last_msg = None
+        for out in self.euslisp.eval(sexp):
+            if last_msg is not None:
+                yield [Symbol(":write-string"), last_msg]
+            last_msg = out
+        yield [Symbol(":values"), last_msg]
 
     def swank_interactive_eval(self, sexp):
         for r in self.swank_eval(sexp):
@@ -117,6 +124,7 @@ class EUSwankHandler(object):
             yield [result, True]
         except Exception as e:
             log.error(e)
+            log.error(traceback.format_exc())
             yield [Symbol(":not-available"), True]
 
     def swank_simple_completions(self, start, pkg):
@@ -161,8 +169,9 @@ class EUSwankHandler(object):
     def swank_compile_string_for_emacs(self, sexp, *args):
         # (sexp buffer-name (:position 1) (:line 1) () ())
         # FIXME: This does not comple actually, just eval instead.
-        result = self.euslisp.eval(sexp)
-        log.info("result: %s" % result)
+        for out in self.euslisp.eval(sexp):
+            log.info(out)
+            yield [Symbol(":write-string"), out]
         errors = []
         seconds = 0.01
         yield [Symbol(":compilation-result"), errors, True,
@@ -196,11 +205,11 @@ class EUSwankHandler(object):
 
     def swank_describe_symbol(self, sym):
         cmd = """(with-output-to-string (s) (describe '{0} s))""".format(sym)
-        yield self.euslisp.eval(cmd)
+        yield self.euslisp.eval_block(cmd, only_result=True)
 
     def swank_describe_function(self, func):
         cmd = """(documentation '{0})""".format(func)
-        yield self.euslisp.exec_command(cmd)
+        yield self.euslisp.eval_block(cmd, only_result=True)
 
     def swank_describe_definition_for_emacs(self, name, type):
         yield self.swank_describe_symbol(name)

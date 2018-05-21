@@ -1,3 +1,4 @@
+import os
 from sexpdata import dumps
 from sexpdata import loads
 from sexpdata import Symbol
@@ -13,6 +14,11 @@ class Protocol(object):
     def __init__(self, handler, prompt='irteusgl$ '):
         self.handler = handler()
         self.prompt = prompt
+
+    def dumps(self, sexp):
+        res = dumps(sexp, false_as='nil', none_as='nil')
+        header = '{0:06x}'.format(len(res))
+        return header + res
 
     def make_error(self, id, err):
         desc = str()
@@ -52,9 +58,7 @@ class Protocol(object):
             strace,  # stacktrace
             [None],  # pending continuation
         ]
-        res = dumps(res, false_as='nil', none_as='nil')
-        header = '{0:06x}'.format(len(res))
-        return header + res
+        return self.dumps(res)
 
     def make_response(self, id, sexp):
         try:
@@ -63,9 +67,7 @@ class Protocol(object):
                 {'ok': sexp},
                 id,
             ]
-            res = dumps(res, false_as='nil', none_as='nil')
-            header = '{0:06x}'.format(len(res))
-            return header + res
+            return self.dumps(res)
         except Exception as e:
             return self.make_error(id, e)
 
@@ -86,7 +88,7 @@ class Protocol(object):
             while True:
                 try:
                     resp = gen.next()
-                    yield last_resp
+                    yield self.dumps(last_resp)
                     last_resp = resp
                 except StopIteration:
                     yield self.make_response(comm_id, last_resp)

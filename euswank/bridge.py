@@ -169,13 +169,13 @@ class EuslispProcess(Process):
     def on_output(self, msg):
         msg = REGEX_ANSI.sub(str(), msg)
         log.debug("output: %s" % msg)
-        self.output.append(msg)
+        self.output.put(msg)
 
     def on_error(self, msg):
         msg = REGEX_ANSI.sub(str(), msg)
         log.debug("error: %s" % msg)
         if not msg.startswith(";"):
-            self.error.append(msg)
+            self.error.put(msg)
 
     def exec_command(self, cmd_str):
         token = "token-" + str(uuid1())
@@ -183,34 +183,53 @@ class EuslispProcess(Process):
         sexp = [
             Symbol('let'),
             [[Symbol(token), sexp]],
-            [Symbol('format'), True, "~%%%s~%%" % token],
+            [Symbol('format'), True, "~%%%s" % token],
             Symbol(token),
         ]
         cmd_str = dumps(sexp)
-        self.output = list()
-        self.error = list()
+        self.output = Queue()
+        self.error = Queue()
 
         self.input(cmd_str)
 
-        start = time.time()
+        last_output = time.time()
         while self.process.poll() is None:
-            time.sleep(0.1)
-            if self.error:
-                raise EuslispError(self.delim.join(self.error))
-            if self.output:
-                line = self.delim.join(self.output)
-                pos = line.find(token)
-                if pos != -1:
-                    start = pos + len(token) + 1
-                    return line[start:]
-            if time.time() - start > self.timeout:
-                raise EuslispError("Timed out")
+            # catch error
+            err = []
+            while not self.error.empty():
+                err.append(self.error.get())
+            if err:
+                raise EuslispError(self.delim.join(err))
+            try:
+                out = self.output.get(timeout=0.1)
+                pos = out.find(token)
+                if pos >= 0:
+                    while not self.output.empty():
+                        out += self.output.get()
+                    start = pos + len(token)
+                    yield out[start:]
+                    return
+                else:
+                    yield out
+                    last_output = time.time()
+            except Empty:
+                if time.time() - last_output > self.timeout:
+                    raise EuslispError("Timed out")
 
     def eval(self, cmd_str):
         if not cmd_str.strip():
             cmd_str = 'nil'
         log.info("eval: %s" % cmd_str)
-        return self.exec_command(cmd_str) or "nil"
+        for r in self.exec_command(cmd_str):
+            yield r
+
+    def eval_block(self, cmd_str, only_result=False):
+        res = list(self.eval(cmd_str))
+        log.info("res: %s" % res)
+        if only_result:
+            return res[-1]
+        else:
+            return res
 
     def find_function(self, start, pkg=None):
         if start.find(":") > 0:
@@ -226,7 +245,7 @@ class EuslispProcess(Process):
                        '(lambda (x)
                          (string= "{0}" (subseq (string x) 0 (length "{0}"))))
                        (apropos-list "{0}"))""".format(start.upper())
-        result = self.eval(cmd) or list()
+        result = self.eval_block(cmd, only_result=True) or list()
         log.info("result: %s" % result)
         resexp = list()
         for s in loads(result):
@@ -238,7 +257,7 @@ class EuslispProcess(Process):
 
     def arglist(self, func, pkg=None, cursor=None):
         cmd = """(with-output-to-string (s) (pf {0} s))""".format(func)
-        result = loads(self.eval(cmd))
+        result = loads(self.eval_block(cmd, only_result=True))
         log.info("result: %s" % result)
         if result.strip().find("compiled-code") >= 0:
             return result.strip()
@@ -261,7 +280,7 @@ def eus_eval_once(cmd):
     euslisp.start()
     result = None
     try:
-        result = euslisp.eval(cmd)
+        result = euslisp.eval_block(cmd, only_result=True)
     except EuslispError as e:
         log.error("Failed to exec: %s" % e)
     finally:

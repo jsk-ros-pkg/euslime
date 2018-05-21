@@ -47,15 +47,10 @@ class EUSwankRequestHandler(S.BaseRequestHandler, object):
                 recv_data = self.request.recv(length)
                 log.info('raw data: %s', recv_data)
                 recv_data = recv_data.decode(self.encoding)
-                result = self.swank.process(recv_data)
-                while True:
-                    try:
-                        send_data = result.next()
-                        log.info('response: %s', send_data)
-                        send_data = send_data.encode(self.encoding)
-                        self.request.send(send_data)
-                    except StopIteration:
-                        break
+                for send_data in self.swank.process(recv_data):
+                    log.info('response: %s', send_data)
+                    send_data = send_data.encode(self.encoding)
+                    self.request.send(send_data)
             except socket.timeout:
                 log.error('socket timeout')
                 break
