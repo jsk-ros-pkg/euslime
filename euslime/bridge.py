@@ -167,7 +167,7 @@ class EuslispProcess(Process):
         self.timeout = timeout or EXEC_TIMEOUT
 
     def on_output(self, msg):
-        msg = REGEX_ANSI.sub(str(), msg)
+        msg = REGEX_ANSI.sub(str(), msg) + self.delim
         log.debug("output: %s" % msg)
         self.output.put(msg)
 
@@ -183,7 +183,7 @@ class EuslispProcess(Process):
         sexp = [
             Symbol('let'),
             [[Symbol(token), sexp]],
-            [Symbol('format'), True, "~%%%s" % token],
+            [Symbol('format'), True, "%s" % token],
             Symbol(token),
         ]
         cmd_str = dumps(sexp)
@@ -207,6 +207,7 @@ class EuslispProcess(Process):
                     while not self.output.empty():
                         out += self.output.get()
                     start = pos + len(token)
+                    yield out[:pos]
                     yield out[start:]
                     return
                 else:
