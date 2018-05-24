@@ -214,6 +214,11 @@ class EuslimeHandler(object):
     def swank_describe_definition_for_emacs(self, name, type):
         yield self.swank_describe_symbol(name)
 
+    def swank_swank_expand_1(self, macro):
+        cmd = """(with-output-to-string (s)
+                   (pprint (macroexpand '{0}) s))""".format(macro)
+        yield self.euslisp.eval_block(cmd, only_result=True)[1:-2]
+
 
 if __name__ == '__main__':
     h = EuslimeHandler()
