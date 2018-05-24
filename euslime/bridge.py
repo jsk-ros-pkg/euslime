@@ -181,9 +181,13 @@ class EuslispProcess(Process):
         token = "token-" + str(uuid1())
         sexp = parse(cmd_str)
         dump = dumps(sexp)[1:-1].replace('\#', '#').replace('# ', '#')
+        # Will not work for cases actively containing '\#' or '# '
+        # e.g. (setq \# 1) --> ERROR
+
         cmd_str = """(let (({0} {1}))
                        (format t "{0}")
                        {0})""".format(token, dump)
+
         log.info("cmd_str: %s", cmd_str)
         self.output = Queue()
         self.error = Queue()
