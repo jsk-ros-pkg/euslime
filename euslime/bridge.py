@@ -32,7 +32,7 @@ class Process(object):
                  delim=None,):
         self.cmd = cmd
         self.on_output = on_output or self.default_print_callback
-        self.on_erorr = on_error or self.default_print_callback
+        self.on_error = on_error or self.default_print_callback
         self.poll_rate = poll_rate or POLL_RATE
         self.bufsize = bufsize or BUFSIZE
         self.delim = delim or DELIM
