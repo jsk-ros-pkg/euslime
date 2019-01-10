@@ -24,19 +24,18 @@ class Protocol(object):
         desc = str()
         strace = list()
         if isinstance(err, EuslispError):
-            err_msgs = err.message.strip().split()
+            err_msgs = err.message.strip().splitlines()
             if err_msgs and err_msgs[0].startswith("Call Stack"):
                 # parse stack trace
-                desc_idx = 0
-                for i, l in enumerate(err_msgs[1:]):
+                for l in err_msgs[1:]:
                     try:
                         num, msg = l.strip().split(": at ")
                         strace.append([int(num), msg,
                                        [Symbol(":restartable"), False]])
                     except:
-                        desc_idx = i
+                        _, desc = l.split("irteusgl 0 error: ")
+                        desc = desc.capitalize()
                         break
-                desc = os.linesep.join(err_msgs[desc_idx:])
             else:
                 desc = err.message.strip()
         elif isinstance(err, Exception):
