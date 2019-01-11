@@ -4,7 +4,7 @@ from sexpdata import loads
 from sexpdata import Symbol
 import traceback
 
-from euslime.bridge import EuslispError
+from euslime.handler import DebuggerHandler
 from euslime.logger import get_logger
 
 log = get_logger(__name__)
@@ -21,40 +21,16 @@ class Protocol(object):
         return header + res
 
     def make_error(self, id, err):
-        desc = str()
-        strace = list()
-        if isinstance(err, EuslispError):
-            err_msgs = err.message.strip().splitlines()
-            if err_msgs and err_msgs[0].startswith("Call Stack"):
-                # parse stack trace
-                for l in err_msgs[1:]:
-                    try:
-                        num, msg = l.strip().split(": at ")
-                        strace.append([int(num), msg,
-                                       [Symbol(":restartable"), False]])
-                    except:
-                        _, desc = l.split("irteusgl 0 error: ")
-                        desc = desc.capitalize()
-                        break
-            else:
-                desc = err.message.strip()
-        elif isinstance(err, Exception):
-            desc = err.message.strip()
-        else:
-            desc = err
-
-        restarts = [
-            ["QUIT", "Quit to the SLIME top level"],
-            ["RESTART", "Restart euslisp process"]
-        ]
+        debug = DebuggerHandler(id, err)
+        self.handler.debugger.append(debug)
 
         res = [
             Symbol(':debug'),
             0,  # the thread which threw the condition
-            1,  # the depth of the condition
-            [desc, str(), None],  # s-exp with a description
-            restarts,  # list of available restarts for the condition
-            strace,  # stacktrace
+            len(self.handler.debugger),  # the depth of the condition
+            [debug.message, str(), None],  # s-exp with a description
+            DebuggerHandler.restarts,  # list of available restarts for the condition
+            debug.stack,  # stacktrace
             [None],  # pending continuation
         ]
         return self.dumps(res)

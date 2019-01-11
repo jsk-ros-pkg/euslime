@@ -7,6 +7,7 @@ from sexpdata import dumps
 from sexpdata import Symbol
 
 from euslime.bridge import EuslispProcess
+from euslime.bridge import EuslispError
 from euslime.bridge import eus_eval_once
 from euslime.logger import get_logger
 
@@ -36,10 +37,50 @@ def current_scope(sexp):
     return scope, cursor
 
 
+class DebuggerHandler(object):
+    restarts = [
+        ["QUIT", "Quit to the SLIME top level"],
+        ["CONTINUE", "Ignore the error and continue in the same stack level"],
+        ["RESTART", "Restart euslisp process"]
+    ]
+
+    def __init__(self, id, error):
+        msg, stack = self.parse_message(error)
+        self.id = id
+        self.message = msg
+        self.stack = stack
+
+    def parse_message(self, err):
+        desc = str()
+        strace = list()
+        if isinstance(err, EuslispError):
+            err_msgs = err.message.strip().splitlines()
+            if err_msgs and err_msgs[0].startswith("Call Stack"):
+                # parse stack trace
+                for l in err_msgs[1:]:
+                    try:
+                        num, msg = l.strip().split(": at ")
+                        strace.append([int(num), msg,
+                                       [Symbol(":restartable"), False]])
+                    except:
+                        _, desc = l.split("irteusgl 0 error: ")
+                        desc = desc.capitalize()
+                        break
+            else:
+                desc = err.message.strip()
+        elif isinstance(err, Exception):
+            desc = err.message.strip()
+        else:
+            desc = err
+
+        return desc, strace
+
+
 class EuslimeHandler(object):
     def __init__(self):
         self.euslisp = EuslispProcess()
         self.euslisp.start()
+        self.debugger = []
 
     def swank_connection_info(self):
         yield {
@@ -153,12 +194,21 @@ class EuslimeHandler(object):
         self.euslisp.stop()
 
     def swank_invoke_nth_restart_for_emacs(self, level, num):
+        deb = self.debugger.pop(level - 1)
         if num == 0:  # QUIT
+            self.debugger = []
+            self.euslisp.input('(reset)\n')
+        elif num == 1:  # CONTINUE
             pass
-        elif num == 1:  # RESTART
+        elif num == 2:  # RESTART
+            self.debugger = []
             self.euslisp.stop()
             self.euslisp = EuslispProcess()
             self.euslisp.start()
+
+        yield [Symbol(':debug-return'), 0, level, Symbol('nil')]
+        yield [Symbol(':return'), {'abort': deb.message}, deb.id]
+        yield {'abort': 'NIL'}
 
     def swank_swank_require(self, *sexp):
         return
