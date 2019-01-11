@@ -1,4 +1,3 @@
-import os
 from sexpdata import dumps
 from sexpdata import loads
 from sexpdata import Symbol
@@ -29,7 +28,7 @@ class Protocol(object):
             0,  # the thread which threw the condition
             len(self.handler.debugger),  # the depth of the condition
             [debug.message, str(), None],  # s-exp with a description
-            DebuggerHandler.restarts,  # list of available restarts for the condition
+            DebuggerHandler.restarts,  # list of available restarts
             debug.stack,  # stacktrace
             [None],  # pending continuation
         ]

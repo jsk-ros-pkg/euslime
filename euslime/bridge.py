@@ -180,7 +180,7 @@ class EuslispProcess(Process):
     def exec_command(self, cmd_str):
         token = "token-" + str(uuid1())
         sexp = parse(cmd_str)
-        dump = dumps(sexp)[1:-1].replace('\#', '#').replace('# ', '#')
+        dump = dumps(sexp)[1:-1].replace(r'\#', '#').replace('# ', '#')
         # Will not work for cases actively containing '\#' or '# '
         # e.g. (setq \# 1) --> ERROR
 
