@@ -202,11 +202,12 @@ class EuslispProcess(Process):
                     raise EuslispError("Timed out")
 
     def eval(self, cmd_str):
-        if not cmd_str.strip():
-            cmd_str = 'nil'
         log.info("eval: %s" % cmd_str)
-        for r in self.exec_command(cmd_str):
-            yield r
+        if not cmd_str.strip():
+            yield '; No value'
+        else:
+            for r in self.exec_command(cmd_str):
+                yield r
 
     def eval_block(self, cmd_str, only_result=False):
         res = list(self.eval(cmd_str))
