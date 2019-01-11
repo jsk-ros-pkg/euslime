@@ -193,6 +193,9 @@ class EuslimeHandler(object):
     def swank_quit_lisp(self, *args):
         self.euslisp.stop()
 
+    def swank_backtrace(self, start, end):
+        return []
+
     def swank_invoke_nth_restart_for_emacs(self, level, num):
         deb = self.debugger.pop(level - 1)
         if num == 0:  # QUIT
