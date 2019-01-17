@@ -35,8 +35,17 @@
 (defvar slime-euslime-port 4005
   "Port number to use for communicating to the swank server.")
 
+(defvar euslime-hook nil
+  "List of functions to call when Euslisp SLIME starts")
+
+;; Use simple-completions rather than fuzzy-completions
+(add-hook 'euslime-hook
+          (lambda ()
+            (setq slime-complete-symbol-function 'slime-complete-symbol*)))
+
 (defun euslime-init (file _)
   (setq slime-protocol-version 'ignore)
+  (run-hooks 'euslime-hook)
   (format "%S\n"
           `(begin '(require-extension slime)
                   (swank-server-start ,slime-euslime-port ,file))))

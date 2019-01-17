@@ -156,7 +156,7 @@ class EuslispError(Exception):
 class EuslispProcess(Process):
     def __init__(self, timeout=None):
         super(EuslispProcess, self).__init__(
-            cmd=["rosrun", "roseus", "roseus"],
+            cmd=["roseus", "slime-toplevel.l", "slime-util.l"],
             on_output=self.on_output,
             on_error=self.on_error,
         )
@@ -217,29 +217,11 @@ class EuslispProcess(Process):
         else:
             return res
 
-    def find_function(self, start, pkg=None):
-        if start.find(":") > 0:
-            # e.g. ros::tf-pose->coords
-            ns = start.split(":")[0]
-            func = ":".join(start.replace(":", " ").split()[1:])
-            # use #'functions
-            cmd = """(functions "{0}" '{1})""".format(func, ns)
-        else:
-            # e.g. format
-            # use #'apropos-list
-            cmd = """(remove-if-not
-                       '(lambda (x)
-                         (string= "{0}" (subseq (string x) 0 (length "{0}"))))
-                       (apropos-list "{0}"))""".format(start.upper())
+    def find_symbol(self, start, pkg=None):
+        cmd = """(slime::slime-find-symbol "{0}")""".format(start)
         result = self.eval_block(cmd, only_result=True) or list()
         log.info("result: %s" % result)
-        resexp = list()
-        for s in loads(result):
-            if isinstance(s, Symbol):
-                s = s.value()
-            if not s.startswith(":"):
-                resexp.append(s)
-        return resexp
+        return loads(result)
 
     def arglist(self, func, pkg=None, cursor=None):
         cmd = """(with-output-to-string (s) (pf {0} s))""".format(func)
