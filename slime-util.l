@@ -12,13 +12,13 @@
 	((null (cdr args)) (car args))
 	(t `(aif ,(car args) (aand ,@(cdr args))))))
 
+
+;; Utility
 (defun position-from-end (item seq &rest key-args)
   (aand
    (apply #'position item (reverse seq) key-args)
    (- (length seq) it 1)))
 
-
-;; Utility
 (defmacro do-callable-symbols (var &rest forms)
   ;; var: (variable-name &optional result)
   (let ((apackage (gensym "DOALLSYM")))
@@ -33,11 +33,18 @@
        (do-symbols ,var ,@body)
        (do-callable-symbols (,(car var) ,(caddr var)) ,@body)))
 
+(defun find-callable-symbol (name &optional package)
+  (if package
+      (find-symbol name package)
+      (let ((packs (cons *package* (*package* . use))))
+        (dolist (p packs)
+          (aif (find-symbol name p)
+               (return-from find-callable-symbol it))))))
 
 ;; Symbol completion
 (defun slime-find-symbol (start)
   (let* ((pack (aand (position #\: start) (string-upcase (subseq start 0 it))))
-         (str (or (and pack (subseq start (1+ (position-from-end #\: start)))) start))
+         (str (if pack (subseq start (1+ (position-from-end #\: start))) start))
          (len (length str))
          str-lst)
     (slime-do-symbols (sym pack)
@@ -61,3 +68,46 @@
     (setq c (elt (car lst) i))
     (dolist (s lst)
       (unless (eq (elt s i) c) (return-from get-common i)))))
+
+
+;; Lambda list completion
+(help '+ nil nil) ;; create *help-hash*
+
+(defun autodoc (name cursor &optional item)
+  (let ((arglist (lambda-list name)))
+    (when arglist
+      (dotimes (i cursor)
+        (case (nth i arglist)
+          (&rest
+           (return-from autodoc (set-cursor arglist (1+ i))))
+          (&optional
+           (incf cursor))
+          (&key
+           (return-from autodoc (set-keyword arglist (1+ i) item)))))
+      (set-cursor arglist (1- cursor)))))
+
+(defun lambda-list (name)
+  (let* ((pack (aand (position #\: name) (string-upcase (subseq name 0 it))))
+         (func (if pack (subseq name (1+ (position-from-end #\: name))) name))
+         (arglist
+          (aif (gethash (string-downcase name) help::*help-hash*)
+               (format nil "(~a)" (car (send it :read-help)))
+               (get (find-callable-symbol (string-upcase func) pack)
+                    :function-documentation))))
+    (if (stringp arglist)
+        (read-from-string arglist)
+        (copy-list arglist))))
+
+(defun set-cursor (lst pos)
+  ;; TODO: use string not symbols
+  (list-insert (intern "<===" *package*) (1+ pos) lst)
+  (list-insert (intern "===>" *package*) pos lst))
+
+(defun set-keyword (arglist start item)
+  (let* ((keys (mapcar #'(lambda (val) (if (consp val) (car val) val))
+                      (nthcdr start arglist)))
+         (pos (position item keys :test
+                        #'(lambda (a b) (string= a (format nil ":~a" b))))))
+    (if pos
+        (set-cursor arglist (+ start pos))
+        arglist)))

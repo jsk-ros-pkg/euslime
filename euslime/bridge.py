@@ -219,28 +219,19 @@ class EuslispProcess(Process):
 
     def find_symbol(self, start, pkg=None):
         cmd = """(slime::slime-find-symbol "{0}")""".format(start)
-        result = self.eval_block(cmd, only_result=True) or list()
+        result = self.eval_block(cmd, only_result=True)
         log.info("result: %s" % result)
         return loads(result)
 
-    def arglist(self, func, pkg=None, cursor=None):
-        cmd = """(with-output-to-string (s) (pf {0} s))""".format(func)
-        result = loads(self.eval_block(cmd, only_result=True))
+    def arglist(self, func, cursor=None, item=None):
+        cmd = """(slime::autodoc "{0}" {1} {2})""".format(func, cursor, item)
+        result = self.eval_block(cmd, only_result=True)
         log.info("result: %s" % result)
-        if result.strip().find("compiled-code") >= 0:
-            return result.strip()
-        sexp = loads(result)
-        if not sexp:
-            return result
-        elif sexp[0].value() in ['lambda', 'macro']:
-            arg_list = [Symbol(func)] + sexp[1]
-            if isinstance(cursor, int):
-                if 0 <= cursor < len(arg_list):
-                    arg_list.insert(cursor, Symbol('===>'))
-                    arg_list.insert(cursor + 2, Symbol('<==='))
-            return dumps(arg_list)
+        if loads(result):
+            # remove newline
+            return result[:-1]
         else:
-            return result
+            return list()
 
 
 def eus_eval_once(cmd):

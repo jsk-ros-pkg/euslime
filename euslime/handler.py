@@ -21,7 +21,9 @@ def findp(s, l):
         if e == s:
             return lt
         elif isinstance(e, list):
-            return findp(s, e)
+            res = findp(s, e)
+            if res:
+                return res
     return list()
 
 
@@ -140,7 +142,7 @@ class EuslimeHandler(object):
         for r in self.swank_eval(sexp):
             yield r
 
-    def swank_autodoc(self, sexp, _, line_width):
+    def swank_autodoc(self, sexp, _=None, line_width=None):
         """
 (:emacs-rex
  (swank:autodoc
@@ -158,9 +160,10 @@ class EuslimeHandler(object):
         try:
             sexp = sexp[1]  # unquote
             scope, cursor = current_scope(sexp)
-            func = str(scope[0])
             log.info("scope: %s, cursor: %s" % (scope, cursor))
-            result = self.euslisp.arglist(func, cursor=cursor)
+            func = str(scope[0])
+            item = dumps(str(scope[-2]))
+            result = self.euslisp.arglist(func, cursor, item)
             assert result
             yield [result, True]
         except Exception as e:
