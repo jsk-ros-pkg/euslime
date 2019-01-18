@@ -42,7 +42,7 @@
                (return-from find-callable-symbol it))))))
 
 ;; Symbol completion
-(defun slime-find-symbol (start)
+(defun slime-find-symbol (start &optional prefix)
   (let* ((pack (aand (position #\: start) (string-upcase (subseq start 0 it))))
          (str (if pack (subseq start (1+ (position-from-end #\: start))) start))
          (len (length str))
@@ -52,7 +52,7 @@
                          (string-downcase (send sym :pname))
                          (send sym :pname))))
         (when (string-equal str sym-str :start1 0 :end1 len :start2 0 :end2 len)
-          (push (concatenate string start (subseq sym-str len)) str-lst))))
+          (push (concatenate string prefix start (subseq sym-str len)) str-lst))))
     (cond
       ((cdr str-lst)
        (list str-lst (subseq (car str-lst) 0 (get-common str-lst len))))
@@ -74,9 +74,10 @@
 (help '+ nil nil) ;; create *help-hash*
 
 (defun autodoc (name cursor &optional item)
-  (let ((arglist (lambda-list name)))
+  (let* ((arglist (lambda-list name))
+         (len (length arglist)))
     (when arglist
-      (dotimes (i cursor)
+      (dotimes (i (min len cursor))
         (case (nth i arglist)
           (&rest
            (return-from autodoc (set-cursor arglist (1+ i))))
@@ -84,7 +85,9 @@
            (incf cursor))
           (&key
            (return-from autodoc (set-keyword arglist (1+ i) item)))))
-      (set-cursor arglist (1- cursor)))))
+      (if (> cursor len)
+          arglist
+          (set-cursor arglist (1- cursor))))))
 
 (defun lambda-list (name)
   (let* ((pack (aand (position #\: name) (string-upcase (subseq name 0 it))))
@@ -98,16 +101,39 @@
         (read-from-string arglist)
         (copy-list arglist))))
 
+(defun keyword-list (arglist &optional start)
+  (let ((pos (or start (aand (position '&key arglist) (1+ it)))))
+    (if pos
+        (mapcar #'(lambda (val) (format nil ":~a" (if (consp val) (car val) val)))
+                (nthcdr pos arglist)))))
+
 (defun set-cursor (lst pos)
   ;; TODO: use string not symbols
   (list-insert (intern "<===" *package*) (1+ pos) lst)
   (list-insert (intern "===>" *package*) pos lst))
 
 (defun set-keyword (arglist start item)
-  (let* ((keys (mapcar #'(lambda (val) (if (consp val) (car val) val))
-                      (nthcdr start arglist)))
-         (pos (position item keys :test
-                        #'(lambda (a b) (string= a (format nil ":~a" b))))))
+  (let* ((keys (keyword-list arglist start))
+         (pos (position item keys :test #'string-equal)))
     (if pos
         (set-cursor arglist (+ start pos))
         arglist)))
+
+
+;; Keyword completion
+(defun slime-find-keyword (start &optional form)
+  (cond
+    ((null form)
+     (let ((*package* *keyword-package*))
+       (slime-find-symbol (subseq start 1) ":")))
+    ((string-equal (car form) "send")
+     ;; TODO: method completion
+     nil)
+    (t
+     (let ((keys (keyword-list (lambda-list (car form))))
+           (len (length start)))
+       (aif
+        (remove-if-not
+         #'(lambda (str) (string-equal start str :start1 1 :end1 len :start2 1 :end2 len))
+         keys)
+        (list it (subseq (car it) 0 (get-common it len))))))))

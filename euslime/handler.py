@@ -171,13 +171,16 @@ class EuslimeHandler(object):
             log.error(traceback.format_exc())
             yield [Symbol(":not-available"), True]
 
-    def swank_completions(self, *args):
-        return self.swank_simple_completions(args[0], args[1])
-        #return self.swank_fuzzy_completions(args[0], args[1], ':limit', 300, ':time-limit-in-msec', 1500)
+    def swank_completions(self, start, pkg):
+        if start[0] == ':':
+            return self.swank_completions_for_keyword(start, None)
+        else:
+            return self.swank_simple_completions(start, pkg)
+        #return self.swank_fuzzy_completions(start, pkg, ':limit', 300, ':time-limit-in-msec', 1500)
 
     def swank_simple_completions(self, start, pkg):
         # (swank:simple-completions "vector-" (quote "irteusgl"))
-        yield self.euslisp.find_symbol(start, pkg[1])
+        yield self.euslisp.find_symbol(start)
 
     def swank_fuzzy_completions(self, prefix, pkg, _, limit, *args):
         # (swank:fuzzy-completions "a" "irteusgl"
@@ -187,6 +190,12 @@ class EuslimeHandler(object):
                 yield [resexp[:limit], prefix]
         else:
             yield [None, None]
+
+    def swank_completions_for_keyword(self, start, form):
+        # args: [u':meth', [Symbol(u'quote'), [u'send', u'c', u'', Symbol(cursor)]]]
+        if form:
+            form = form[1][:-2] # unquote and remove cursor
+        yield self.euslisp.find_keyword(start, dumps(form))
 
     def swank_complete_form(self, *args):
         # (swank:complete-form

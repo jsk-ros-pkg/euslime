@@ -211,22 +211,25 @@ class EuslispProcess(Process):
 
     def eval_block(self, cmd_str, only_result=False):
         res = list(self.eval(cmd_str))
-        log.info("res: %s" % res)
+        log.info("result: %s" % res)
         if only_result:
             return res[-1]
         else:
             return res
 
-    def find_symbol(self, start, pkg=None):
+    def find_symbol(self, start):
         cmd = """(slime::slime-find-symbol "{0}")""".format(start)
         result = self.eval_block(cmd, only_result=True)
-        log.info("result: %s" % result)
+        return loads(result)
+
+    def find_keyword(self, start, form):
+        cmd = """(slime::slime-find-keyword "{0}" '{1})""".format(start, form)
+        result = self.eval_block(cmd, only_result=True)
         return loads(result)
 
     def arglist(self, func, cursor=None, item=None):
         cmd = """(slime::autodoc "{0}" {1} {2})""".format(func, cursor, item)
         result = self.eval_block(cmd, only_result=True)
-        log.info("result: %s" % result)
         if loads(result):
             # remove newline
             return result[:-1]
