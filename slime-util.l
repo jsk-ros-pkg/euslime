@@ -197,7 +197,11 @@
     ((string-equal (car form) "send")
      (if (stringp (cadr form))
          (aif (symbol-value (find-callable-symbol (cadr form)))
-              (find-prefix start (method-list it) 1))))
+              (if (cddr form)
+                  (let ((keys (keyword-list (method-lambda-list-from-form form))))
+                    (find-prefix start keys 1))
+                  (find-prefix start (method-list it) 1)))))
+
     (t
      (let ((keys (keyword-list (lambda-list (car form)))))
        (find-prefix start keys 1)))))
