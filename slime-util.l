@@ -1,6 +1,14 @@
 (unless (find-package "SLIME") (make-package "SLIME"))
 (in-package "SLIME")
 
+;; Generate  *help-hash*
+(help '+ nil nil)
+
+;; UTILITY FUNCTIONS
+(defun position-from-end (item seq &rest key-args)
+  (aand
+   (apply #'position item (reverse seq) key-args)
+   (- (length seq) it 1)))
 
 ;; Anaphoric macros
 (defmacro aif (test-form then-form &optional else-form)
@@ -12,12 +20,12 @@
 	((null (cdr args)) (car args))
 	(t `(aif ,(car args) (aand ,@(cdr args))))))
 
-
-;; Utility
-(defun position-from-end (item seq &rest key-args)
-  (aand
-   (apply #'position item (reverse seq) key-args)
-   (- (length seq) it 1)))
+;; Symbol related
+(defmacro slime-do-symbols (var &rest body)
+  ;; var: (variable-name &optional package result)
+  `(if ,(cadr var)
+       (do-symbols ,var ,@body)
+       (do-callable-symbols (,(car var) ,(caddr var)) ,@body)))
 
 (defmacro do-callable-symbols (var &rest forms)
   ;; var: (variable-name &optional result)
@@ -27,12 +35,6 @@
        (dolist (,apackage (*package* . use) ,(cadr var))
 	 (do-external-symbols (,(car var) ,apackage) ,@forms)))))
 
-(defmacro slime-do-symbols (var &rest body)
-  ;; var: (variable-name &optional package result)
-  `(if ,(cadr var)
-       (do-symbols ,var ,@body)
-       (do-callable-symbols (,(car var) ,(caddr var)) ,@body)))
-
 (defun find-callable-symbol (name &optional package)
   (if package
       (find-symbol name package)
@@ -41,20 +43,7 @@
           (aif (find-symbol name p)
                (return-from find-callable-symbol it))))))
 
-;; Symbol completion
-(defun slime-find-symbol (start &optional prefix)
-  (let* ((pack (aand (position #\: start) (string-upcase (subseq start 0 it))))
-         (str (if pack (subseq start (1+ (position-from-end #\: start))) start))
-         (len (length str))
-         str-lst)
-    (slime-do-symbols (sym pack)
-      (let ((sym-str (if (eql *print-case* :downcase)
-                         (string-downcase (send sym :pname))
-                         (send sym :pname))))
-        (when (string-equal str sym-str :start1 0 :end1 len :start2 0 :end2 len)
-          (push (concatenate string prefix start (subseq sym-str len)) str-lst))))
-    (append-common str-lst len)))
-
+;; Prefix related
 (defun append-common (match-lst start-len)
   (cond
     ((cdr match-lst)
@@ -72,26 +61,15 @@
     (dolist (s lst)
       (unless (eq (elt s i) c) (return-from get-common i)))))
 
+(defun find-prefix (prefix lst &optional (start 0))
+  (let ((len (length prefix)))
+    (append-common
+     (remove-if-not
+      #'(lambda (str) (string-equal prefix str :start1 start :end1 len :start2 start :end2 len))
+      lst)
+     len)))
 
-;; Lambda list completion
-(help '+ nil nil) ;; create *help-hash*
-
-(defun autodoc (name cursor &optional item)
-  (let* ((arglist (lambda-list name))
-         (len (length arglist)))
-    (when arglist
-      (dotimes (i (min len cursor))
-        (case (nth i arglist)
-          (&rest
-           (return-from autodoc (set-cursor arglist (1+ i))))
-          (&optional
-           (incf cursor))
-          (&key
-           (return-from autodoc (set-keyword arglist (1+ i) item)))))
-      (if (> cursor len)
-          arglist
-          (set-cursor arglist (1- cursor))))))
-
+;; Properties list
 (defun lambda-list (name)
   (let* ((pack (aand (position #\: name) (string-upcase (subseq name 0 it))))
          (func (if pack (subseq name (1+ (position-from-end #\: name))) name))
@@ -110,6 +88,45 @@
         (mapcar #'(lambda (val) (format nil ":~a" (if (consp val) (car val) val)))
                 (nthcdr pos arglist)))))
 
+(defun method-list (obj)
+  (let* ((klas (if (classp obj) obj (class obj)))
+         (lst (mapcan #'cadr (send klas :all-method-names))))
+    (mapcar #'(lambda (val) (format nil "~a" val))
+            (remove-duplicates lst))))
+
+
+;; SWANK-SIMPLE-COMPLETIONS
+(defun slime-find-symbol (start &optional prefix)
+  (let* ((pack (aand (position #\: start) (string-upcase (subseq start 0 it))))
+         (str (if pack (subseq start (1+ (position-from-end #\: start))) start))
+         (len (length str))
+         str-lst)
+    (slime-do-symbols (sym pack)
+      (let ((sym-str (if (eql *print-case* :downcase)
+                         (string-downcase (send sym :pname))
+                         (send sym :pname))))
+        (when (string-equal str sym-str :start1 0 :end1 len :start2 0 :end2 len)
+          (push (concatenate string prefix start (subseq sym-str len)) str-lst))))
+    (append-common str-lst len)))
+
+
+;; SWANK-AUTODOC
+(defun autodoc (name cursor &optional item)
+  (let* ((arglist (lambda-list name))
+         (len (length arglist)))
+    (when arglist
+      (dotimes (i (min len cursor))
+        (case (nth i arglist)
+          (&rest
+           (return-from autodoc (set-cursor arglist (1+ i))))
+          (&optional
+           (incf cursor))
+          (&key
+           (return-from autodoc (set-keyword arglist (1+ i) item)))))
+      (if (> cursor len)
+          arglist
+          (set-cursor arglist (1- cursor))))))
+
 (defun set-cursor (lst pos)
   ;; TODO: use string not symbols
   (list-insert (intern "<===" *package*) (1+ pos) lst)
@@ -123,7 +140,7 @@
         arglist)))
 
 
-;; Keyword completion
+;; SWANK-COMPLETIONS-FOR-KEYWORD
 (defun slime-find-keyword (start &optional form)
   (cond
     ((null form)
@@ -137,18 +154,3 @@
     (t
      (let ((keys (keyword-list (lambda-list (car form)))))
        (find-prefix start keys 1)))))
-
-(defun find-prefix (prefix lst &optional (start 0))
-  (let ((len (length prefix)))
-    (append-common
-     (remove-if-not
-      #'(lambda (str) (string-equal prefix str :start1 start :end1 len :start2 start :end2 len))
-      lst)
-     len)))
-
-;; Method completion
-(defun method-list (obj)
-  (let* ((klas (if (classp obj) obj (class obj)))
-         (lst (mapcan #'cadr (send klas :all-method-names))))
-    (mapcar #'(lambda (val) (format nil "~a" val))
-            (remove-duplicates lst))))
