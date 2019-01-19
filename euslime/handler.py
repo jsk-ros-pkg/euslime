@@ -173,7 +173,7 @@ class EuslimeHandler(object):
             yield [Symbol(":not-available"), True]
 
     def swank_completions(self, start, pkg):
-        if start[0] == ':':
+        if start and start[0] == ':':
             return self.swank_completions_for_keyword(start, None)
         else:
             return self.swank_simple_completions(start, pkg)

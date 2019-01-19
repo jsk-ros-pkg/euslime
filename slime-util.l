@@ -10,6 +10,14 @@
    (apply #'position item (reverse seq) key-args)
    (- (length seq) it 1)))
 
+(defun read-copy (obj name)
+  (cond
+    ((stringp obj)
+     (if (and (> (length obj) 0) (eq (elt obj 0) #\())
+         (cons name (read-from-string obj))))
+    ((consp obj)
+     (cons name (copy-list obj)))))
+
 ;; Anaphoric macros
 (defmacro aif (test-form then-form &optional else-form)
   `(let ((it ,test-form))
@@ -72,46 +80,43 @@
 
 ;; Help search
 (defun get-help (name &optional class)
-  (let ((name (string-downcase name))
-        (class (and class (string-downcase (send class :name)))))
-    (if class
-        (aand (gethash class help::*help-hash*)
-              (gethash name (help::help-item-mhash it))
-              (format nil "(~a)" (car (send it :read-help))))
-        (aand (gethash name help::*help-hash*)
-              (format nil "(~a)" (car (send it :read-help)))))))
+  (flet ((read-item (item)
+           (read-from-string (format nil "(~a ~a)" name (car (send item :read-help))))))
+    (let ((name (string-downcase name))
+          (class (and class (string-downcase (send class :name)))))
+      (if class
+          (aand (gethash class help::*help-hash*)
+                (gethash name (help::help-item-mhash it))
+                (read-item it))
+          (aand (gethash name help::*help-hash*)
+                (read-item it))))))
 
 ;; Properties list
 (defun lambda-list (name)
-  (let ((arglist
-         (or (get-help name)
-             (let* ((pack (aand (position #\: name) (string-upcase (subseq name 0 it))))
-                    (func (if pack (subseq name (1+ (position-from-end #\: name))) name))
-                    (sym (find-callable-symbol func pack)))
-               (if sym
-                   (or (get-help (format nil "~a" sym))
-                       (if consp (symbol-function sym) (cadr (symbol-function sym)))
-                       (get sym :function-documentation)))))))
-    (if (stringp arglist)
-        (read-from-string arglist)
-        (copy-list arglist))))
+  (or (get-help name)
+      (let* ((pack (aand (position #\: name) (string-upcase (subseq name 0 it))))
+             (func (if pack (subseq name (1+ (position-from-end #\: name))) name))
+             (sym (find-callable-symbol func pack)))
+        (if sym
+            (or (get-help (format nil "~a" sym))
+                (if (consp (symbol-function sym))
+                    (cons sym (copy-list (cadr (symbol-function sym)))))
+                (aif (assoc :function-documentation (send sym :plist))
+                     (read-copy (cdr it) sym)))))))
 
 (defun method-lambda-list (obj name)
-  (let* ((sym (find-symbol (string-upcase (subseq name 1)) *keyword-package*))
+  (let* ((sym (or (find-symbol (string-upcase (subseq name 1)) *keyword-package*)
+                  (return-from method-lambda-list nil)))
          (method (find-method obj sym))
          (class (car method))
          (def (second (second method)))
          (arglist (or
                    (get-help name class)
-                   (if (consp def) def)
-                   (cdr (assoc class (get sym :method-documentation))))))
-    (setq arglist
-          (if (stringp arglist)
-              (if (eq (elt arglist 0) #\()
-                  (read-from-string arglist))
-              (copy-list arglist)))
-    (if (and (eq (car arglist) 'self) (eq (cadr arglist) 'class))
-        (cddr arglist)
+                   (if (listp def) (cons sym (copy-list def)))
+                   (aif (assoc class (get sym :method-documentation))
+                        (read-copy (cdr it) sym)))))
+    (if (and (eq (second arglist) 'self) (eq (third arglist) 'class))
+        (cons (car arglist) (cdddr arglist))
         arglist)))
 
 (defun keyword-list (arglist &optional start)
@@ -152,17 +157,17 @@
          (len (length arglist)))
     (when arglist
       (unless cursor (return-from autodoc arglist))
-      (dotimes (i (min len cursor))
+      (dotimes (i (min len (1+ cursor)))
         (case (nth i arglist)
           (&rest
            (return-from autodoc (set-cursor arglist (1+ i))))
           (&optional
            (incf cursor))
           (&key
-           (return-from autodoc (set-keyword arglist (1+ i) (car (last form)))))))
-      (if (> cursor len)
+           (return-from autodoc (set-keyword arglist i (car (last form)))))))
+      (if (>= cursor len)
           arglist
-          (set-cursor arglist (1- cursor))))))
+          (set-cursor arglist cursor)))))
 
 (defun method-lambda-list-from-form (form)
   ;; form: '("send" "obj" ":selector" ...)
