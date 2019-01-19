@@ -161,9 +161,9 @@ class EuslimeHandler(object):
             sexp = sexp[1]  # unquote
             scope, cursor = current_scope(sexp)
             log.info("scope: %s, cursor: %s" % (scope, cursor))
-            func = str(scope[0])
-            item = dumps(str(scope[-2]))
-            result = self.euslisp.arglist(func, cursor, item)
+            func = scope[0]
+            scope = scope[:-1] # remove marker
+            result = self.euslisp.arglist(func, cursor, scope)
             assert result
             yield [result, True]
         except Exception as e:
@@ -256,9 +256,8 @@ class EuslimeHandler(object):
 
     def swank_operator_arglist(self, func, pkg):
         #  (swank:operator-arglist "format" "irteusgl")
-        # TODO: support eus method
         try:
-            yield self.euslisp.arglist(func, pkg)
+            yield self.euslisp.arglist(func)
         except:
             yield ["", True]
 

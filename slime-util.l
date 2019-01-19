@@ -36,12 +36,13 @@
 	 (do-external-symbols (,(car var) ,apackage) ,@forms)))))
 
 (defun find-callable-symbol (name &optional package)
-  (if package
-      (find-symbol name package)
-      (let ((packs (cons *package* (*package* . use))))
-        (dolist (p packs)
-          (aif (find-symbol name p)
-               (return-from find-callable-symbol it))))))
+  (let ((name (string-upcase name)))
+    (if package
+        (find-symbol name package)
+        (let ((packs (cons *package* (*package* . use))))
+          (dolist (p packs)
+            (aif (find-symbol name p)
+                 (return-from find-callable-symbol it)))))))
 
 ;; Prefix related
 (defun append-common (match-lst start-len)
@@ -69,18 +70,49 @@
       lst)
      len)))
 
+;; Help search
+(defun get-help (name &optional class)
+  (let ((name (string-downcase name))
+        (class (and class (string-downcase (send class :name)))))
+    (if class
+        (aand (gethash class help::*help-hash*)
+              (gethash name (help::help-item-mhash it))
+              (format nil "(~a)" (car (send it :read-help))))
+        (aand (gethash name help::*help-hash*)
+              (format nil "(~a)" (car (send it :read-help)))))))
+
 ;; Properties list
 (defun lambda-list (name)
-  (let* ((pack (aand (position #\: name) (string-upcase (subseq name 0 it))))
-         (func (if pack (subseq name (1+ (position-from-end #\: name))) name))
-         (arglist
-          (aif (gethash (string-downcase name) help::*help-hash*)
-               (format nil "(~a)" (car (send it :read-help)))
-               (get (find-callable-symbol (string-upcase func) pack)
-                    :function-documentation))))
+  (let ((arglist
+         (or (get-help name)
+             (let* ((pack (aand (position #\: name) (string-upcase (subseq name 0 it))))
+                    (func (if pack (subseq name (1+ (position-from-end #\: name))) name))
+                    (sym (find-callable-symbol func pack)))
+               (if sym
+                   (or (get-help (format nil "~a" sym))
+                       (if consp (symbol-function sym) (cadr (symbol-function sym)))
+                       (get sym :function-documentation)))))))
     (if (stringp arglist)
         (read-from-string arglist)
         (copy-list arglist))))
+
+(defun method-lambda-list (obj name)
+  (let* ((sym (find-symbol (string-upcase (subseq name 1)) *keyword-package*))
+         (method (find-method obj sym))
+         (class (car method))
+         (def (second (second method)))
+         (arglist (or
+                   (get-help name class)
+                   (if (consp def) def)
+                   (cdr (assoc class (get sym :method-documentation))))))
+    (setq arglist
+          (if (stringp arglist)
+              (if (eq (elt arglist 0) #\()
+                  (read-from-string arglist))
+              (copy-list arglist)))
+    (if (and (eq (car arglist) 'self) (eq (cadr arglist) 'class))
+        (cddr arglist)
+        arglist)))
 
 (defun keyword-list (arglist &optional start)
   (let ((pos (or start (aand (position '&key arglist) (1+ it)))))
@@ -89,10 +121,10 @@
                 (nthcdr pos arglist)))))
 
 (defun method-list (obj)
-  (let* ((klas (if (classp obj) obj (class obj)))
-         (lst (mapcan #'cadr (send klas :all-method-names))))
+  (let* ((class (if (classp obj) obj (class obj)))
+         (meths (mapcar #'car (send class :all-methods))))
     (mapcar #'(lambda (val) (format nil "~a" val))
-            (remove-duplicates lst))))
+            (remove-duplicates meths))))
 
 
 ;; SWANK-SIMPLE-COMPLETIONS
@@ -111,10 +143,15 @@
 
 
 ;; SWANK-AUTODOC
-(defun autodoc (name cursor &optional item)
-  (let* ((arglist (lambda-list name))
+(defun autodoc (name &optional cursor form)
+  (let* ((arglist
+          (aif (method-lambda-list-from-form form)
+               (prog1 it
+                 (if cursor (decf cursor 2)))
+               (lambda-list name)))
          (len (length arglist)))
     (when arglist
+      (unless cursor (return-from autodoc arglist))
       (dotimes (i (min len cursor))
         (case (nth i arglist)
           (&rest
@@ -122,10 +159,16 @@
           (&optional
            (incf cursor))
           (&key
-           (return-from autodoc (set-keyword arglist (1+ i) item)))))
+           (return-from autodoc (set-keyword arglist (1+ i) (car (last form)))))))
       (if (> cursor len)
           arglist
           (set-cursor arglist (1- cursor))))))
+
+(defun method-lambda-list-from-form (form)
+  ;; form: '("send" "obj" ":selector" ...)
+  (if (and (cddr form) (string-equal (car form) "send") (stringp (cadr form)))
+      (aif (symbol-value (find-callable-symbol (cadr form)))
+           (method-lambda-list it (third form)))))
 
 (defun set-cursor (lst pos)
   ;; TODO: use string not symbols
@@ -148,9 +191,8 @@
        (slime-find-symbol (subseq start 1) ":")))
     ((string-equal (car form) "send")
      (if (stringp (cadr form))
-         (let* ((obj (symbol-value (read-from-string (cadr form))))
-                (methods (method-list obj)))
-           (find-prefix start methods 1))))
+         (aif (symbol-value (find-callable-symbol (cadr form)))
+              (find-prefix start (method-list it) 1))))
     (t
      (let ((keys (keyword-list (lambda-list (car form)))))
        (find-prefix start keys 1)))))
