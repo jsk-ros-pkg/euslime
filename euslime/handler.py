@@ -60,14 +60,15 @@ class DebuggerHandler(object):
             if err_msgs and err_msgs[0].startswith("Call Stack"):
                 # parse stack trace
                 for l in err_msgs[1:]:
-                    try:
-                        num, msg = l.strip().split(": at ")
+                    split = l.strip().split(": at ")
+                    if len(split) == 2:
+                        num, msg = split
                         strace.append([int(num), msg,
                                        [Symbol(":restartable"), False]])
-                    except:
-                        _, desc = l.split("irteusgl 0 error: ")
-                        desc = desc.capitalize()
+                    else:
                         break
+                desc = err_msgs[-1].split("irteusgl 0 error: ")[-1]
+                desc = desc.capitalize()
             else:
                 desc = err.message.strip()
         elif isinstance(err, Exception):

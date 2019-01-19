@@ -172,7 +172,7 @@ class EuslispProcess(Process):
 
     def on_error(self, msg):
         msg = REGEX_ANSI.sub(str(), msg)
-        log.debug("error: %s" % msg)
+        # log.debug("error: %s" % msg)
         if not msg.startswith(";"):
             self.error.put(msg)
 
