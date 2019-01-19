@@ -53,12 +53,15 @@
                          (send sym :pname))))
         (when (string-equal str sym-str :start1 0 :end1 len :start2 0 :end2 len)
           (push (concatenate string prefix start (subseq sym-str len)) str-lst))))
-    (cond
-      ((cdr str-lst)
-       (list str-lst (subseq (car str-lst) 0 (get-common str-lst len))))
-      (str-lst
-       (list str-lst (car str-lst)))
-      (t nil))))
+    (append-common str-lst len)))
+
+(defun append-common (match-lst start-len)
+  (cond
+    ((cdr match-lst)
+     (list match-lst (subseq (car match-lst) 0 (get-common match-lst start-len))))
+    (match-lst ;; one element list
+     (list match-lst (car match-lst)))
+    (t nil)))
 
 (defun get-common (lst &optional (start 0))
   (do* ((min (reduce #'min (mapcar #'length lst)))
@@ -127,13 +130,25 @@
      (let ((*package* *keyword-package*))
        (slime-find-symbol (subseq start 1) ":")))
     ((string-equal (car form) "send")
-     ;; TODO: method completion
-     nil)
+     (if (stringp (cadr form))
+         (let* ((obj (symbol-value (read-from-string (cadr form))))
+                (methods (method-list obj)))
+           (find-prefix start methods 1))))
     (t
-     (let ((keys (keyword-list (lambda-list (car form))))
-           (len (length start)))
-       (aif
-        (remove-if-not
-         #'(lambda (str) (string-equal start str :start1 1 :end1 len :start2 1 :end2 len))
-         keys)
-        (list it (subseq (car it) 0 (get-common it len))))))))
+     (let ((keys (keyword-list (lambda-list (car form)))))
+       (find-prefix start keys 1)))))
+
+(defun find-prefix (prefix lst &optional (start 0))
+  (let ((len (length prefix)))
+    (append-common
+     (remove-if-not
+      #'(lambda (str) (string-equal prefix str :start1 start :end1 len :start2 start :end2 len))
+      lst)
+     len)))
+
+;; Method completion
+(defun method-list (obj)
+  (let* ((klas (if (classp obj) obj (class obj)))
+         (lst (mapcan #'cadr (send klas :all-method-names))))
+    (mapcar #'(lambda (val) (format nil "~a" val))
+            (remove-duplicates lst))))

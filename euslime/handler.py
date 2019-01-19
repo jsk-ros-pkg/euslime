@@ -16,10 +16,10 @@ log = get_logger(__name__)
 
 def findp(s, l):
     assert isinstance(l, list)
-    lt = [e for e in l if e not in ['', u'']]
-    for e in lt:
+    # Reverse search list
+    for e in l[::-1]:
         if e == s:
-            return lt
+            return [x for x in l if x not in ['', u'']]
         elif isinstance(e, list):
             res = findp(s, e)
             if res:
@@ -191,11 +191,15 @@ class EuslimeHandler(object):
         else:
             yield [None, None]
 
-    def swank_completions_for_keyword(self, start, form):
+    def swank_completions_for_keyword(self, start, sexp):
         # args: [u':meth', [Symbol(u'quote'), [u'send', u'c', u'', Symbol(cursor)]]]
-        if form:
-            form = form[1][:-2] # unquote and remove cursor
-        yield self.euslisp.find_keyword(start, dumps(form))
+        if sexp:
+            sexp = sexp[1] # unquote
+            scope, _ = current_scope(sexp)
+            scope = scope[:-1] # remove marker
+        else:
+            scope = None
+        yield self.euslisp.find_keyword(start, dumps(scope))
 
     def swank_complete_form(self, *args):
         # (swank:complete-form
