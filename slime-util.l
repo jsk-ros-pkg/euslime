@@ -205,3 +205,16 @@
     (t
      (let ((keys (keyword-list (lambda-list (car form)))))
        (find-prefix start keys 1)))))
+
+
+;; SWANK-COMPLETIONS-FOR-CHARACTER
+(defun slime-find-character (start)
+  (find-prefix start char-lst))
+
+(defconstant char-lst
+  '("Space" "Newline" "Linefeed"
+    "Backspace" "Delete" "Rubout"
+    "Return" "Page" "Formfeed"
+    "Esc" "Escape" "Tab"
+    "Left-Paren" "Right-Paren" "Lparen" "Rparen"
+    "Bell"  "Null" "SOH" "STX" "ETX"))

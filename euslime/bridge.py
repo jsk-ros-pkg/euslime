@@ -227,6 +227,11 @@ class EuslispProcess(Process):
         result = self.eval_block(cmd, only_result=True)
         return loads(result)
 
+    def find_character(self, start):
+        cmd = """(slime::slime-find-character "{0}")""".format(start)
+        result = self.eval_block(cmd, only_result=True)
+        return loads(result)
+
     def arglist(self, func, cursor=None, form=None):
         cmd = """(slime::autodoc "{0}" {1} '{2})""".format(func, dumps(cursor), dumps(form))
         result = self.eval_block(cmd, only_result=True)

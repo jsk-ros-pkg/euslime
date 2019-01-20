@@ -31,8 +31,6 @@ def current_scope(sexp):
     marker = Symbol(u'swank::%cursor-marker%')
     scope = findp(marker, sexp)
     cursor = -1
-    if len(scope) <= 1:
-        raise ValueError("scope not found in %s" % scope)
     for i, e in enumerate(scope):
         if marker == e:
             cursor = i
@@ -201,6 +199,9 @@ class EuslimeHandler(object):
         else:
             scope = None
         yield self.euslisp.find_keyword(start, dumps(scope))
+
+    def swank_completions_for_character(self, start):
+        yield self.euslisp.find_character(start)
 
     def swank_complete_form(self, *args):
         # (swank:complete-form
