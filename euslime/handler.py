@@ -160,6 +160,7 @@ class EuslimeHandler(object):
             sexp = sexp[1]  # unquote
             scope, cursor = current_scope(sexp)
             log.info("scope: %s, cursor: %s" % (scope, cursor))
+            assert cursor > 0
             func = scope[0]
             scope = scope[:-1] # remove marker
             result = self.euslisp.arglist(func, cursor, scope)

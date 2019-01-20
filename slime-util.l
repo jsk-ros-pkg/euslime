@@ -81,7 +81,9 @@
 ;; Help search
 (defun get-help (name &optional class)
   (flet ((read-item (item)
-           (read-from-string (format nil "(~a ~a)" name (car (send item :read-help))))))
+           (case (help::help-item-type item)
+             ((1 2 3 6) ;; method, function, macro or special form
+              (read-from-string (format nil "(~a ~a)" name (car (send item :read-help))))))))
     (let ((name (string-downcase name))
           (class (and class (string-downcase (send class :name)))))
       (if class
@@ -99,7 +101,7 @@
              (sym (find-callable-symbol func pack)))
         (if sym
             (or (get-help (format nil "~a" sym))
-                (if (consp (symbol-function sym))
+                (if (and (fboundp sym) (consp (symbol-function sym)))
                     (cons sym (copy-list (cadr (symbol-function sym)))))
                 (aif (assoc :function-documentation (send sym :plist))
                      (read-copy (cdr it) sym)))))))
