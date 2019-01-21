@@ -201,7 +201,12 @@ class EuslispProcess(Process):
                     if err:
                         raise EuslispError(self.delim.join(err))
                     continue
-                if out[1:-2] == token:
+                have_token = out.split('"%s"' % token)
+                if len(have_token) > 1:
+                    # Pickup outputs that do not end with newline
+                    if have_token[0]:
+                        yield have_token[0]
+                    # Gather result value
                     result = ""
                     while True:
                         try:
