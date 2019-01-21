@@ -157,7 +157,7 @@ class EuslispError(Exception):
 class EuslispProcess(Process):
     def __init__(self, timeout=None):
         super(EuslispProcess, self).__init__(
-            cmd=["roseus", "slime-toplevel.l", "slime-util.l"],
+            cmd=["roseus", "~/.euslime/slime-loader.l"],
             on_output=self.on_output,
             on_error=self.on_error,
         )
