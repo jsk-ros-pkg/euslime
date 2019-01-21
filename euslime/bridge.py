@@ -10,6 +10,7 @@ from threading import Thread
 from threading import Lock
 from Queue import Queue, Empty
 from sexpdata import dumps, loads, Symbol
+from uuid import uuid1
 
 from euslime.logger import get_logger
 
@@ -19,7 +20,7 @@ BUFSIZE = 1
 POLL_RATE = 1.0
 DELIM = os.linesep
 REGEX_ANSI = re.compile(r'\x1b[^m]*m')
-EXEC_TIMEOUT = 10
+EXEC_TIMEOUT = 0.05
 
 
 class Process(object):
@@ -181,25 +182,39 @@ class EuslispProcess(Process):
         self.output = Queue()
         self.error = Queue()
 
+        token = 'euslime-token' + str(uuid1())
+        cmd_str = """"{0}" {1}""".format(token, cmd_str)
+
         self.input(cmd_str)
 
-        last_output = time.time()
         while self.process.poll() is None:
-            # catch error
             err = []
-            while not self.error.empty():
-                err.append(self.error.get())
-            if err:
-                raise EuslispError(self.delim.join(err))
-            try:
-                yield self.output.get(timeout=0.1)
-                while not self.output.empty():
-                    last_output = time.time()
-                    yield self.output.get()
-                return
-            except Empty:
-                if time.time() - last_output > self.timeout:
-                    raise EuslispError("Timed out")
+            # token is placed before and after the command result
+            # yield printed messages and finally the result itself
+            while True:
+                try:
+                    out = self.output.get(timeout=self.timeout)
+                except Empty:
+                    # catch error
+                    while not self.error.empty():
+                        err.append(self.error.get(timeout=self.timeout))
+                    if err:
+                        raise EuslispError(self.delim.join(err))
+                    continue
+                if out[1:-2] == token:
+                    result = ""
+                    while True:
+                        try:
+                            out = self.output.get(timeout=self.timeout)
+                        except Empty:
+                            continue
+                        if out[1:-2] == token:
+                            yield result
+                            return
+                        else:
+                            result += out
+                else:
+                    yield out
 
     def eval(self, cmd_str):
         log.info("eval: %s" % cmd_str)

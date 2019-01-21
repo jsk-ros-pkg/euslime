@@ -9,6 +9,7 @@ import traceback
 
 from euslime.protocol import Protocol
 from euslime.handler import EuslimeHandler
+from euslime.bridge import EuslispError
 from euslime.logger import get_logger
 
 ENCODINGS = {
@@ -55,7 +56,12 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
                 log.error('socket timeout')
                 break
             except KeyboardInterrupt:
-                break
+                # TODO: support QUIT and CONTINUE
+                # TODO: return takes too much time?
+                log.error("Keyboard Interrupt")
+                e = EuslispError("Keyboard Interrupt")
+                send_data = self.swank.make_error(0, e)
+                self.request.send(send_data)
             except Exception as e:
                 log.error(e)
                 log.error(traceback.format_exc())

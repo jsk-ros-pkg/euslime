@@ -23,7 +23,11 @@
   ;; Read-Eval-Print-1
   ;;
   (defun rep1 (repstream eof local-bindings &optional (ttyp t))
-    (let* ((input (read-list-from-line repstream eof))
+    ;; Overwrites to:
+    ;; 1. Print token two times, before and after output value
+    ;; 2. Do not add slime functions to history and output log
+    (let* ((token (read repstream nil nil))
+           (input (read-list-from-line repstream eof))
            (slime-func (and (consp input)
                             (string= (send (symbol-package (car input)) :name) "SLIME")))
            result)
@@ -51,6 +55,7 @@
                  ((boundp input) (eval input))
                  (t '*unbound*)))
          ;; (if ttyp (print result repstream))
+         (print token repstream)
          (print result repstream)
          )
         ((or (null (streamp input)) (listp input))
@@ -58,15 +63,18 @@
          (setq - input)
          (setq result (eval input))
          ;;(if ttyp (print result  repstream)))
+         (print token repstream)
          (print result  repstream))
         ((streamp input)
-         (setq result (evaluate-stream input) )
-         ;;(if ttyp  (print result repstream ))
-         (print result repstream ))
+         (setq result (evaluate-stream input))
+         ;;(if ttyp  (print result repstream))
+         (print token repstream)
+         (print result repstream))
         (t (print "?" repstream)))
       (unless slime-func
         (setq +++ ++ ++ + + -)
-        (setq *** ** ** * * result))))
+        (setq *** ** ** * * result))
+      (print token repstream)))
 
 
   (defun reploop-non-select (&optional (repstream *terminal-io*)
