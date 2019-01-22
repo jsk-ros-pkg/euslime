@@ -1,6 +1,9 @@
 (unless (find-package "SLIME") (make-package "SLIME"))
 (in-package "SLIME")
 
+;; Set error-output
+(setq *error-output* *standard-output*)
+
 ;; Generate  *help-hash*
 (help '+ nil nil)
 

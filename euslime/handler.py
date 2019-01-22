@@ -228,8 +228,9 @@ class EuslimeHandler(object):
             self.euslisp = EuslispProcess()
             self.euslisp.start()
 
+        msg = repr(deb.message.rsplit(' in ', 1)[0])
         yield [Symbol(':debug-return'), 0, level, Symbol('nil')]
-        yield [Symbol(':return'), {'abort': deb.message}, deb.id]
+        yield [Symbol(':return'), {'abort': msg}, deb.id]
         yield {'abort': 'NIL'}
 
     def swank_swank_require(self, *sexp):

@@ -188,18 +188,12 @@ class EuslispProcess(Process):
         self.input(cmd_str)
 
         while self.process.poll() is None:
-            err = []
             # token is placed before and after the command result
             # yield printed messages and finally the result itself
             while True:
                 try:
                     out = self.output.get(timeout=self.timeout)
                 except Empty:
-                    # catch error
-                    while not self.error.empty():
-                        err.append(self.error.get(timeout=self.timeout))
-                    if err:
-                        raise EuslispError(self.delim.join(err))
                     continue
                 have_token = out.split('"%s"' % token)
                 if len(have_token) > 1:
@@ -219,7 +213,16 @@ class EuslispProcess(Process):
                         else:
                             result += out
                 else:
-                    yield out
+                    if self.error.empty():
+                        yield out
+                    else:
+                        # Catch error
+                        err = []
+                        while not self.error.empty():
+                            err.append(self.error.get(timeout=self.timeout))
+                        err.append(out)
+                        raise EuslispError(self.delim.join(err))
+
 
     def eval(self, cmd_str):
         log.info("eval: %s" % cmd_str)
