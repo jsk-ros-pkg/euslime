@@ -46,10 +46,12 @@
        (dolist (,apackage (*package* . use) ,(cadr var))
 	 (do-external-symbols (,(car var) ,apackage) ,@forms)))))
 
-(defun find-callable-symbol (name &optional package)
-  (let ((name (string-upcase name)))
-    (if package
-        (find-symbol name package)
+(defun find-callable-symbol (name)
+  (setq name (string-upcase name))
+  (let* ((pack (aand (position #\: name) (string-upcase (subseq name 0 it))))
+         (name (if pack (subseq name (1+ (position-from-end #\: name))) name)))
+    (if pack
+        (find-symbol name pack)
         (let ((packs (cons *package* (*package* . use))))
           (dolist (p packs)
             (aif (find-symbol name p)
@@ -99,9 +101,7 @@
 ;; Properties list
 (defun lambda-list (name)
   (or (get-help name)
-      (let* ((pack (aand (position #\: name) (string-upcase (subseq name 0 it))))
-             (func (if pack (subseq name (1+ (position-from-end #\: name))) name))
-             (sym (find-callable-symbol func pack)))
+      (let ((sym (find-callable-symbol name)))
         (if sym
             (or (get-help (format nil "~a" sym))
                 (if (and (fboundp sym) (consp (symbol-function sym)))
@@ -223,3 +223,23 @@
     "Esc" "Escape" "Tab"
     "Left-Paren" "Right-Paren" "Lparen" "Rparen"
     "Bell"  "Null" "SOH" "STX" "ETX"))
+
+
+;; SWANK-DESCRIBE-SYMBOL
+(defun slime-describe-symbol (name)
+  (let* ((sym (find-callable-symbol name))
+         (help-name (string-downcase (format nil "~a" sym))))
+    (unless sym
+      (error "symbol not found"))
+    (with-output-to-string (s)
+      (when (gethash help-name help::*help-hash*)
+        (help name nil s)
+        (terpri s))
+      (format s "PROPERTIES~%~%")
+      (describe sym s))))
+
+
+;; SWANK-EXPAND-1
+(defun slime-macroexpand (form)
+  (with-output-to-string (s)
+    (pprint (macroexpand form) s)))

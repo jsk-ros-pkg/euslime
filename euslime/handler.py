@@ -3,7 +3,7 @@ from __future__ import print_function
 import os
 import platform
 import traceback
-from sexpdata import dumps
+from sexpdata import dumps, loads
 from sexpdata import Symbol
 
 from euslime.bridge import EuslispProcess
@@ -66,7 +66,7 @@ class DebuggerHandler(object):
                     else:
                         break
                 desc = err_msgs[-1].split("irteusgl 0 error: ")[-1]
-                desc = desc.capitalize()
+                desc = desc.strip().capitalize()
             else:
                 desc = err.message.strip()
         elif isinstance(err, Exception):
@@ -272,25 +272,30 @@ class EuslimeHandler(object):
     def swank_sldb_abort(self, *args):
         return
 
+    def swank_sldb_out(self, *args):
+        return
+
+    def swank_frame_locals_and_catch_tags(self, *args):
+        return
+
     def swank_find_definitions_for_emacs(self, keyword):
         return
 
     def swank_describe_symbol(self, sym):
-        cmd = """(with-output-to-string (s) (describe '{0} s))""".format(sym)
-        yield self.euslisp.eval_block(cmd, only_result=True)
+        cmd = """(slime::slime-describe-symbol "{0}")""".format(sym.strip())
+        result =  self.euslisp.eval_block(cmd, only_result=True)
+        yield loads(result)
 
     def swank_describe_function(self, func):
-        cmd = """(documentation '{0})""".format(func)
-        yield self.euslisp.eval_block(cmd, only_result=True)
+        return self.swank_describe_symbol(func)
 
     def swank_describe_definition_for_emacs(self, name, type):
-        yield self.swank_describe_symbol(name)
+        return self.swank_describe_symbol(name)
 
-    def swank_swank_expand_1(self, macro):
-        cmd = """(with-output-to-string (s)
-                   (pprint (macroexpand '{0}) s))""".format(macro)
-        yield self.euslisp.eval_block(cmd, only_result=True)[1:-2]
-
+    def swank_swank_expand_1(self, form):
+        cmd = """(slime::slime-macroexpand '{0})""".format(form)
+        result = self.euslisp.eval_block(cmd, only_result=True)
+        yield loads(result)
 
 if __name__ == '__main__':
     h = EuslimeHandler()
