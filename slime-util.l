@@ -21,6 +21,11 @@
     ((consp obj)
      (cons name (copy-list obj)))))
 
+(defun maybe-downcase (str)
+  (if (eql *print-case* :downcase)
+      (string-downcase str)
+      str))
+
 ;; Anaphoric macros
 (defmacro aif (test-form then-form &optional else-form)
   `(let ((it ,test-form))
@@ -152,13 +157,17 @@
          (str (if pack (subseq start (1+ (position-from-end #\: start))) start))
          (len (length str))
          str-lst)
+    (unless (or pack prefix)
+      (mapc #'(lambda (p) (let ((name (package-name p)))
+                            (if (string-equal str name :end2 len)
+                                (push (format nil "~a:" (maybe-downcase name))
+                                      str-lst))))
+            (list-all-packages)))
     (slime-do-symbols (sym pack)
-      (let ((sym-str (if (eql *print-case* :downcase)
-                         (string-downcase (send sym :pname))
-                         (send sym :pname))))
+      (let ((sym-str (maybe-downcase (send sym :pname))))
         (when (string-equal str sym-str :start1 0 :end1 len :start2 0 :end2 len)
           (push (concatenate string prefix start (subseq sym-str len)) str-lst))))
-    (append-common str-lst len)))
+    (append-common (sort str-lst #'string<) len)))
 
 
 ;; SWANK-AUTODOC
