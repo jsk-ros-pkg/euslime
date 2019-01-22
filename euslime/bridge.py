@@ -240,6 +240,11 @@ class EuslispProcess(Process):
         else:
             return res
 
+    def toplevel_prompt(self, package):
+        cmd = """(slime::slime-prompt "{0}")""".format(package)
+        result = self.eval_block(cmd, only_result=True)
+        return loads(result)
+
     def find_symbol(self, start):
         cmd = """(slime::slime-find-symbol "{0}")""".format(start)
         result = self.eval_block(cmd, only_result=True)

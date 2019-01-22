@@ -49,6 +49,7 @@ class Protocol(object):
         cmd, form, pkg, thread, comm_id = loads(data)
         func = form[0].value().replace(':', '_').replace('-', '_')
         args = form[1:]
+        self.handler.package = pkg
 
         log.info("func: %s" % func)
         log.info("args: %s" % args)

@@ -81,6 +81,7 @@ class EuslimeHandler(object):
     def __init__(self):
         self.euslisp = EuslispProcess()
         self.euslisp.start()
+        self.package = None
         self.debugger = []
 
     def swank_connection_info(self):
@@ -101,18 +102,17 @@ class EuslimeHandler(object):
                 'version': platform.machine().upper(),
             },
             'package': {
-                'name': 'irteusgl',
+                'name': 'USER',
                 'prompt': 'irteusgl',
             },
             'version': "2.20",  # swank version
         }
 
     def swank_create_repl(self, sexp):
-        yield ["irteusgl", "irteusgl"]
+        yield self.euslisp.toplevel_prompt('')
 
     def swank_repl_create_repl(self, *sexp):
-        for r in self.swank_create_repl(sexp):
-            yield r
+        return self.swank_create_repl(sexp)
 
     def swank_buffer_first_change(self, filename):
         yield False
@@ -123,6 +123,9 @@ class EuslimeHandler(object):
             if last_msg is not None:
                 yield [Symbol(":write-string"), last_msg]
             last_msg = out
+        new_prompt = self.euslisp.toplevel_prompt(self.package)
+        if new_prompt:
+            yield [Symbol(":new-package")] + new_prompt
         yield [Symbol(":values"), last_msg]
 
     def swank_interactive_eval(self, sexp):
@@ -179,11 +182,11 @@ class EuslimeHandler(object):
         #return self.swank_fuzzy_completions(start, pkg, ':limit', 300, ':time-limit-in-msec', 1500)
 
     def swank_simple_completions(self, start, pkg):
-        # (swank:simple-completions "vector-" (quote "irteusgl"))
+        # (swank:simple-completions "vector-" (quote "USER"))
         yield self.euslisp.find_symbol(start)
 
     def swank_fuzzy_completions(self, prefix, pkg, _, limit, *args):
-        # (swank:fuzzy-completions "a" "irteusgl"
+        # (swank:fuzzy-completions "a" "USER"
         #       :limit 300 :time-limit-in-msec 1500)
         if len(prefix) >= 2:
             for resexp, prefix in self.swank_simple_completions(prefix, pkg):
@@ -219,7 +222,7 @@ class EuslimeHandler(object):
         deb = self.debugger.pop(level - 1)
         if num == 0:  # QUIT
             self.debugger = []
-            self.euslisp.input('reset')
+            self.euslisp.input('"token" reset')
         elif num == 1:  # CONTINUE
             pass
         elif num == 2:  # RESTART
@@ -259,7 +262,7 @@ class EuslimeHandler(object):
             yield r
 
     def swank_operator_arglist(self, func, pkg):
-        #  (swank:operator-arglist "format" "irteusgl")
+        #  (swank:operator-arglist "format" "USER")
         try:
             yield self.euslisp.arglist(func)
         except:

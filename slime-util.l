@@ -137,6 +137,15 @@
             (remove-duplicates meths))))
 
 
+;; REPL-PROMPT
+(defun slime-prompt (prev-pack)
+  (let ((name (package-name *package*)))
+    (unless (string-equal name prev-pack)
+      (if (eql *package* *user-package*)
+          (list name *prompt-string*)
+          (list name (format nil "~a:~a" name *prompt-string*))))))
+
+
 ;; SWANK-SIMPLE-COMPLETIONS
 (defun slime-find-symbol (start &optional prefix)
   (let* ((pack (aand (position #\: start) (string-upcase (subseq start 0 it))))
