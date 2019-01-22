@@ -222,7 +222,8 @@ class EuslimeHandler(object):
         deb = self.debugger.pop(level - 1)
         if num == 0:  # QUIT
             self.debugger = []
-            self.euslisp.input('"token" reset')
+            self.euslisp.reset()
+
         elif num == 1:  # CONTINUE
             pass
         elif num == 2:  # RESTART

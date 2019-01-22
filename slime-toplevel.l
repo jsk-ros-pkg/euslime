@@ -19,6 +19,10 @@
 
 (eval-when (load eval)
 
+  ;; Set signal-handler
+  ;; which is not set by default because *standard-input* is not tty
+  (unix:signal unix::sigint 'sigint-handler 2)
+
   ;;
   ;; Read-Eval-Print-1
   ;;
@@ -98,5 +102,15 @@
     (if (eql (rep1 repstream eof local-bindings ttyp) eof)
         (throw :reploop-select nil))
     (if ttyp (prompt repstream) ))
+
+  (defun sigint-handler (sig code)
+   ;; (warning-message 1 "interrupt")
+   (if (fboundp 'unix:ualarm)
+       (unix:ualarm 0 0)
+       (unix:alarm 0))
+   (let* ((*replevel* (1+ *replevel*))
+	  (*reptype* "B"))
+      (catch *replevel* (reploop #'toplevel-prompt))))
+
   )
 

@@ -56,12 +56,9 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
                 log.error('socket timeout')
                 break
             except KeyboardInterrupt:
-                # TODO: support QUIT and CONTINUE
-                # TODO: return takes too much time?
-                log.error("Keyboard Interrupt")
-                e = EuslispError("Keyboard Interrupt")
-                send_data = self.swank.make_error(0, e)
-                self.request.send(send_data)
+                log.info("Keyboard Interrupt!")
+                for msg in self.swank.interrupt():
+                    self.request.send(msg)
             except Exception as e:
                 log.error(e)
                 log.error(traceback.format_exc())

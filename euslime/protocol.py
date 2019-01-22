@@ -2,6 +2,7 @@ from sexpdata import dumps
 from sexpdata import loads
 from sexpdata import Symbol
 import traceback
+import signal
 
 from euslime.handler import DebuggerHandler
 from euslime.logger import get_logger
@@ -13,6 +14,7 @@ class Protocol(object):
     def __init__(self, handler, prompt='irteusgl$ '):
         self.handler = handler()
         self.prompt = prompt
+        self.command_id = None
 
     def dumps(self, sexp):
         res = dumps(sexp, false_as='nil', none_as='nil')
@@ -45,10 +47,19 @@ class Protocol(object):
         except Exception as e:
             return self.make_error(id, e)
 
+    def interrupt(self):
+        if self.handler.euslisp.processing:
+            self.handler.euslisp.process.send_signal(signal.SIGINT)
+            self.handler.euslisp.reset()
+            yield self.dumps([Symbol(':return'),
+                              {'abort': "'Keyboard Interrupt'"},
+                              self.command_id])
+
     def process(self, data):
         cmd, form, pkg, thread, comm_id = loads(data)
         func = form[0].value().replace(':', '_').replace('-', '_')
         args = form[1:]
+        self.command_id = comm_id
         self.handler.package = pkg
 
         log.info("func: %s" % func)

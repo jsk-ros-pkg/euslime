@@ -12,6 +12,7 @@ from Queue import Queue, Empty
 from sexpdata import dumps, loads, Symbol
 from uuid import uuid1
 
+
 from euslime.logger import get_logger
 
 log = get_logger(__name__)
@@ -70,6 +71,9 @@ class Process(object):
         if not daemon:
             main.daemon = True
         main.start()
+
+    def reset(self):
+        self.process.stdin.write('"token" reset\n')
 
     def stop(self):
         if self.process.poll() is None:
@@ -162,6 +166,7 @@ class EuslispProcess(Process):
             on_error=self.on_error,
         )
 
+        self.processing = False
         self.output = None
         self.error = None
         self.timeout = timeout or EXEC_TIMEOUT
@@ -173,7 +178,7 @@ class EuslispProcess(Process):
 
     def on_error(self, msg):
         msg = REGEX_ANSI.sub(str(), msg)
-        # log.debug("error: %s" % msg)
+        log.debug("error: %s" % msg)
         if not msg.startswith(";"):
             self.error.put(msg)
 
@@ -190,6 +195,7 @@ class EuslispProcess(Process):
         while self.process.poll() is None:
             # token is placed before and after the command result
             # yield printed messages and finally the result itself
+            self.processing = True
             while True:
                 try:
                     out = self.output.get(timeout=self.timeout)
@@ -209,6 +215,7 @@ class EuslispProcess(Process):
                             continue
                         if out[1:-2] == token:
                             yield result
+                            self.processing = False
                             return
                         else:
                             result += out
