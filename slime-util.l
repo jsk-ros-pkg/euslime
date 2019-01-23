@@ -5,6 +5,7 @@
 (setq *error-output* *standard-output*)
 
 ;; Generate  *help-hash*
+;; (setq help::*eus-tex-dir* "/path/to/latex/")
 (help '+ nil nil)
 
 ;; UTILITY FUNCTIONS
@@ -37,10 +38,19 @@
 	(t `(aif ,(car args) (aand ,@(cdr args))))))
 
 ;; Symbol related
+(defun split-package (name)
+  ;; TODO: read |escaped\|forms|
+  (let* ((pos (position-from-end #\: name))
+         (internal (and pos (= #\: (elt name (1- pos))))))
+    (if pos
+        (values (string-upcase (subseq name 0 (if internal (1- pos) pos)))
+                (subseq name (1+ pos)))
+        (values nil name))))
+
 (defmacro slime-do-symbols (var &rest body)
   ;; var: (variable-name &optional package result)
   `(if ,(cadr var)
-       (do-symbols ,var ,@body)
+       (if (find-package ,(cadr var)) (do-symbols ,var ,@body))
        (do-callable-symbols (,(car var) ,(caddr var)) ,@body)))
 
 (defmacro do-callable-symbols (var &rest forms)
@@ -52,15 +62,21 @@
 	 (do-external-symbols (,(car var) ,apackage) ,@forms)))))
 
 (defun find-callable-symbol (name)
-  (setq name (string-upcase name))
-  (let* ((pack (aand (position #\: name) (string-upcase (subseq name 0 it))))
-         (name (if pack (subseq name (1+ (position-from-end #\: name))) name)))
+  (multiple-value-bind (pack name) (split-package name)
+    (setq name (string-upcase name))
     (if pack
         (find-symbol name pack)
         (let ((packs (cons *package* (*package* . use))))
           (dolist (p packs)
             (aif (find-symbol name p)
                  (return-from find-callable-symbol it)))))))
+
+(defun find-callable-symbol-value (name)
+  (aif (find-callable-symbol name)
+       (let ((vtype (symbol-vtype it)))
+         (if (< vtype 3)
+             (symbol-value it)
+             (elt (system::thread-specials) vtype)))))
 
 ;; Prefix related
 (defun append-common (match-lst start-len)
@@ -153,21 +169,21 @@
 
 ;; SWANK-SIMPLE-COMPLETIONS
 (defun slime-find-symbol (start &optional prefix)
-  (let* ((pack (aand (position #\: start) (string-upcase (subseq start 0 it))))
-         (str (if pack (subseq start (1+ (position-from-end #\: start))) start))
-         (len (length str))
-         str-lst)
-    (unless (or pack prefix)
-      (mapc #'(lambda (p) (let ((name (package-name p)))
-                            (if (string-equal str name :end2 len)
-                                (push (format nil "~a:" (maybe-downcase name))
-                                      str-lst))))
-            (list-all-packages)))
-    (slime-do-symbols (sym pack)
-      (let ((sym-str (maybe-downcase (send sym :pname))))
-        (when (string-equal str sym-str :start1 0 :end1 len :start2 0 :end2 len)
-          (push (concatenate string prefix start (subseq sym-str len)) str-lst))))
-    (append-common (sort str-lst #'string<) len)))
+  (multiple-value-bind (pack str) (split-package start)
+    (let ((len (length str))
+          str-lst)
+      (unless (or pack prefix)
+        (mapc #'(lambda (p) (let ((name (package-name p)))
+                              (if (and (string-equal str name :end2 len)
+                                       (> (p . intsymcount) 0))
+                                  (push (format nil "~a:" (maybe-downcase name))
+                                        str-lst))))
+              (list-all-packages)))
+      (slime-do-symbols (sym pack)
+                        (let ((sym-str (maybe-downcase (send sym :pname))))
+                          (when (string-equal str sym-str :start1 0 :end1 len :start2 0 :end2 len)
+                            (push (concatenate string prefix start (subseq sym-str len)) str-lst))))
+      (append-common (sort str-lst #'string<) len))))
 
 
 ;; SWANK-AUTODOC
@@ -195,7 +211,7 @@
 (defun method-lambda-list-from-form (form)
   ;; form: '("send" "obj" ":selector" ...)
   (if (and (cddr form) (string-equal (car form) "send") (stringp (cadr form)))
-      (aif (symbol-value (find-callable-symbol (cadr form)))
+      (aif (find-callable-symbol-value (cadr form))
            (method-lambda-list it (third form)))))
 
 (defun set-cursor (lst pos)
@@ -219,7 +235,7 @@
        (slime-find-symbol (subseq start 1) ":")))
     ((string-equal (car form) "send")
      (if (stringp (cadr form))
-         (aif (symbol-value (find-callable-symbol (cadr form)))
+         (aif (find-callable-symbol-value (cadr form))
               (if (cddr form)
                   (let ((keys (keyword-list (method-lambda-list-from-form form))))
                     (find-prefix start keys 1))
