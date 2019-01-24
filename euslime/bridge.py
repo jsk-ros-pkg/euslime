@@ -5,6 +5,7 @@ import sys
 import errno
 import re
 import subprocess
+import signal
 import time
 from threading import Thread
 from threading import Lock
@@ -22,6 +23,10 @@ POLL_RATE = 1.0
 DELIM = os.linesep
 REGEX_ANSI = re.compile(r'\x1b[^m]*m')
 EXEC_TIMEOUT = 0.05
+
+
+def get_signal(signum):
+    return [v for v,k in signal.__dict__.iteritems() if k == signum][0]
 
 
 class Process(object):
@@ -94,7 +99,7 @@ class Process(object):
         log.debug("Stop Finished")
 
     def reset(self):
-        self.process.stdin.write('"token" reset\n')
+        self.process.stdin.write('"token" reset' + self.delim)
 
     def _get_stream_thread(self, name, stream, callback):
         buf = str()
@@ -142,10 +147,10 @@ class Process(object):
         while self.process.poll() is None:
             time.sleep(self.poll_rate)
 
-        if self.process.returncode == 0:
-            log.info("process exited successfully")
-        else:
-            log.warn("process exited (code: %d)" % self.process.returncode)
+        signum = abs(self.process.returncode)
+        self.error.put("[Fatal Error] Process exited with code %d (%s)" %
+                       (signum, get_signal(signum)))
+
 
     def input(self, cmd):
         cmd = cmd.strip()
@@ -270,17 +275,15 @@ class EuslispProcess(Process):
                         # Catch error
                         err = self.error.get(timeout=self.timeout)
                         if "Call Stack" in err:
-                            log.info("Error type: Call Stack")
                             raise EuslispError(*self.parse_stack(out))
                         if "Segmentation Fault" in err:
-                            log.info("Error type: Segmentation Fault")
-                            err = [err]
+                            err = ["Segmentation Fault"]
                             while not self.error.empty():
                                 err.append(self.error.get(timeout=self.timeout))
                             raise EuslispError(self.delim.join(err))
                         else:
-                            log.info("Error type: others")
-                            yield IntermediateResult(err + self.delim)
+                            if err:
+                                yield IntermediateResult(err + self.delim)
                             if out:
                                 yield IntermediateResult(out)
                             while not self.error.empty():

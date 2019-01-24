@@ -64,6 +64,11 @@ class EuslimeHandler(object):
         self.package = None
         self.debugger = []
 
+    def restart_euslisp_process(self):
+        self.euslisp.stop()
+        self.euslisp = EuslispProcess()
+        self.euslisp.start()
+
     def swank_connection_info(self):
         version = self.euslisp.eval_block('(lisp-implementation-version)', only_result=True)
         yield {
@@ -210,11 +215,10 @@ class EuslimeHandler(object):
             pass
         elif num == 2:  # RESTART
             self.debugger = []
-            self.euslisp.stop()
-            self.euslisp = EuslispProcess()
-            self.euslisp.start()
+            self.restart_euslisp_process()
 
-        msg = repr(deb.message.rsplit(' in ', 1)[0])
+        msg = deb.message.split(self.euslisp.delim)[0]
+        msg = repr(msg.rsplit(' in ', 1)[0])
         yield IntermediateResult([Symbol(':debug-return'), 0, level, Symbol('nil')])
         yield IntermediateResult([Symbol(':return'), {'abort': msg}, deb.id])
         yield {'abort': 'NIL'}

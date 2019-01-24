@@ -50,8 +50,13 @@ class Protocol(object):
 
     def interrupt(self):
         if self.handler.euslisp.processing:
-            self.handler.euslisp.process.send_signal(signal.SIGINT)
-            self.handler.euslisp.reset()
+            if self.handler.euslisp.process.poll() is None:
+                self.handler.euslisp.process.send_signal(signal.SIGINT)
+                self.handler.euslisp.reset()
+            else:
+                yield self.dumps([Symbol(":write-string"),
+                                  "Restarting process..." + self.handler.euslisp.delim])
+                self.handler.restart_euslisp_process()
             yield self.dumps([Symbol(':return'),
                               {'abort': "'Keyboard Interrupt'"},
                               self.command_id])
