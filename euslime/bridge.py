@@ -72,9 +72,6 @@ class Process(object):
             main.daemon = True
         main.start()
 
-    def reset(self):
-        self.process.stdin.write('"token" reset\n')
-
     def stop(self):
         if self.process.poll() is None:
             try:
@@ -95,6 +92,9 @@ class Process(object):
             if t.is_alive:
                 t.join()
         log.debug("Stop Finished")
+
+    def reset(self):
+        self.process.stdin.write('"token" reset\n')
 
     def _get_stream_thread(self, name, stream, callback):
         buf = str()
@@ -155,8 +155,13 @@ class Process(object):
 
 
 class EuslispError(Exception):
-    pass
+    def __init__(self, message, stack=None):
+        self.stack = stack
+        super(EuslispError, self).__init__(message)
 
+class IntermediateResult(object):
+    def __init__(self, value):
+        self.value = value
 
 class EuslispProcess(Process):
     def __init__(self, timeout=None):
@@ -179,8 +184,37 @@ class EuslispProcess(Process):
     def on_error(self, msg):
         msg = REGEX_ANSI.sub(str(), msg)
         log.debug("error: %s" % msg)
-        if not msg.startswith(";"):
-            self.error.put(msg)
+        self.error.put(msg)
+
+    def parse_stack(self, desc):
+        log.info("parse_stack")
+        strace = list()
+        # get description
+        while not desc:
+            log.info("get desc {}".format(time.time()))
+            try:
+                desc = self.output.get(timeout=self.timeout)
+            except Empty:
+                continue
+        desc = desc.split("irteusgl 0 error: ")[-1]
+        desc = desc.strip().capitalize()
+
+        # wait for error messages
+        # TODO: use custom tokens on euserror
+        time.sleep(self.timeout)
+
+        # get call stack
+        while not self.error.empty():
+            e = self.error.get(timeout=self.timeout)
+            log.info("stack error: %s" % e)
+            split = e.strip().split(": at ")
+            if len(split) == 2:
+                num, msg = split
+                strace.append([int(num), msg,
+                               [Symbol(":restartable"), False]])
+            else:
+                break
+        return desc, strace
 
     def exec_command(self, cmd_str):
         log.info("cmd_str: %s", cmd_str)
@@ -197,16 +231,22 @@ class EuslispProcess(Process):
             # yield printed messages and finally the result itself
             self.processing = True
             while True:
+                # get output from queue
                 try:
                     out = self.output.get(timeout=self.timeout)
+                    have_token = out.split('"%s"' % token)
                 except Empty:
-                    continue
-                have_token = out.split('"%s"' % token)
-                if len(have_token) > 1:
+                    out = None
+
+                # check for presence of the first token
+                # representing the start of the final result
+                if out and len(have_token) > 1:
                     # Pickup outputs that do not end with newline
                     if have_token[0]:
-                        yield have_token[0]
-                    # Gather result value
+                        yield IntermediateResult(have_token[0])
+
+                    # Gather the final result value,
+                    # which may be accross multiple lines
                     result = ""
                     while True:
                         try:
@@ -214,21 +254,38 @@ class EuslispProcess(Process):
                         except Empty:
                             continue
                         if out[1:-2] == token:
+                            # finished evaluation
                             yield result
                             self.processing = False
                             return
                         else:
                             result += out
+                # Pickup Intermediate Results
+                # (messages printed before the final result)
                 else:
                     if self.error.empty():
-                        yield out
+                        if out:
+                            yield IntermediateResult(out)
                     else:
                         # Catch error
-                        err = []
-                        while not self.error.empty():
-                            err.append(self.error.get(timeout=self.timeout))
-                        err.append(out)
-                        raise EuslispError(self.delim.join(err))
+                        err = self.error.get(timeout=self.timeout)
+                        if "Call Stack" in err:
+                            log.info("Error type: Call Stack")
+                            raise EuslispError(*self.parse_stack(out))
+                        if "Segmentation Fault" in err:
+                            log.info("Error type: Segmentation Fault")
+                            err = [err]
+                            while not self.error.empty():
+                                err.append(self.error.get(timeout=self.timeout))
+                            raise EuslispError(self.delim.join(err))
+                        else:
+                            log.info("Error type: others")
+                            yield IntermediateResult(err + self.delim)
+                            if out:
+                                yield IntermediateResult(out)
+                            while not self.error.empty():
+                                err = self.error.get(timeout=self.timeout)
+                                yield IntermediateResult(err + self.delim)
 
 
     def eval(self, cmd_str):
@@ -275,21 +332,3 @@ class EuslispProcess(Process):
             return result[:-1]
         else:
             return list()
-
-
-def eus_eval_once(cmd):
-    euslisp = EuslispProcess()
-    euslisp.start()
-    result = None
-    try:
-        result = euslisp.eval_block(cmd, only_result=True)
-    except EuslispError as e:
-        log.error("Failed to exec: %s" % e)
-    finally:
-        euslisp.stop()
-    return result
-
-
-if __name__ == '__main__':
-    print("answer:", eus_eval_once("(lisp-implementation-version)"))
-    print("answer:", eus_eval_once('(apropos-list "vec")'))

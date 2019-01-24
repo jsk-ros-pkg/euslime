@@ -6,9 +6,9 @@ import traceback
 from sexpdata import dumps, loads
 from sexpdata import Symbol
 
+from euslime.bridge import IntermediateResult
 from euslime.bridge import EuslispProcess
 from euslime.bridge import EuslispError
-from euslime.bridge import eus_eval_once
 from euslime.logger import get_logger
 
 log = get_logger(__name__)
@@ -45,36 +45,16 @@ class DebuggerHandler(object):
     ]
 
     def __init__(self, id, error):
-        msg, stack = self.parse_message(error)
         self.id = id
-        self.message = msg
-        self.stack = stack
-
-    def parse_message(self, err):
-        desc = str()
-        strace = list()
-        if isinstance(err, EuslispError):
-            err_msgs = err.message.strip().splitlines()
-            if err_msgs and err_msgs[0].startswith("Call Stack"):
-                # parse stack trace
-                for l in err_msgs[1:]:
-                    split = l.strip().split(": at ")
-                    if len(split) == 2:
-                        num, msg = split
-                        strace.append([int(num), msg,
-                                       [Symbol(":restartable"), False]])
-                    else:
-                        break
-                desc = err_msgs[-1].split("irteusgl 0 error: ")[-1]
-                desc = desc.strip().capitalize()
-            else:
-                desc = err.message.strip()
-        elif isinstance(err, Exception):
-            desc = err.message.strip()
+        if isinstance(error, EuslispError):
+            self.message = error.message
+            self.stack = error.stack
+        elif isinstance(error, Exception):
+            self.message = error.message.strip()
+            self.stack = None
         else:
-            desc = err
-
-        return desc, strace
+            self.message = error
+            self.stack = None
 
 
 class EuslimeHandler(object):
@@ -85,6 +65,7 @@ class EuslimeHandler(object):
         self.debugger = []
 
     def swank_connection_info(self):
+        version = self.euslisp.eval_block('(lisp-implementation-version)', only_result=True)
         yield {
             'pid': os.getpid(),
             'style': False,
@@ -94,7 +75,7 @@ class EuslimeHandler(object):
             'lisp-implementation': {
                 'type': 'irteusgl',
                 'name': 'irteusgl',
-                'version': eus_eval_once('(lisp-implementation-version)'),
+                'version': version,
                 'program': False,
             },
             'machine': {
@@ -118,31 +99,32 @@ class EuslimeHandler(object):
         yield False
 
     def swank_eval(self, sexp):
-        last_msg = None
+        finished = False
         for out in self.euslisp.eval(sexp):
-            if last_msg is not None:
-                yield [Symbol(":write-string"), last_msg]
-            last_msg = out
-        new_prompt = self.euslisp.toplevel_prompt(self.package)
-        if new_prompt:
-            yield [Symbol(":new-package")] + new_prompt
-        yield [Symbol(":values"), last_msg]
+            if finished:
+                log.debug('Additional result: %s' % out)
+                raise Exception('More than one result in %s' % sexp)
+            if isinstance(out, IntermediateResult):
+                out.value = [Symbol(":write-string"), out.value]
+                yield out
+            else:
+                new_prompt = self.euslisp.toplevel_prompt(self.package)
+                if new_prompt:
+                    yield IntermediateResult([Symbol(":new-package")] + new_prompt)
+                yield [Symbol(":values"), out]
+                finished = True
 
     def swank_interactive_eval(self, sexp):
-        for r in self.swank_eval(sexp):
-            yield r
+        return self.swank_eval(sexp)
 
     def swank_interactive_eval_region(self, sexp):
-        for r in self.swank_eval(sexp):
-            yield r
+        return self.swank_eval(sexp)
 
     def swank_repl_listener_eval(self, sexp):
-        for r in self.swank_eval(sexp):
-            yield r
+        return self.swank_eval(sexp)
 
     def swank_pprint_eval(self, sexp):
-        for r in self.swank_eval(sexp):
-            yield r
+        return self.swank_eval(sexp)
 
     def swank_autodoc(self, sexp, _=None, line_width=None):
         """
@@ -233,9 +215,10 @@ class EuslimeHandler(object):
             self.euslisp.start()
 
         msg = repr(deb.message.rsplit(' in ', 1)[0])
-        yield [Symbol(':debug-return'), 0, level, Symbol('nil')]
-        yield [Symbol(':return'), {'abort': msg}, deb.id]
+        yield IntermediateResult([Symbol(':debug-return'), 0, level, Symbol('nil')])
+        yield IntermediateResult([Symbol(':return'), {'abort': msg}, deb.id])
         yield {'abort': 'NIL'}
+        self.euslisp.processing = False
 
     def swank_swank_require(self, *sexp):
         return
@@ -247,20 +230,21 @@ class EuslimeHandler(object):
         # (sexp buffer-name (:position 1) (:line 1) () ())
         # FIXME: This does not comple actually, just eval instead.
         for out in self.euslisp.eval(sexp):
-            log.info(out)
-            yield [Symbol(":write-string"), out]
+            if isinstance(out, IntermediateResult):
+                out.value = [Symbol(":write-string"), out.value]
+                yield out
+            else:
+                yield IntermediateResult([Symbol(":write-string"), out])
         errors = []
         seconds = 0.01
         yield [Symbol(":compilation-result"), errors, True,
                seconds, None, None]
 
     def swank_compile_notes_for_emacs(self, *args):
-        for r in self.swank_compile_string_for_emacs(*args):
-            yield r
+        return self.swank_compile_string_for_emacs(*args)
 
     def swank_compile_file_for_emacs(self, *args):
-        for r in self.swank_compile_string_for_emacs(*args):
-            yield r
+        return self.swank_compile_string_for_emacs(*args)
 
     def swank_operator_arglist(self, func, pkg):
         #  (swank:operator-arglist "format" "USER")

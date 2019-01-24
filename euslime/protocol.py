@@ -4,6 +4,7 @@ from sexpdata import Symbol
 import traceback
 import signal
 
+from euslime.bridge import IntermediateResult
 from euslime.handler import DebuggerHandler
 from euslime.logger import get_logger
 
@@ -70,15 +71,16 @@ class Protocol(object):
             if not gen:
                 yield self.make_response(comm_id, gen)
                 return
-            last_resp = gen.next()
-            while True:
-                try:
-                    resp = gen.next()
-                    yield self.dumps(last_resp)
-                    last_resp = resp
-                except StopIteration:
-                    yield self.make_response(comm_id, last_resp)
-                    return
+            finished = False
+            for resp in gen:
+                if finished:
+                    log.debug('Additional result: %s' % resp)
+                    raise Exception('More than one result in %s' % func)
+                if isinstance(resp, IntermediateResult):
+                    yield self.dumps(resp.value)
+                else:
+                    yield self.make_response(comm_id, resp)
+                    finished = True
         except Exception as e:
             # log.error(e)
             log.error(traceback.format_exc())
