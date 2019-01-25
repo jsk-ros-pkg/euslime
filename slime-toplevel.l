@@ -81,6 +81,7 @@
       (print token repstream)))
 
 
+  ;; Recompile with overwritten rep1 definition
   (defun reploop-non-select (&optional (repstream *terminal-io*)
                                (ttyp (unix:isatty repstream)))
                                         ;read-eval-print loop
@@ -103,6 +104,8 @@
         (throw :reploop-select nil))
     (if ttyp (prompt repstream) ))
 
+
+  ;; Remove the "interrupt" message
   (defun sigint-handler (sig code)
    ;; (warning-message 1 "interrupt")
    (if (fboundp 'unix:ualarm)
@@ -111,6 +114,14 @@
    (let* ((*replevel* (1+ *replevel*))
 	  (*reptype* "B"))
       (catch *replevel* (reploop #'toplevel-prompt))))
+
+
+  ;; Signal error in assert
+  (defmacro assert (pred &optional message &rest args)
+    `(if (not ,pred)
+       (error ,@(if message
+                    (cons message args)
+                    (list "Assertation Error")))))
 
   )
 
