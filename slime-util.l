@@ -267,7 +267,7 @@
       (error "symbol not found"))
     (with-output-to-string (s)
       (when (gethash help-name help::*help-hash*)
-        (help name nil s)
+        (help help-name nil s)
         (terpri s))
       (format s "PROPERTIES~%~%")
       (describe sym s))))
@@ -277,3 +277,42 @@
 (defun slime-macroexpand (form)
   (with-output-to-string (s)
     (pprint (macroexpand form) s)))
+
+
+;; SWANK-LIST-ALL-PACKAGE-NAMES
+(defun slime-all-packages (&optional nicknames)
+  (if nicknames
+      (apply #'append (mapcar #'(lambda (p) (package-names p)) (list-all-packages)))
+      (mapcar #'package-name (list-all-packages))))
+
+
+;; SWANK-APROPOS-LIST
+(defun slime-apropos-list (key &optional package)
+  ;; (:designator "SB-UNICODE:CHAR-BLOCK" :function "Returns the Unicode block in which CHARACTER resides as a keyword.")
+  ;; (:designator "SB-UNIX:EWOULDBLOCK" :variable :not-documented)
+  (labels ((get-props (sym)
+             (cond
+               ((fboundp sym)
+                (list
+                 (cond
+                   ((special-form-p sym) :special-operator)
+                   ((macro-function sym) :macro)
+                   (t :function))
+                 (or (get sym :function-documentation)
+                     :not-documented)))
+               ((and (boundp sym) (not (keywordp sym)))
+                (list
+                 (if (classp sym)
+                     :class
+                     :variable)
+                 (or (get sym :variable-documentation)
+                     :not-documented)))))
+           (list-props (sym)
+             (aif (get-props sym)
+                  (list (list*
+                         :designator
+                         (string-upcase (format nil "~a" sym))
+                         it)))))
+    (sort
+     (mapcan #'list-props (apropos-list key package))
+     #'string< #'cadr)))

@@ -289,6 +289,19 @@ class EuslimeHandler(object):
         result = self.euslisp.eval_block(cmd, only_result=True)
         yield loads(result)
 
+    def swank_list_all_package_names(self, nicknames=None):
+        cmd = """(slime::slime-all-packages {0})""".format(dumps(nicknames))
+        result = self.euslisp.eval_block(cmd, only_result=True)
+        yield loads(result)
+
+    def swank_apropos_list_for_emacs(self, key, external_only=None, case_sensitive=None,
+                                     package=None):
+        # ignore 'external_only' and 'case_sensitive' arguments
+        package = package[-1] # unquote
+        cmd = """(slime::slime-apropos-list "{0}" {1})""".format(key, dumps(package))
+        result = self.euslisp.eval_block(cmd, only_result=True)
+        yield loads(result)
+
 if __name__ == '__main__':
     h = EuslimeHandler()
     print(dumps(h.swank_connection_info().next()))
