@@ -29,7 +29,7 @@ def main():
                    default="0.0.0.0")
     p.add_argument("--port", "-p", type=int,
                    help="Port number to serve",
-                   default=4005)
+                   default=0)
     p.add_argument("--encoding", "-e", type=str,
                    help="Encoding for communication",
                    default="utf-8")
@@ -44,8 +44,9 @@ def main():
         log.info("Launched with emacs mode")
         init_sexp = sexpdata.loads(
             _input("Waiting for initialization command..."))
+        port = init_sexp[-1][-2]
         port_filename = init_sexp[-1][-1]
-        serve(port_filename=port_filename)
+        serve(port=port, port_filename=port_filename)
     else:
         args = p.parse_args()
         set_log_level(args.level)

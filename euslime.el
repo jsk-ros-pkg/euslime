@@ -42,7 +42,7 @@
                        :init euslime-init
                        :coding-system utf-8-unix)))
 
-(defvar euslime-port 4005
+(defvar euslime-port 0 ;; Let the OS pick an available port
   "Port number to use for communicating to the swank server.")
 
 (defvar euslime-hook nil

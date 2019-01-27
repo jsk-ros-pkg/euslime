@@ -81,18 +81,20 @@ class EuslimeServer(S.TCPServer, object):
         super(EuslimeServer, self).__init__(server_address, handler_class)
 
         addr, port = self.server_address
-        log.info('Serving on %s:%d', addr, port)
 
     def server_bind(self):
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         self.socket.settimeout(3)
         self.socket.bind(self.server_address)
+        log.info('Serving on %s:%d', *self.socket.getsockname())
 
 
-def serve(host='0.0.0.0', port=4005, port_filename=str(), encoding='utt-8'):
+def serve(host='0.0.0.0', port=0, port_filename=str(), encoding='utt-8'):
     server = EuslimeServer((host, port),
                            encoding=encoding)
+
+    host, port = server.socket.getsockname()
 
     # writing port number to file
     if port_filename:
