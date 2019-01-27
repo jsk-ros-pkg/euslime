@@ -72,11 +72,12 @@
                  (return-from find-callable-symbol it)))))))
 
 (defun find-callable-symbol-value (name)
-  (aif (find-callable-symbol name)
-       (let ((vtype (symbol-vtype it)))
-         (if (< vtype 3)
-             (symbol-value it)
-             (elt (system::thread-specials) vtype)))))
+  (let ((sym (find-callable-symbol name)))
+    (if (and sym (boundp sym))
+        (let ((vtype (symbol-vtype sym)))
+          (if (< vtype 3)
+              (symbol-value sym)
+              (elt (system::thread-specials) vtype))))))
 
 ;; Prefix related
 (defun append-common (match-lst start-len)
@@ -188,6 +189,18 @@
 
 ;; SWANK-AUTODOC
 (defun autodoc (name &optional cursor form)
+  (let ((last (car (last form))))
+    (cond
+      ((not (stringp last))
+       (function-autodoc name cursor form))
+      ((string= last "")
+       (function-autodoc name (1- cursor) (butlast form)))
+      ((aand (find-callable-symbol last) (boundp it))
+       (format nil "~a => ~a" last (find-callable-symbol-value last)))
+      (t
+       (function-autodoc name cursor form)))))
+
+(defun function-autodoc (name &optional cursor form)
   (let* ((arglist
           (aif (method-lambda-list-from-form form)
                (prog1 it
@@ -195,15 +208,15 @@
                (lambda-list name)))
          (len (length arglist)))
     (when arglist
-      (unless cursor (return-from autodoc arglist))
+      (unless cursor (return-from function-autodoc arglist))
       (dotimes (i (min len (1+ cursor)))
         (case (nth i arglist)
           (&rest
-           (return-from autodoc (set-cursor arglist (1+ i))))
+           (return-from function-autodoc (set-cursor arglist (1+ i))))
           (&optional
            (incf cursor))
           (&key
-           (return-from autodoc (set-keyword arglist i (car (last form)))))))
+           (return-from function-autodoc (set-keyword arglist i (car (last form)))))))
       (if (>= cursor len)
           arglist
           (set-cursor arglist cursor)))))

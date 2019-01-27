@@ -19,7 +19,7 @@ def findp(s, l):
     # Reverse search list
     for e in l[::-1]:
         if e == s:
-            return [x for x in l if x not in ['', u'']]
+            return l
         elif isinstance(e, list):
             res = findp(s, e)
             if res:
@@ -155,6 +155,8 @@ class EuslimeHandler(object):
             scope = scope[:-1] # remove marker
             result = self.euslisp.arglist(func, cursor, scope)
             assert result
+            if result.startswith('"') and result.endswith('"'):
+                result = result[1:-1] # unquote
             yield [result, True]
         except Exception as e:
             log.error(e)
@@ -187,6 +189,9 @@ class EuslimeHandler(object):
             sexp = sexp[1] # unquote
             scope, _ = current_scope(sexp)
             scope = scope[:-1] # remove marker
+            if scope[-1] in ['', u'']: # remove null string
+                scope = scope[:-1]
+
         else:
             scope = None
         yield self.euslisp.find_keyword(start, dumps(scope))
