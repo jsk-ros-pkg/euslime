@@ -156,7 +156,7 @@ class EuslimeHandler(object):
             result = self.euslisp.arglist(func, cursor, scope)
             assert result
             if result.startswith('"') and result.endswith('"'):
-                result = result[1:-1] # unquote
+                result = loads(result) # unquote
             yield [result, True]
         except Exception as e:
             log.error(e)

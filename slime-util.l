@@ -61,15 +61,21 @@
        (dolist (,apackage (*package* . use) ,(cadr var))
 	 (do-external-symbols (,(car var) ,apackage) ,@forms)))))
 
+(defun find-external-symbol (name package)
+  (do-external-symbols (sym package)
+    (if (string= (symbol-pname sym) name)
+        (return-from find-external-symbol sym))))
+
 (defun find-callable-symbol (name)
   (multiple-value-bind (pack name) (split-package name)
     (setq name (string-upcase name))
     (if pack
         (find-symbol name pack)
-        (let ((packs (cons *package* (*package* . use))))
-          (dolist (p packs)
-            (aif (find-symbol name p)
-                 (return-from find-callable-symbol it)))))))
+        (or (find-symbol name) 
+            (let ((packs (package-use *package*)))
+              (dolist (p packs)
+                (aif (find-external-symbol name p)
+                     (return-from find-callable-symbol it))))))))
 
 (defun find-callable-symbol-value (name)
   (let ((sym (find-callable-symbol name)))
@@ -196,7 +202,7 @@
       ((string= last "")
        (function-autodoc name (1- cursor) (butlast form)))
       ((aand (find-callable-symbol last) (boundp it))
-       (format nil "~a => ~a" last (find-callable-symbol-value last)))
+       (format nil "~a => ~s" last (find-callable-symbol-value last)))
       (t
        (function-autodoc name cursor form)))))
 
@@ -311,15 +317,21 @@
                    ((special-form-p sym) :special-operator)
                    ((macro-function sym) :macro)
                    (t :function))
-                 (or (get sym :function-documentation)
-                     :not-documented)))
+                 (aif (get sym :function-documentation)
+                      (if (stringp it)
+                          it
+                          (format nil "~s" it))
+                      :not-documented)))
                ((and (boundp sym) (not (keywordp sym)))
                 (list
                  (if (classp sym)
                      :class
                      :variable)
-                 (or (get sym :variable-documentation)
-                     :not-documented)))))
+                 (aif (get sym :variable-documentation)
+                      (if (stringp it)
+                          it
+                          (format nil "~s" it))
+                      :not-documented)))))
            (list-props (sym)
              (aif (get-props sym)
                   (list (list*
