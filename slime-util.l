@@ -155,7 +155,11 @@
 (defun keyword-list (arglist &optional start)
   (let ((pos (or start (aand (position '&key arglist) (1+ it)))))
     (if pos
-        (mapcar #'(lambda (val) (format nil ":~a" (if (consp val) (car val) val)))
+        (mapcar #'(lambda (val)
+                    (let ((key (if (consp val) (car val) val)))
+                      (if (consp key) ;; &key ((:keyword kwd) 10)
+                          (format nil "~a" (car key))
+                          (format nil ":~a" key))))
                 (nthcdr pos arglist)))))
 
 (defun method-list (obj)
