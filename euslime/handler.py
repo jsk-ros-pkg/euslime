@@ -188,9 +188,10 @@ class EuslimeHandler(object):
         if sexp:
             sexp = sexp[1] # unquote
             scope, _ = current_scope(sexp)
-            scope = scope[:-1] # remove marker
-            if scope[-1] in ['', u'']: # remove null string
-                scope = scope[:-1]
+            if scope:
+                scope = scope[:-1] # remove marker
+                if scope[-1] in ['', u'']: # remove null string
+                    scope = scope[:-1]
 
         else:
             scope = None

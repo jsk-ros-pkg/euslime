@@ -208,7 +208,7 @@
       ((aand (find-callable-symbol last) (boundp it))
        (format nil "~a => ~s" last (find-callable-symbol-value last)))
       (t
-       (function-autodoc name cursor form)))))
+       (function-autodoc name (1- cursor) form)))))
 
 (defun function-autodoc (name &optional cursor form)
   (let* ((arglist

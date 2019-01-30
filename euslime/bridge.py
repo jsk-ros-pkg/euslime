@@ -99,7 +99,7 @@ class Process(object):
         log.debug("Stop Finished")
 
     def reset(self):
-        self.process.stdin.write('"token" reset' + self.delim)
+        self.process.stdin.write('"euslime-internal-token" reset' + self.delim)
 
     def _get_stream_thread(self, name, stream, callback):
         buf = str()
@@ -289,6 +289,7 @@ class EuslispProcess(Process):
                                 err = ["Segmentation Fault"]
                                 while not self.error.empty():
                                     err.append(self.error.get(timeout=self.timeout))
+                                self.reset()
                                 raise EuslispError(self.delim.join(err))
                             if err:
                                 yield IntermediateResult(err + self.delim)
