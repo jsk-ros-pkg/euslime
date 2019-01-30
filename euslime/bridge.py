@@ -221,12 +221,17 @@ class EuslispProcess(Process):
                 break
         return desc, strace
 
-    def exec_command(self, cmd_str):
+    def exec_command(self, cmd_str, internal=False):
         log.info("cmd_str: %s", cmd_str)
         self.output = Queue()
         self.error = Queue()
 
-        token = 'euslime-token' + str(uuid1())
+        if internal:
+            # Tokens matching this prefix are not added to history
+            # during the repl-loop redifined in slime-toplevel.l
+            token = 'euslime-internal-token' + str(uuid1())
+        else:
+            token = 'euslime-token' + str(uuid1())
         cmd_str = """"{0}" {1}""".format(token, cmd_str)
 
         self.input(cmd_str)
@@ -291,16 +296,16 @@ class EuslispProcess(Process):
                                 yield IntermediateResult(err + self.delim)
 
 
-    def eval(self, cmd_str):
+    def eval(self, cmd_str, internal=False):
         log.info("eval: %s" % cmd_str)
         if not cmd_str.strip():
             yield '; No value'
         else:
-            for r in self.exec_command(cmd_str):
+            for r in self.exec_command(cmd_str, internal):
                 yield r
 
     def eval_block(self, cmd_str, only_result=False):
-        res = list(self.eval(cmd_str))
+        res = list(self.eval(cmd_str, only_result))
         log.info("result: %s" % res)
         if only_result:
             return res[-1]

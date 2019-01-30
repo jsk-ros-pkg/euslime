@@ -23,17 +23,22 @@
   ;; which is not set by default because *standard-input* is not tty
   (unix:signal unix::sigint 'sigint-handler 2)
 
+  ;; Set *history*
+  ;; which is not done by default because *standard-input* is not tty
+  (when (fboundp 'unix:tcgets)
+    (setq *tc* (unix:tcgets *standard-input*)) 
+    (new-history *history-max*))
+
   ;;
   ;; Read-Eval-Print-1
   ;;
   (defun rep1 (repstream eof local-bindings &optional (ttyp t))
     ;; Overwrites to:
     ;; 1. Print token two times, before and after output value
-    ;; 2. Do not add slime functions to history and output log
+    ;; 2. Do not add slime internal functions to history and output log
     (let* ((token (read repstream nil nil))
            (input (read-list-from-line repstream eof))
-           (slime-func (and (consp input)
-                            (string= (send (symbol-package (car input)) :name) "SLIME")))
+           (slime-func (string= token "euslime-internal-token" :end1 22))
            result)
       (if (eq input eof) (return-from rep1 eof))
       (when (and input (or (not (streamp input))
