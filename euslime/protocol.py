@@ -18,9 +18,18 @@ class Protocol(object):
         self.command_id = None
 
     def dumps(self, sexp):
-        res = dumps(sexp, false_as='nil', none_as='nil')
-        header = '{0:06x}'.format(len(res))
-        return header + res
+        def with_header(sexp):
+            res = dumps(sexp, false_as='nil', none_as='nil')
+            header = '{0:06x}'.format(len(res))
+            return header + res
+        try:
+            return with_header(sexp)
+        except UnicodeDecodeError:
+            # For example in (apropos "default")
+            log.warn('UnicodeDecodeError at %s' % sexp)
+            assert isinstance(sexp, list)
+            sexp = [unicode(x, 'utf-8', 'ignore') if isinstance(x,str) else x for x in sexp]
+            return with_header(sexp)
 
     def make_error(self, id, err):
         debug = DebuggerHandler(id, err)
