@@ -20,7 +20,8 @@ class Protocol(object):
     def dumps(self, sexp):
         def with_header(sexp):
             res = dumps(sexp, false_as='nil', none_as='nil')
-            header = '{0:06x}'.format(len(res))
+            # encode to adapt to japanese characters
+            header = '{0:06x}'.format(len(res.encode('utf-8')))
             return header + res
         try:
             return with_header(sexp)

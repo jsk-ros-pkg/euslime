@@ -232,7 +232,10 @@ class EuslispProcess(Process):
             token = 'euslime-internal-token' + str(uuid1())
         else:
             token = 'euslime-token' + str(uuid1())
-        cmd_str = """"{0}" {1}""".format(token, cmd_str)
+        try:
+            cmd_str = """"{0}" {1}""".format(token, cmd_str)
+        except UnicodeEncodeError:
+            cmd_str = """"{0}" {1}""".format(token, cmd_str.encode('utf-8'))
 
         self.input(cmd_str)
 
