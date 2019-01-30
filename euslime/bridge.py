@@ -278,22 +278,22 @@ class EuslispProcess(Process):
                             yield IntermediateResult(out)
                     else:
                         # Catch error
-                        err = self.error.get(timeout=self.timeout)
-                        if "Call Stack" in err:
-                            raise EuslispError(*self.parse_stack(out))
-                        if "Segmentation Fault" in err:
-                            err = ["Segmentation Fault"]
-                            while not self.error.empty():
-                                err.append(self.error.get(timeout=self.timeout))
-                            raise EuslispError(self.delim.join(err))
-                        else:
+                        while not self.error.empty():
+                            # Since *error-output* is re-binded to *standard-output*,
+                            # the error stack only have lower level (eus-c level) errors.
+                            # Therefore, we can parse without worrying about clashing
+                            err = self.error.get(timeout=self.timeout)
+                            if "Call Stack" in err:
+                                raise EuslispError(*self.parse_stack(out))
+                            if "Segmentation Fault" in err:
+                                err = ["Segmentation Fault"]
+                                while not self.error.empty():
+                                    err.append(self.error.get(timeout=self.timeout))
+                                raise EuslispError(self.delim.join(err))
                             if err:
                                 yield IntermediateResult(err + self.delim)
-                            if out:
-                                yield IntermediateResult(out)
-                            while not self.error.empty():
-                                err = self.error.get(timeout=self.timeout)
-                                yield IntermediateResult(err + self.delim)
+                        if out:
+                            yield IntermediateResult(out)
 
 
     def eval(self, cmd_str, internal=False):
