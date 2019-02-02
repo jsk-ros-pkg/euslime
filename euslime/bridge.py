@@ -19,11 +19,10 @@ from euslime.logger import get_logger
 log = get_logger(__name__)
 IS_POSIX = 'posix' in sys.builtin_module_names
 BUFSIZE = 1
-POLL_RATE = 1.0
+POLL_RATE = 0.5
 DELIM = os.linesep
 REGEX_ANSI = re.compile(r'\x1b[^m]*m')
 EXEC_TIMEOUT = 0.05
-
 
 def get_signal(signum):
     return [v for v,k in signal.__dict__.iteritems() if k == signum][0]
@@ -50,6 +49,11 @@ class Process(object):
     def start(self, daemon=True):
         self.input_queue = Queue()
 
+        slime_env = os.environ.copy()
+        # Add the following to force line buffering in ROS logger,
+        # as explained in section 8 of http://wiki.ros.org/rosconsole
+        slime_env['ROSCONSOLE_STDOUT_LINE_BUFFERED'] = '1'
+
         self.process = subprocess.Popen(
             self.cmd,
             stdout=subprocess.PIPE,
@@ -57,7 +61,7 @@ class Process(object):
             stdin=subprocess.PIPE,
             bufsize=self.bufsize,
             close_fds=IS_POSIX,
-            env=os.environ.copy(),
+            env=slime_env,
         )
 
         self.threads = [
@@ -148,7 +152,7 @@ class Process(object):
             time.sleep(self.poll_rate)
 
         signum = abs(self.process.returncode)
-        self.error.put("[Fatal Error] Process exited with code %d (%s)" %
+        self.error.put("Process exited with code %d (%s)" %
                        (signum, get_signal(signum)))
 
 
@@ -179,6 +183,7 @@ class EuslispProcess(Process):
         self.processing = False
         self.output = None
         self.error = None
+        self.stack_error = False
         self.timeout = timeout or EXEC_TIMEOUT
 
     def on_output(self, msg):
@@ -189,7 +194,17 @@ class EuslispProcess(Process):
     def on_error(self, msg):
         msg = REGEX_ANSI.sub(str(), msg)
         log.debug("error: %s" % msg)
-        self.error.put(msg)
+        if self.stack_error:
+            self.error.put(msg)
+        elif msg.startswith(("Call Stack", ";; Segmentation Fault")):
+            # Since *error-output* is re-binded to *standard-output*,
+            # the error stack only have lower level (eus-c level) errors.
+            # Therefore, we can parse without worrying about clashing
+            self.stack_error = True
+            self.error.put(msg)
+        else:
+            # Redirect warnings to output queue
+            self.output.put(msg + self.delim)
 
     def parse_stack(self, desc):
         log.info("parse_stack")
@@ -225,6 +240,7 @@ class EuslispProcess(Process):
         log.info("cmd_str: %s", cmd_str)
         self.output = Queue()
         self.error = Queue()
+        self.stack_error = False
 
         if internal:
             # Tokens matching this prefix are not added to history
@@ -232,72 +248,61 @@ class EuslispProcess(Process):
             token = 'euslime-internal-token' + str(uuid1())
         else:
             token = 'euslime-token' + str(uuid1())
-        try:
-            cmd_str = """"{0}" {1}""".format(token, cmd_str)
-        except UnicodeEncodeError:
-            cmd_str = """"{0}" {1}""".format(token, cmd_str.encode('utf-8'))
 
+        cmd_str = """"{0}" {1}""".format(token, cmd_str.encode('utf-8'))
         self.input(cmd_str)
+        self.processing = True
 
-        while self.process.poll() is None:
-            # token is placed before and after the command result
-            # yield printed messages and finally the result itself
-            self.processing = True
-            while True:
-                # get output from queue
-                try:
-                    out = self.output.get(timeout=self.timeout)
-                    have_token = out.split('"%s"' % token)
-                except Empty:
-                    out = None
+        # token is placed before and after the command result
+        # yield printed messages and finally the result itself
+        while True:
+            # get output from queue
+            try:
+                out = self.output.get(timeout=self.timeout)
+                have_token = out.split('"%s"' % token)
+            except Empty:
+                out = None
 
-                # check for presence of the first token
-                # representing the start of the final result
-                if out and len(have_token) > 1:
-                    # Pickup outputs that do not end with newline
-                    if have_token[0]:
-                        yield IntermediateResult(have_token[0])
+            # check for presence of the first token
+            # representing the start of the final result
+            if out and len(have_token) > 1:
+                # Pickup outputs that do not end with newline
+                if have_token[0]:
+                    yield IntermediateResult(have_token[0])
 
-                    # Gather the final result value,
-                    # which may be accross multiple lines
-                    result = ""
-                    while True:
-                        try:
-                            out = self.output.get(timeout=self.timeout)
-                        except Empty:
-                            continue
-                        if out[1:-2] == token:
-                            # finished evaluation
-                            yield result
-                            self.processing = False
-                            return
-                        else:
-                            result += out
-                # Pickup Intermediate Results
-                # (messages printed before the final result)
-                else:
-                    if self.error.empty():
-                        if out:
-                            yield IntermediateResult(out)
+                # Gather the final result value,
+                # which may be accross multiple lines
+                result = ""
+                while True:
+                    try:
+                        out = self.output.get(timeout=self.timeout)
+                    except Empty:
+                        continue
+                    if out[1:-2] == token:
+                        # finished evaluation
+                        yield result
+                        self.processing = False
+                        return
                     else:
-                        # Catch error
-                        while not self.error.empty():
-                            # Since *error-output* is re-binded to *standard-output*,
-                            # the error stack only have lower level (eus-c level) errors.
-                            # Therefore, we can parse without worrying about clashing
-                            err = self.error.get(timeout=self.timeout)
-                            if "Call Stack" in err:
-                                raise EuslispError(*self.parse_stack(out))
-                            if "Segmentation Fault" in err:
-                                err = ["Segmentation Fault"]
-                                while not self.error.empty():
-                                    err.append(self.error.get(timeout=self.timeout))
-                                self.reset()
-                                raise EuslispError(self.delim.join(err))
-                            if err:
-                                yield IntermediateResult(err + self.delim)
-                        if out:
-                            yield IntermediateResult(out)
+                        result += out
+            else:
+                if self.error.empty():
+                    # Pickup Intermediate Results
+                    # (messages printed before the final result)
+                    if out:
+                        yield IntermediateResult(out)
+                else:
+                    # Catch error
+                    err = self.error.get(timeout=self.timeout)
+                    if err.startswith("Call Stack"):
+                        raise EuslispError(*self.parse_stack(out))
+                    elif err.startswith(";; Segmentation Fault"):
+                        err = "Segmentation Fault"
+                        self.reset()
+                    err = [err]
+                    while not self.error.empty():
+                        err.append(self.error.get(timeout=self.timeout))
+                    raise EuslispError(self.delim.join(err))
 
 
     def eval(self, cmd_str, internal=False):

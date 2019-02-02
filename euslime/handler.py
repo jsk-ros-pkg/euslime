@@ -215,8 +215,10 @@ class EuslimeHandler(object):
         deb = self.debugger.pop(level - 1)
         if num == 0:  # QUIT
             self.debugger = []
-            self.euslisp.reset()
-
+            if self.euslisp.process.poll() is None:
+                self.euslisp.reset()
+            else:
+                self.restart_euslisp_process()
         elif num == 1:  # CONTINUE
             pass
         elif num == 2:  # RESTART
