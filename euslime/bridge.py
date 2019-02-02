@@ -20,9 +20,9 @@ log = get_logger(__name__)
 IS_POSIX = 'posix' in sys.builtin_module_names
 BUFSIZE = 1
 POLL_RATE = 0.5
+EXEC_RATE = 0.05
 DELIM = os.linesep
 REGEX_ANSI = re.compile(r'\x1b[^m]*m')
-EXEC_TIMEOUT = 0.05
 
 def get_signal(signum):
     return [v for v,k in signal.__dict__.iteritems() if k == signum][0]
@@ -176,7 +176,7 @@ class IntermediateResult(object):
         self.value = value
 
 class EuslispProcess(Process):
-    def __init__(self, timeout=None):
+    def __init__(self, exec_rate=None):
         super(EuslispProcess, self).__init__(
             cmd=["roseus", "~/.euslime/slime-loader.l"],
             on_output=self.on_output,
@@ -187,7 +187,7 @@ class EuslispProcess(Process):
         self.output = None
         self.error = None
         self.stack_error = False
-        self.timeout = timeout or EXEC_TIMEOUT
+        self.rate = exec_rate or EXEC_RATE
 
     def on_output(self, msg):
         msg = REGEX_ANSI.sub(str(), msg)
@@ -215,7 +215,7 @@ class EuslispProcess(Process):
         while not desc:
             log.info("get desc {}".format(time.time()))
             try:
-                desc = self.output.get(timeout=self.timeout)
+                desc = self.output.get(timeout=self.rate)
             except Empty:
                 continue
         desc = desc.split("irteusgl 0 error: ")[-1]
@@ -223,11 +223,11 @@ class EuslispProcess(Process):
 
         # wait for error messages
         # TODO: use custom tokens on euserror
-        time.sleep(self.timeout)
+        time.sleep(self.rate)
 
         # get call stack
         while not self.error.empty():
-            e = self.error.get(timeout=self.timeout)
+            e = self.error.get(timeout=self.rate)
             log.info("stack error: %s" % e)
             split = e.strip().split(": at ")
             if len(split) == 2:
@@ -239,7 +239,7 @@ class EuslispProcess(Process):
         return desc, strace
 
     def handle_error(self, desc):
-        err = self.error.get(timeout=self.timeout)
+        err = self.error.get(timeout=self.rate)
         if err.startswith("Call Stack"):
             raise EuslispError(*self.parse_stack(desc))
         elif err.startswith(";; Segmentation Fault"):
@@ -247,11 +247,10 @@ class EuslispProcess(Process):
             self.reset()
         err = [err]
         while not self.error.empty():
-            err.append(self.error.get(timeout=self.timeout))
+            err.append(self.error.get(timeout=self.rate))
         raise EuslispError(self.delim.join(err))
 
     def exec_command(self, cmd_str, internal=False):
-        log.info("cmd_str: %s", cmd_str)
         self.output = Queue()
         self.error = Queue()
         self.stack_error = False
@@ -272,7 +271,7 @@ class EuslispProcess(Process):
         while True:
             # get output from queue
             try:
-                out = self.output.get(timeout=self.timeout)
+                out = self.output.get(timeout=self.rate)
                 have_token = out.split('"%s"' % token)
             except Empty:
                 out = None
@@ -289,7 +288,7 @@ class EuslispProcess(Process):
                 result = list()
                 while True:
                     try:
-                        out = self.output.get(timeout=self.timeout)
+                        out = self.output.get(timeout=self.rate)
                     except Empty:
                         continue
                     if out[1:-1] == token:
