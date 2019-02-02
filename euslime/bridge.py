@@ -170,6 +170,9 @@ class EuslispError(Exception):
 
 class IntermediateResult(object):
     def __init__(self, value):
+        if isinstance(value, str):
+            # Use global DELIM to be correctly interpreted by SLIME
+            value += DELIM
         self.value = value
 
 class EuslispProcess(Process):
@@ -187,7 +190,7 @@ class EuslispProcess(Process):
         self.timeout = timeout or EXEC_TIMEOUT
 
     def on_output(self, msg):
-        msg = REGEX_ANSI.sub(str(), msg) + self.delim
+        msg = REGEX_ANSI.sub(str(), msg)
         log.debug("output: %s" % msg)
         self.output.put(msg)
 
@@ -204,10 +207,9 @@ class EuslispProcess(Process):
             self.error.put(msg)
         else:
             # Redirect warnings to output queue
-            self.output.put(msg + self.delim)
+            self.output.put(msg)
 
     def parse_stack(self, desc):
-        log.info("parse_stack")
         strace = list()
         # get description
         while not desc:
@@ -235,6 +237,18 @@ class EuslispProcess(Process):
             else:
                 break
         return desc, strace
+
+    def handle_error(self, desc):
+        err = self.error.get(timeout=self.timeout)
+        if err.startswith("Call Stack"):
+            raise EuslispError(*self.parse_stack(desc))
+        elif err.startswith(";; Segmentation Fault"):
+            err = "Segmentation Fault"
+            self.reset()
+        err = [err]
+        while not self.error.empty():
+            err.append(self.error.get(timeout=self.timeout))
+        raise EuslispError(self.delim.join(err))
 
     def exec_command(self, cmd_str, internal=False):
         log.info("cmd_str: %s", cmd_str)
@@ -272,19 +286,19 @@ class EuslispProcess(Process):
 
                 # Gather the final result value,
                 # which may be accross multiple lines
-                result = ""
+                result = list()
                 while True:
                     try:
                         out = self.output.get(timeout=self.timeout)
                     except Empty:
                         continue
-                    if out[1:-2] == token:
+                    if out[1:-1] == token:
                         # finished evaluation
-                        yield result
+                        yield self.delim.join(result)
                         self.processing = False
                         return
                     else:
-                        result += out
+                        result.append(out)
             else:
                 if self.error.empty():
                     # Pickup Intermediate Results
@@ -292,17 +306,7 @@ class EuslispProcess(Process):
                     if out:
                         yield IntermediateResult(out)
                 else:
-                    # Catch error
-                    err = self.error.get(timeout=self.timeout)
-                    if err.startswith("Call Stack"):
-                        raise EuslispError(*self.parse_stack(out))
-                    elif err.startswith(";; Segmentation Fault"):
-                        err = "Segmentation Fault"
-                        self.reset()
-                    err = [err]
-                    while not self.error.empty():
-                        err.append(self.error.get(timeout=self.timeout))
-                    raise EuslispError(self.delim.join(err))
+                    self.handle_error(out)
 
 
     def eval(self, cmd_str, internal=False):
@@ -345,7 +349,6 @@ class EuslispProcess(Process):
         cmd = """(slime::autodoc "{0}" {1} '{2})""".format(func, dumps(cursor), dumps(form))
         result = self.eval_block(cmd, only_result=True)
         if loads(result):
-            # remove newline
-            return result[:-1]
+            return result
         else:
             return list()
