@@ -92,6 +92,7 @@ class Process(object):
 
     def reset(self):
         self.process.stdin.write('"euslime-internal-token" (reset)' + self.delim)
+        self.process.stdin.flush()
 
     def ping(self):
         log.debug("Ping...")
@@ -208,15 +209,25 @@ class EuslispProcess(Process):
             self.output.put(msg)
 
     def parse_stack(self, desc):
-        strace = list()
         # get description
-        while not desc:
-            log.debug("get desc: {}".format(time.time()))
-            try:
-                desc = self.output.get(timeout=self.rate)
-            except Empty:
-                continue
-        desc = desc.split("irteusgl 0 error: ")[-1]
+        while True:
+            if desc:
+                split = desc.split("irteusgl 0 error: ", 1)
+                if len(split) == 2:
+                    desc = split[-1]
+                    break
+                yield IntermediateResult(desc)
+                desc = None
+            else:
+                try:
+                    desc = self.output.get(timeout=self.rate)
+                except Empty:
+                    continue
+                except KeyboardInterrupt:
+                    # Rarely Call Stack is activated without an error message
+                    # e.g. When sending KeyboardInterrupt to the following:
+                    # (let ((i 0)) (while t (format t "~a~%" (incf i))))
+                    raise Exception('Keyboard Interrupt')
         desc = desc.strip().capitalize()
 
         # wait for error messages
@@ -224,22 +235,27 @@ class EuslispProcess(Process):
         time.sleep(self.rate)
 
         # get call stack
+        strace = list()
         while not self.error.empty():
             e = self.error.get(timeout=self.rate)
             log.debug("Stack error: %s" % e)
-            split = e.strip().split(": at ")
+            split = e.strip().split(": at ", 1)
             if len(split) == 2:
                 num, msg = split
                 strace.append([int(num), msg,
                                [Symbol(":restartable"), False]])
             else:
                 break
-        return desc, strace
+        yield desc, strace
 
     def handle_error(self, desc):
         err = self.error.get(timeout=self.rate)
         if err.startswith("Call Stack"):
-            raise EuslispError(*self.parse_stack(desc))
+            for r in self.parse_stack(desc):
+                if isinstance(r, IntermediateResult):
+                    yield r
+                else:
+                    raise EuslispError(*r)
         elif err.startswith(";; Segmentation Fault"):
             err = "Segmentation Fault"
             continuable = True
@@ -275,13 +291,13 @@ class EuslispProcess(Process):
             # get output from queue
             try:
                 out = self.output.get(timeout=self.rate)
-                have_token = out.split('"%s"' % token)
+                have_token = out.split('"%s"' % token, 1)
             except Empty:
                 out = None
 
             # check for presence of the first token
             # representing the start of the final result
-            if out and len(have_token) > 1:
+            if out and len(have_token) == 2:
                 # Pickup outputs that do not end with newline
                 if have_token[0]:
                     yield IntermediateResult(have_token[0])
@@ -310,7 +326,8 @@ class EuslispProcess(Process):
                     if out:
                         yield IntermediateResult(out)
                 else:
-                    self.handle_error(out)
+                    for r in self.handle_error(out):
+                        yield r
 
 
     def eval(self, cmd_str, internal=False):
