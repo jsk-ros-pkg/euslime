@@ -9,6 +9,7 @@ from sexpdata import Symbol
 from euslime.bridge import IntermediateResult
 from euslime.bridge import EuslispProcess
 from euslime.bridge import EuslispError
+from euslime.bridge import EuslispFatalError
 from euslime.logger import get_logger
 
 log = get_logger(__name__)
@@ -46,6 +47,16 @@ class DebuggerHandler(object):
 
     def __init__(self, id, error):
         self.id = id
+        if isinstance(error, EuslispFatalError):
+            if error.continuable:
+                self.restarts = self.restarts[1:] # No QUIT
+            else:
+                self.restarts = self.restarts[2:] # No QUIT & CONTINUE
+        else:
+            self.restarts = self.restarts
+        self.restarts_dict = {}
+        for num, item in enumerate([x[0] for x in self.restarts]):
+            self.restarts_dict[item] = num
         if isinstance(error, EuslispError):
             self.message = error.message
             self.stack = error.stack
@@ -104,6 +115,10 @@ class EuslimeHandler(object):
         yield False
 
     def swank_eval(self, sexp):
+        if self.euslisp.processing:
+            log.error("Process is busy!")
+            yield Symbol('nil')
+            return
         finished = False
         for out in self.euslisp.eval(sexp):
             if finished:
@@ -213,17 +228,21 @@ class EuslimeHandler(object):
 
     def swank_invoke_nth_restart_for_emacs(self, level, num):
         deb = self.debugger.pop(level - 1)
-        if num == 0:  # QUIT
-            self.debugger = []
-            if self.euslisp.process.poll() is None:
-                self.euslisp.reset()
-            else:
-                self.restart_euslisp_process()
-        elif num == 1:  # CONTINUE
-            pass
-        elif num == 2:  # RESTART
+        res_dict = deb.restarts_dict
+
+        def check_key(key):
+            return res_dict.has_key(key) and num == res_dict[key]
+
+        if check_key('RESTART'):
             self.debugger = []
             self.restart_euslisp_process()
+        elif check_key('CONTINUE'):
+            pass
+        elif check_key('QUIT'):
+            self.debugger = []
+            self.euslisp.reset()
+        else:
+            log.error("Restart not found!")
 
         msg = deb.message.split(self.euslisp.delim)[0]
         msg = repr(msg.rsplit(' in ', 1)[0])

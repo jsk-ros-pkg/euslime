@@ -41,7 +41,7 @@ class Protocol(object):
             0,  # the thread which threw the condition
             len(self.handler.debugger),  # the depth of the condition
             [debug.message, str(), None],  # s-exp with a description
-            DebuggerHandler.restarts,  # list of available restarts
+            debug.restarts,  # list of available restarts
             debug.stack,  # stacktrace
             [None],  # pending continuation
         ]
@@ -63,6 +63,12 @@ class Protocol(object):
             if self.handler.euslisp.process.poll() is None:
                 self.handler.euslisp.process.send_signal(signal.SIGINT)
                 self.handler.euslisp.reset()
+                try:
+                    self.handler.euslisp.ping()
+                    self.handler.euslisp.processing = False
+                except Exception as e:
+                    yield self.make_error(self.command_id, e)
+                    return
             else:
                 yield self.dumps([Symbol(":write-string"),
                                   "Restarting process..." + self.handler.euslisp.delim])

@@ -88,22 +88,15 @@ class Process(object):
                 self.process.communicate()
             except Exception as e:
                 log.warn("failed to terminate: %s" % e)
-        if self.process.poll() is None:
-            try:
-                self.process.kill()
-                self.process.communicate()
-            except Exception as e:
-                log.warn("Failed to kill: %s" % e)
-        if self.process.poll() is None:
-            log.warn("Failed to kill process %s?" % self.process)
-
-        for t in self.threads:
-            if t.is_alive:
-                t.join()
         log.debug("Stop Finished")
 
     def reset(self):
-        self.process.stdin.write('"euslime-internal-token" reset' + self.delim)
+        self.process.stdin.write('"euslime-internal-token" (reset)' + self.delim)
+
+    def ping(self):
+        log.debug("PING")
+        list(self.exec_command(self.delim, internal=True, timeout=self.poll_rate))
+        log.debug("PONG")
 
     def _get_stream_thread(self, name, stream, callback):
         buf = str()
@@ -132,7 +125,7 @@ class Process(object):
     def _put_stream_thread(self, name, stream):
         while self.process.poll() is None:
             try:
-                buf = self.input_queue.get(block=True, timeout=1)
+                buf = self.input_queue.get(timeout=self.poll_rate)
             except Empty:
                 continue
             try:
@@ -168,6 +161,11 @@ class EuslispError(Exception):
         self.stack = stack
         super(EuslispError, self).__init__(message)
 
+class EuslispFatalError(EuslispError):
+    def __init__(self, message, continuable=False):
+        self.continuable = continuable
+        super(EuslispFatalError, self).__init__(message)
+
 class IntermediateResult(object):
     def __init__(self, value):
         if isinstance(value, str):
@@ -184,8 +182,8 @@ class EuslispProcess(Process):
         )
 
         self.processing = False
-        self.output = None
-        self.error = None
+        self.output = Queue()
+        self.error = Queue()
         self.stack_error = False
         self.rate = exec_rate or EXEC_RATE
 
@@ -244,13 +242,16 @@ class EuslispProcess(Process):
             raise EuslispError(*self.parse_stack(desc))
         elif err.startswith(";; Segmentation Fault"):
             err = "Segmentation Fault"
+            continuable = True
             self.reset()
+        else:
+            continuable = False
         err = [err]
         while not self.error.empty():
             err.append(self.error.get(timeout=self.rate))
-        raise EuslispError(self.delim.join(err))
+        raise EuslispFatalError(self.delim.join(err), continuable=continuable)
 
-    def exec_command(self, cmd_str, internal=False):
+    def exec_command(self, cmd_str, internal=False, timeout=None):
         self.output = Queue()
         self.error = Queue()
         self.stack_error = False
@@ -266,6 +267,8 @@ class EuslispProcess(Process):
         self.input(cmd_str)
         self.processing = True
 
+        if timeout:
+            start = time.time()
         # token is placed before and after the command result
         # yield printed messages and finally the result itself
         while True:
@@ -299,6 +302,8 @@ class EuslispProcess(Process):
                     else:
                         result.append(out)
             else:
+                if timeout and time.time() - start > timeout:
+                    raise EuslispFatalError("Timeout Reached", continuable=True)
                 if self.error.empty():
                     # Pickup Intermediate Results
                     # (messages printed before the final result)
