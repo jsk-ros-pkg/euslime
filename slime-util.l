@@ -41,11 +41,12 @@
 (defun split-package (name)
   ;; TODO: read |escaped\|forms|
   (let* ((pos (position-from-end #\: name))
-         (internal (and pos (= #\: (elt name (1- pos))))))
-    (if pos
-        (values (string-upcase (subseq name 0 (if internal (1- pos) pos)))
-                (subseq name (1+ pos)))
-        (values nil name))))
+         (internal (and pos (plusp pos) (= #\: (elt name (1- pos))))))
+    (case pos
+      (nil (values nil name))
+      (0 (values "KEYWORD" (subseq name (1+ pos))))
+      (t (values (string-upcase (subseq name 0 (if internal (1- pos) pos)))
+                 (subseq name (1+ pos)))))))
 
 (defmacro slime-do-symbols (var &rest body)
   ;; var: (variable-name &optional package result)
