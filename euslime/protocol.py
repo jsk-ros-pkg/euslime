@@ -103,6 +103,5 @@ class Protocol(object):
                     yield self.make_response(comm_id, resp)
                     finished = True
         except Exception as e:
-            # log.error(e)
             log.error(traceback.format_exc())
             yield self.make_error(comm_id, e)

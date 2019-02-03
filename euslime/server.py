@@ -35,7 +35,7 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
 
         e.g.) 000016(:return (:ok nil) 1)\n
         """
-        log.debug("handle")
+        log.debug("Entering handle loop...")
         while True:
             try:
                 head_data = self.request.recv(HEADER_LENGTH)
@@ -46,25 +46,24 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
                     break
                 length = int(head_data, 16)
                 recv_data = self.request.recv(length)
-                log.info('raw data: %s', recv_data)
+                log.debug('raw data: %s', recv_data)
                 recv_data = recv_data.decode(self.encoding)
                 for send_data in self.swank.process(recv_data):
-                    log.info('response: %s', send_data)
+                    log.debug('response: %s', send_data)
                     send_data = send_data.encode(self.encoding)
                     self.request.send(send_data)
             except socket.timeout:
-                log.error('socket timeout')
+                log.error('Socket Timeout')
                 break
             except KeyboardInterrupt:
-                log.info("Keyboard Interrupt!")
+                log.warn("Keyboard Interrupt!")
                 for msg in self.swank.interrupt():
                     self.request.send(msg)
             except Exception as e:
-                log.error(e)
                 log.error(traceback.format_exc())
                 break
 
-        log.info("Server is shutting down")
+        log.warn("Server is shutting down")
 
         # to kill daemon
         def kill_server(s):
@@ -107,7 +106,6 @@ def serve(host='0.0.0.0', port=0, port_filename=str(), encoding='utt-8'):
     try:
         server.serve_forever()
     except Exception as e:
-        log.error(e)
         log.error(traceback.format_exc())
     finally:
         server.server_close()

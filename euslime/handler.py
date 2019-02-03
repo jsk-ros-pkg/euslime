@@ -164,7 +164,7 @@ class EuslimeHandler(object):
         try:
             sexp = sexp[1]  # unquote
             scope, cursor = current_scope(sexp)
-            log.info("scope: %s, cursor: %s" % (scope, cursor))
+            log.debug("scope: %s, cursor: %s" % (scope, cursor))
             assert cursor > 0
             func = scope[0]
             scope = scope[:-1] # remove marker
@@ -174,7 +174,6 @@ class EuslimeHandler(object):
                 result = loads(result) # unquote
             yield [result, True]
         except Exception as e:
-            log.error(e)
             log.error(traceback.format_exc())
             yield [Symbol(":not-available"), True]
 

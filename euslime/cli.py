@@ -41,6 +41,7 @@ def main():
                    choices=LOG_LEVELS.keys())
 
     if len(sys.argv) == 1:
+        set_log_level('info')
         log.info("Launched with emacs mode")
         init_sexp = sexpdata.loads(
             _input("Waiting for initialization command..."))

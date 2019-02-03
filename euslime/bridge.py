@@ -94,9 +94,9 @@ class Process(object):
         self.process.stdin.write('"euslime-internal-token" (reset)' + self.delim)
 
     def ping(self):
-        log.debug("PING")
+        log.debug("Ping...")
         list(self.exec_command(self.delim, internal=True, timeout=self.poll_rate))
-        log.debug("PONG")
+        log.debug("...Pong")
 
     def _get_stream_thread(self, name, stream, callback):
         buf = str()
@@ -211,7 +211,7 @@ class EuslispProcess(Process):
         strace = list()
         # get description
         while not desc:
-            log.info("get desc {}".format(time.time()))
+            log.debug("get desc: {}".format(time.time()))
             try:
                 desc = self.output.get(timeout=self.rate)
             except Empty:
@@ -226,7 +226,7 @@ class EuslispProcess(Process):
         # get call stack
         while not self.error.empty():
             e = self.error.get(timeout=self.rate)
-            log.info("stack error: %s" % e)
+            log.debug("Stack error: %s" % e)
             split = e.strip().split(": at ")
             if len(split) == 2:
                 num, msg = split
