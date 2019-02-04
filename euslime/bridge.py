@@ -19,6 +19,7 @@ from euslime.logger import get_logger
 log = get_logger(__name__)
 IS_POSIX = 'posix' in sys.builtin_module_names
 BUFSIZE = 1
+BUFLENGTH = 5000
 POLL_RATE = 0.5
 EXEC_RATE = 0.05
 DELIM = os.linesep
@@ -27,6 +28,8 @@ REGEX_ANSI = re.compile(r'\x1b[^m]*m')
 def get_signal(signum):
     return [v for v,k in signal.__dict__.iteritems() if k == signum][0]
 
+def no_color(msg):
+    return REGEX_ANSI.sub(str(), msg)
 
 class Process(object):
     def __init__(self, cmd,
@@ -169,36 +172,38 @@ class EuslispFatalError(EuslispError):
 
 class IntermediateResult(object):
     def __init__(self, value):
-        if isinstance(value, str):
-            # Use global DELIM to be correctly interpreted by SLIME
-            value += DELIM
         self.value = value
 
 class EuslispProcess(Process):
-    def __init__(self, exec_rate=None):
+    def __init__(self, exec_rate=None, buflen=None, color=False):
         super(EuslispProcess, self).__init__(
             cmd=["roseus", "~/.euslime/slime-loader.l"],
             on_output=self.on_output,
             on_error=self.on_error,
         )
 
+        self.color = color # Requires slime-repl-ansi-color
         self.processing = False
         self.output = Queue()
         self.error = Queue()
         self.stack_error = False
         self.rate = exec_rate or EXEC_RATE
+        self.buflen = buflen or BUFLENGTH
 
     def on_output(self, msg):
-        msg = REGEX_ANSI.sub(str(), msg)
+        if not self.color:
+            msg = no_color(msg)
         log.debug("output: %s" % msg)
         self.output.put(msg)
 
     def on_error(self, msg):
-        msg = REGEX_ANSI.sub(str(), msg)
+        msg_nc = no_color(msg)
+        if not self.color:
+            msg = msg_nc
         log.debug("error: %s" % msg)
         if self.stack_error:
             self.error.put(msg)
-        elif msg.startswith(("Call Stack", ";; Segmentation Fault")):
+        elif msg_nc.startswith(("Call Stack", ";; Segmentation Fault")):
             # Since *error-output* is re-binded to *standard-output*,
             # the error stack only have lower level (eus-c level) errors.
             # Therefore, we can parse without worrying about clashing
@@ -211,7 +216,7 @@ class EuslispProcess(Process):
     def parse_stack(self, desc):
         # get description
         while True:
-            if desc:
+            if desc is not None:
                 split = desc.split("irteusgl 0 error: ", 1)
                 if len(split) == 2:
                     desc = split[-1]
@@ -228,6 +233,9 @@ class EuslispProcess(Process):
                     # e.g. When sending KeyboardInterrupt to the following:
                     # (let ((i 0)) (while t (format t "~a~%" (incf i))))
                     raise Exception('Keyboard Interrupt')
+        if self.color:
+            # No colors are allowed in sldb
+            desc = no_color(desc)
         desc = desc.strip().capitalize()
 
         # wait for error messages
@@ -250,13 +258,14 @@ class EuslispProcess(Process):
 
     def handle_error(self, desc):
         err = self.error.get(timeout=self.rate)
-        if err.startswith("Call Stack"):
+        err_nc = no_color(err)
+        if err_nc.startswith("Call Stack"):
             for r in self.parse_stack(desc):
                 if isinstance(r, IntermediateResult):
                     yield r
                 else:
                     raise EuslispError(*r)
-        elif err.startswith(";; Segmentation Fault"):
+        elif err_nc.startswith(";; Segmentation Fault"):
             err = "Segmentation Fault"
             continuable = True
             self.reset()
@@ -285,6 +294,8 @@ class EuslispProcess(Process):
 
         if timeout:
             start = time.time()
+        out_stack = list()
+        out_len = 0
         # token is placed before and after the command result
         # yield printed messages and finally the result itself
         while True:
@@ -293,6 +304,10 @@ class EuslispProcess(Process):
                 out = self.output.get(timeout=self.rate)
                 have_token = out.split('"%s"' % token, 1)
             except Empty:
+                if out_stack:
+                    yield IntermediateResult(self.delim.join(out_stack))
+                    out_stack = list()
+                    out_len = 0
                 out = None
 
             # check for presence of the first token
@@ -300,7 +315,9 @@ class EuslispProcess(Process):
             if out and len(have_token) == 2:
                 # Pickup outputs that do not end with newline
                 if have_token[0]:
-                    yield IntermediateResult(have_token[0])
+                    out_stack.append(have_token[0])
+                if out_stack:
+                    yield IntermediateResult(self.delim.join(out_stack))
 
                 # Gather the final result value,
                 # which may be accross multiple lines
@@ -323,8 +340,14 @@ class EuslispProcess(Process):
                 if self.error.empty():
                     # Pickup Intermediate Results
                     # (messages printed before the final result)
-                    if out:
-                        yield IntermediateResult(out)
+                    if out is not None:
+                        # Pack output for increased performance
+                        if out_len > self.buflen:
+                            yield IntermediateResult(self.delim.join(out_stack))
+                            out_stack = list()
+                            out_len = 0
+                        out_stack.append(out)
+                        out_len += len(out)
                 else:
                     for r in self.handle_error(out):
                         yield r

@@ -170,6 +170,13 @@
             (remove-duplicates meths))))
 
 
+;; CONNECTION-INFO
+(defun implementation-version ()
+  ;; Remove color from the console,
+  ;; usually trailing from roseus init message
+  (format t "~c[0m" #\Esc)
+  (lisp-implementation-version))
+
 ;; REPL-PROMPT
 (defun slime-prompt (prev-pack)
   (let ((name (package-name *package*)))

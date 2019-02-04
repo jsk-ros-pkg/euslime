@@ -4,6 +4,7 @@ from sexpdata import Symbol
 import traceback
 import signal
 
+from euslime.bridge import DELIM
 from euslime.bridge import IntermediateResult
 from euslime.handler import DebuggerHandler
 from euslime.logger import get_logger
@@ -60,6 +61,10 @@ class Protocol(object):
 
     def interrupt(self):
         if self.handler.euslisp.processing:
+            # Remove color from console, if any
+            # Use global DELIM for compliance with SLIME
+            yield self.dumps([Symbol(":write-string"), DELIM,
+                              Symbol(":repl-result")])
             if self.handler.euslisp.process.poll() is None:
                 self.handler.euslisp.process.send_signal(signal.SIGINT)
                 self.handler.euslisp.reset()

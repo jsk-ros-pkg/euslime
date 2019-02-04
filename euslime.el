@@ -37,8 +37,11 @@
 
 (defvar slime-lisp-implementations
   '((sbcl ("sbcl") :coding-system utf-8-unix)))
+
 (nconc slime-lisp-implementations
-       (list `(euslisp (,euslime-executable)
+       (list `(euslisp (,euslime-executable "--emacs-mode"
+                                            ,@(if (member 'slime-repl-ansi-color slime-contribs)
+                                                  (list "--color")))
                        :init euslime-init
                        :coding-system utf-8-unix)))
 

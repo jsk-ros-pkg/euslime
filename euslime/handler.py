@@ -6,6 +6,7 @@ import traceback
 from sexpdata import dumps, loads
 from sexpdata import Symbol
 
+from euslime.bridge import DELIM
 from euslime.bridge import IntermediateResult
 from euslime.bridge import EuslispProcess
 from euslime.bridge import EuslispError
@@ -81,7 +82,7 @@ class EuslimeHandler(object):
         self.euslisp.start()
 
     def swank_connection_info(self):
-        version = self.euslisp.eval_block('(lisp-implementation-version)', only_result=True)
+        version = self.euslisp.eval_block('(slime::implementation-version)', only_result=True)
         yield {
             'pid': os.getpid(),
             'style': False,
@@ -119,18 +120,28 @@ class EuslimeHandler(object):
             log.error("Process is busy!")
             yield Symbol('nil')
             return
+        first = True
         finished = False
         for out in self.euslisp.eval(sexp):
             if finished:
                 log.debug('Additional result: %s' % out)
                 raise Exception('More than one result in %s' % sexp)
             if isinstance(out, IntermediateResult):
+                if first:
+                    first = False
+                else:
+                    out.value = self.euslisp.delim + out.value
                 out.value = [Symbol(":write-string"), out.value]
                 yield out
             else:
                 new_prompt = self.euslisp.toplevel_prompt(self.package)
                 if new_prompt:
                     yield IntermediateResult([Symbol(":new-package")] + new_prompt)
+                if not first:
+                    # Remove color from console, if any
+                    # Use global DELIM for compliance with SLIME
+                    yield IntermediateResult([Symbol(":write-string"), DELIM,
+                                              Symbol(":repl-result")])
                 yield [Symbol(":values"), out]
                 finished = True
 
@@ -261,7 +272,7 @@ class EuslimeHandler(object):
         # FIXME: This does not comple actually, just eval instead.
         for out in self.euslisp.eval(sexp):
             if isinstance(out, IntermediateResult):
-                out.value = [Symbol(":write-string"), out.value]
+                out.value = [Symbol(":write-string"), out.value + self.euslisp.delim]
                 yield out
             else:
                 yield IntermediateResult([Symbol(":write-string"), out])
