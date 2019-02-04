@@ -71,7 +71,7 @@
   (multiple-value-bind (pack name) (split-package name)
     (setq name (string-upcase name))
     (if pack
-        (find-symbol name pack)
+        (and (find-package pack) (find-symbol name pack))
         (or (find-symbol name) 
             (let ((packs (package-use *package*)))
               (dolist (p packs)

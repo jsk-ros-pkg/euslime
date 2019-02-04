@@ -6,7 +6,6 @@ import traceback
 from sexpdata import dumps, loads
 from sexpdata import Symbol
 
-from euslime.bridge import DELIM
 from euslime.bridge import IntermediateResult
 from euslime.bridge import EuslispProcess
 from euslime.bridge import EuslispError
@@ -75,10 +74,12 @@ class EuslimeHandler(object):
         self.euslisp.start()
         self.package = None
         self.debugger = []
+        self.had_output = False
 
     def restart_euslisp_process(self):
+        color = self.euslisp.color
         self.euslisp.stop()
-        self.euslisp = EuslispProcess()
+        self.euslisp = EuslispProcess(color=color)
         self.euslisp.start()
 
     def swank_connection_info(self):
@@ -120,15 +121,15 @@ class EuslimeHandler(object):
             log.error("Process is busy!")
             yield Symbol('nil')
             return
-        first = True
+        self.had_output = False
         finished = False
         for out in self.euslisp.eval(sexp):
             if finished:
                 log.debug('Additional result: %s' % out)
                 raise Exception('More than one result in %s' % sexp)
             if isinstance(out, IntermediateResult):
-                if first:
-                    first = False
+                if not self.had_output:
+                    self.had_output = True
                 else:
                     out.value = self.euslisp.delim + out.value
                 out.value = [Symbol(":write-string"), out.value]
@@ -137,10 +138,10 @@ class EuslimeHandler(object):
                 new_prompt = self.euslisp.toplevel_prompt(self.package)
                 if new_prompt:
                     yield IntermediateResult([Symbol(":new-package")] + new_prompt)
-                if not first:
+                if self.had_output:
                     # Remove color from console, if any
-                    # Use global DELIM for compliance with SLIME
-                    yield IntermediateResult([Symbol(":write-string"), DELIM,
+                    yield IntermediateResult([Symbol(":write-string"),
+                                              self.euslisp.delim,
                                               Symbol(":repl-result")])
                 yield [Symbol(":values"), out]
                 finished = True
@@ -180,10 +181,12 @@ class EuslimeHandler(object):
             func = scope[0]
             scope = scope[:-1] # remove marker
             result = self.euslisp.arglist(func, cursor, scope)
-            assert result
-            if result.startswith('"') and result.endswith('"'):
-                result = loads(result) # unquote
-            yield [result, True]
+            if result:
+                if result.startswith('"') and result.endswith('"'):
+                    result = loads(result) # unquote
+                yield [result, True]
+            else:
+                yield [Symbol(":not-available"), True]
         except Exception as e:
             log.error(traceback.format_exc())
             yield [Symbol(":not-available"), True]
