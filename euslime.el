@@ -22,7 +22,7 @@
 
 ;;; Code:
 
-(require 'cl-lib)
+(require 'slime-euslisp)
 
 (defvar euslime-executable "euslime"
   "The euslime executable for Euslisp SLIME.")
@@ -35,8 +35,8 @@
   "Path to Euslisp SLIME compiled files.")
 (setq euslime-compile-path (expand-file-name "~/.euslime/"))
 
-(defvar slime-lisp-implementations
-  '((sbcl ("sbcl") :coding-system utf-8-unix)))
+(defvar slime-lisp-implementations)
+(setq slime-lisp-implementations '((sbcl ("sbcl") :coding-system utf-8-unix)))
 
 (nconc slime-lisp-implementations
        (list `(euslisp (,euslime-executable "--emacs-mode"
@@ -55,6 +55,13 @@
 (add-hook 'euslime-hook
           (lambda ()
             (setq slime-complete-symbol-function 'slime-complete-symbol*)))
+
+;; Start EusLisp mode
+(add-hook 'slime-repl-mode-hook
+          (lambda ()
+            (when (string= "euslisp"
+                   (ignore-errors (slime-connection-name (slime-current-connection))))
+              (slime-euslisp-mode 1))))
 
 (defun euslime-prepare-files ()
   (cl-flet

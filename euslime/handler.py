@@ -349,6 +349,20 @@ class EuslimeHandler(object):
         result = self.euslisp.eval_block(cmd, only_result=True)
         yield loads(result)
 
+    def swank_set_package(self, name):
+        cmd = """(slime::set-package "{0}")""".format(name)
+        result = self.euslisp.eval_block(cmd, only_result=True)
+        yield loads(result)
+
+    def swank_default_directory(self):
+        result = self.euslisp.eval_block("(lisp:pwd)", only_result=True)
+        yield loads(result)
+
+    def swank_set_default_directory(self, dir):
+        cmd = """(progn (lisp:cd "{0}") (lisp:pwd))""".format(dir)
+        result = self.euslisp.eval_block(cmd, only_result=True)
+        yield loads(result)
+
 if __name__ == '__main__':
     h = EuslimeHandler()
     print(dumps(h.swank_connection_info().next()))

@@ -177,6 +177,7 @@
   (format t "~c[0m" #\Esc)
   (lisp-implementation-version))
 
+
 ;; REPL-PROMPT
 (defun slime-prompt (prev-pack)
   (let ((name (package-name *package*)))
@@ -353,3 +354,10 @@
     (sort
      (mapcan #'list-props (apropos-list key package))
      #'string< #'cadr)))
+
+
+;; SWANK-SET-PACKAGE
+(defun set-package (name)
+  (when (find-package name)
+    (in-package name)
+    (slime-prompt "")))
