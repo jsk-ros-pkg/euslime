@@ -82,6 +82,11 @@ class EuslimeHandler(object):
         self.euslisp = EuslispProcess(color=color)
         self.euslisp.start()
 
+    def fresh_line(self):
+        if self.had_output:
+            yield [Symbol(":write-string"), self.euslisp.delim, Symbol(":repl-result")]
+            self.had_output = False
+
     def swank_connection_info(self):
         version = self.euslisp.eval_block('(slime::implementation-version)', only_result=True)
         yield {
@@ -138,11 +143,8 @@ class EuslimeHandler(object):
                 new_prompt = self.euslisp.toplevel_prompt(self.package)
                 if new_prompt:
                     yield IntermediateResult([Symbol(":new-package")] + new_prompt)
-                if self.had_output:
-                    # Remove color from console, if any
-                    yield IntermediateResult([Symbol(":write-string"),
-                                              self.euslisp.delim,
-                                              Symbol(":repl-result")])
+                for r in self.fresh_line():
+                    yield IntermediateResult(r)
                 yield [Symbol(":values"), out]
                 finished = True
 
@@ -235,9 +237,14 @@ class EuslimeHandler(object):
 
     def swank_quit_lisp(self, *args):
         self.euslisp.stop()
+        exit()
 
     def swank_backtrace(self, start, end):
         return []
+
+    def swank_throw_to_toplevel(self):
+        lvl = len(self.debugger)
+        return self.swank_invoke_nth_restart_for_emacs(lvl, 0)
 
     def swank_invoke_nth_restart_for_emacs(self, level, num):
         deb = self.debugger.pop(level - 1)
@@ -260,8 +267,8 @@ class EuslimeHandler(object):
         msg = deb.message.split(self.euslisp.delim)[0]
         msg = repr(msg.rsplit(' in ', 1)[0])
         yield IntermediateResult([Symbol(':debug-return'), 0, level, Symbol('nil')])
+        yield IntermediateResult([Symbol(':return'), {'abort': 'NIL'}, deb.id + 1])
         yield IntermediateResult([Symbol(':return'), {'abort': msg}, deb.id])
-        yield {'abort': 'NIL'}
         self.euslisp.processing = False
 
     def swank_swank_require(self, *sexp):

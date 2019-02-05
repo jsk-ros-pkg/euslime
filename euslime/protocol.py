@@ -45,7 +45,9 @@ class Protocol(object):
             debug.stack,  # stacktrace
             [None],  # pending continuation
         ]
-        return self.dumps(res)
+        for r in self.handler.fresh_line():
+            yield self.dumps(r)
+        yield self.dumps(res)
 
     def make_response(self, id, sexp):
         try:
@@ -54,17 +56,16 @@ class Protocol(object):
                 {'ok': sexp},
                 id,
             ]
-            return self.dumps(res)
+            yield self.dumps(res)
         except Exception as e:
-            return self.make_error(id, e)
+            for r in self.make_error(id, e):
+                yield r
 
     def interrupt(self):
         if self.handler.euslisp.processing:
             # Remove color from console, if any
-            if self.handler.had_output:
-                yield self.dumps([Symbol(":write-string"),
-                                  self.handler.euslisp.delim,
-                                  Symbol(":repl-result")])
+            for r in self.handler.fresh_line():
+                yield self.dumps(r)
             if self.handler.euslisp.process.poll() is None:
                 self.handler.euslisp.process.send_signal(signal.SIGINT)
                 self.handler.euslisp.reset()
@@ -95,7 +96,8 @@ class Protocol(object):
         try:
             gen = getattr(self.handler, func)(*args)
             if not gen:
-                yield self.make_response(comm_id, gen)
+                for r in self.make_response(comm_id, gen):
+                    yield r
                 return
             finished = False
             for resp in gen:
@@ -105,8 +107,10 @@ class Protocol(object):
                 if isinstance(resp, IntermediateResult):
                     yield self.dumps(resp.value)
                 else:
-                    yield self.make_response(comm_id, resp)
+                    for r in self.make_response(comm_id, resp):
+                        yield r
                     finished = True
         except Exception as e:
             log.error(traceback.format_exc())
-            yield self.make_error(comm_id, e)
+            for r in self.make_error(comm_id, e):
+                yield r
