@@ -3,10 +3,8 @@
 # Author: furushchev <furushchev@jsk.imi.i.u-tokyo.ac.jp>
 
 import argparse
-import sys
 
 import euslime
-import sexpdata
 from euslime.logger import get_logger, set_log_level, LOG_LEVELS
 from euslime.server import serve
 

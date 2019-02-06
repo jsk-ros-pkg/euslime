@@ -63,6 +63,7 @@ class Protocol(object):
 
     def interrupt(self):
         if self.handler.euslisp.processing:
+            yield self.dumps([Symbol(":write-string"), "C-c"])
             # Remove color from console, if any
             for r in self.handler.fresh_line():
                 yield self.dumps(r)
@@ -73,7 +74,8 @@ class Protocol(object):
                     self.handler.euslisp.ping()
                     self.handler.euslisp.processing = False
                 except Exception as e:
-                    yield self.make_error(self.command_id, e)
+                    for r in self.make_error(self.command_id, e):
+                        yield r
                     return
             else:
                 yield self.dumps([Symbol(":write-string"),
