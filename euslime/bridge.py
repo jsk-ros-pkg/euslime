@@ -354,8 +354,9 @@ class EuslispProcess(Process):
 
 
     def eval(self, cmd_str, internal=False):
+        cmd_str = cmd_str.strip()
         log.info("eval: %s" % cmd_str)
-        if not cmd_str.strip():
+        if not cmd_str:
             yield '; No value'
         else:
             for r in self.exec_command(cmd_str, internal):

@@ -46,15 +46,13 @@ def main():
                    choices=LOG_LEVELS.keys())
 
     args = p.parse_args()
-    set_log_level(args.log_level)
 
     if args.emacs_mode:
         log.info("Launched with emacs mode")
-        init_sexp = sexpdata.loads(
-            _input("Waiting for initialization command..."))
-        args.port = init_sexp[-1][-2]
-        args.port_filename = init_sexp[-1][-1]
+        init_string = _input("Waiting for initialization command...")
+        args = p.parse_args(init_string.split())
 
+    set_log_level(args.log_level)
     serve(host=args.host, port=args.port,
           port_filename=args.port_filename,
           encoding=args.encoding,

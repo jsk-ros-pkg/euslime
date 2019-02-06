@@ -36,6 +36,7 @@
                 (insert "\n     " (slime-repl-shortcut.one-liner shortcut)))
               (insert "\n"))))))))
 
+;; Override to use LISP package when in EusLisp mode
 (defslime-repl-shortcut slime-repl-defparameter ("defparameter" "!")
   (:handler (lambda (name value)
               (interactive (list (slime-read-symbol-name "Name (symbol): " t)
@@ -45,6 +46,23 @@
                         " \"REPL generated global variable.\")"))
               (slime-repl-send-input t)))
   (:one-liner "Define a new global, special, variable."))
+
+;; Override to abort operation instead of reinitializing (only have hard restarts)
+(defun slime-maybe-start-lisp (program program-args env directory buffer)
+  "Return a new or existing inferior lisp process."
+  (cond ((not (comint-check-proc buffer))
+         (slime-start-lisp program program-args env directory buffer))
+        ((slime-reinitialize-inferior-lisp-p program program-args env buffer)
+         (if slime-euslisp-mode (keyboard-quit))
+         (let ((conn (cl-find (get-buffer-process buffer)
+                              slime-net-processes
+                              :key #'slime-inferior-process)))
+           (when conn
+             (slime-net-close conn)))
+         (get-buffer-process buffer))
+        (t (slime-start-lisp program program-args env directory
+                             (generate-new-buffer-name buffer)))))
+
 
 ;; DEFINE MINOR MODE
 (defun slime-euslisp--doc-map-prefix ()

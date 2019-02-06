@@ -36,12 +36,12 @@
 (setq euslime-compile-path (expand-file-name "~/.euslime/"))
 
 (defvar slime-lisp-implementations)
-(setq slime-lisp-implementations '((sbcl ("sbcl") :coding-system utf-8-unix)))
+(unless slime-lisp-implementations
+  (setq slime-lisp-implementations
+        '((sbcl ("sbcl") :coding-system utf-8-unix))))
 
 (nconc slime-lisp-implementations
-       (list `(euslisp (,euslime-executable "--emacs-mode"
-                                            ,@(if (member 'slime-repl-ansi-color slime-contribs)
-                                                  (list "--color")))
+       (list `(euslisp (,euslime-executable "--emacs-mode")
                        :init euslime-init
                        :coding-system utf-8-unix)))
 
@@ -118,9 +118,9 @@
 (defun euslime-init (file _)
   (setq slime-protocol-version 'ignore)
   (run-hooks 'euslime-hook)
-  (format "%S\n"
-          `(begin '(require-extension slime)
-                  (swank-server-start ,euslime-port ,file))))
+  (format "--port %s --port-filename %s %s\n" euslime-port file
+          (if (member 'slime-repl-ansi-color slime-contribs)
+              "--color" "")))
 
 (defun euslime ()
   "euslime"

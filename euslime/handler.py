@@ -279,7 +279,7 @@ class EuslimeHandler(object):
 
     def swank_compile_string_for_emacs(self, sexp, *args):
         # (sexp buffer-name (:position 1) (:line 1) () ())
-        # FIXME: This does not comple actually, just eval instead.
+        # FIXME: This does not compile actually, just eval instead.
         for out in self.euslisp.eval(sexp):
             if isinstance(out, IntermediateResult):
                 out.value = [Symbol(":write-string"), out.value + self.euslisp.delim]
@@ -295,7 +295,22 @@ class EuslimeHandler(object):
         return self.swank_compile_string_for_emacs(*args)
 
     def swank_compile_file_for_emacs(self, *args):
-        return self.swank_compile_string_for_emacs(*args)
+        return self.swank_compile_file_if_needed(*args)
+
+    def swank_compile_file_if_needed(self, filename, loadp):
+        # FIXME: This returns without checking/compiling the file
+        errors = []
+        seconds = 0.01
+        yield [Symbol(":compilation-result"), errors, True,
+               seconds, loadp, filename]
+
+    def swank_load_file(self, filename):
+        yield IntermediateResult(
+            [Symbol(":write-string"), "\nLoading file: %s ..." % filename])
+        cmd = """(lisp:load "{0}")""".format(filename)
+        result = self.euslisp.eval_block(cmd, only_result=True)
+        yield IntermediateResult([Symbol(":write-string"), "\nLoaded."])
+        yield result
 
     def swank_operator_arglist(self, func, pkg):
         #  (swank:operator-arglist "format" "USER")
