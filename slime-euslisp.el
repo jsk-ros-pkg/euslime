@@ -1,5 +1,6 @@
 (require 'slime)
-;; (require 'slime-repl)
+(require 'slime-repl)
+(require 'ansi-color)
 
 ;; AUXILIARY FUNCTIONS
 (defun remove-asdf-system-shortcuts ()
@@ -63,6 +64,19 @@
         (t (slime-start-lisp program program-args env directory
                              (generate-new-buffer-name buffer)))))
 
+;; Override to avoid trailing newlines upon consecutive execution
+;; The same could be attained by setting `slime-repl-history-trim-whitespaces',
+;; but this causes color change in the prompt-string in Euslisp mode
+(defslime-repl-shortcut slime-repl-resend ("resend-form")
+  (:handler (lambda ()
+              (interactive)
+              (insert (car slime-repl-input-history))
+              (slime-repl-send-input t)))
+  (:one-liner "Resend the last form."))
+
+;; Support ansi-colors in popup buffers
+(add-hook 'slime-popup-buffer-mode-hook
+          (lambda () (ansi-color-apply-on-region (point-min) (point-max))))
 
 ;; DEFINE MINOR MODE
 (defun slime-euslisp--doc-map-prefix ()
@@ -76,8 +90,13 @@
   :keymap (let ((prefix (slime-euslisp--doc-map-prefix)))
             `((,(concat prefix (kbd "C-p")) . slime-apropos-symbol-package)
               (,(concat prefix "p") . slime-apropos-symbol-package)))
+  ;; Use simple-completions rather than fuzzy-completions
+  (setq-local slime-complete-symbol-function 'slime-complete-symbol*)
   ;; Remove unsupported ASDF commands
   (setq-local slime-repl-shortcut-table (remove-asdf-system-shortcuts))
+  ;; Keep history record in a different file
+  (setq-local slime-repl-history-file "~/.euslime-history.eld")
+  (slime-repl-safe-load-history)
   ;; Start Message
   (when (called-interactively-p 'interactive)
     (message "Euslisp SLIME mode %s."

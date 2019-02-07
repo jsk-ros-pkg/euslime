@@ -48,14 +48,6 @@
 (defvar euslime-port 0 ;; Let the OS pick an available port
   "Port number to use for communicating to the swank server.")
 
-(defvar euslime-hook nil
-  "List of functions to call when Euslisp SLIME starts")
-
-;; Use simple-completions rather than fuzzy-completions
-(add-hook 'euslime-hook
-          (lambda ()
-            (setq slime-complete-symbol-function 'slime-complete-symbol*)))
-
 ;; Start EusLisp mode
 (add-hook 'slime-repl-mode-hook
           (lambda ()
@@ -117,7 +109,6 @@
 
 (defun euslime-init (file _)
   (setq slime-protocol-version 'ignore)
-  (run-hooks 'euslime-hook)
   (format "--port %s --port-filename %s %s\n" euslime-port file
           (if (member 'slime-repl-ansi-color slime-contribs)
               "--color" "")))
