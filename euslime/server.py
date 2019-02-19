@@ -4,6 +4,7 @@ except ImportError:
     import socketserver as S
 
 import socket
+from threading import Thread
 from thread import start_new_thread
 import traceback
 
@@ -29,6 +30,17 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
         super(EuslimeRequestHandler, self).__init__(
             request, client_address, server)
 
+    def _process_data(self, recv_data):
+        try:
+            for send_data in self.swank.process(recv_data):
+                log.debug('response: %s', send_data)
+                send_data = send_data.encode(self.encoding)
+                self.request.send(send_data)
+        except KeyboardInterrupt:
+            log.warn("Keyboard Interrupt!")
+            for msg in self.swank.interrupt():
+                self.request.send(msg)
+
     def handle(self):
         """This method handles packets from swank client.
         The basic Slime packet consists of a 6 char hex-string
@@ -49,10 +61,9 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
                 recv_data = self.request.recv(length)
                 log.debug('raw data: %s', recv_data)
                 recv_data = recv_data.decode(self.encoding)
-                for send_data in self.swank.process(recv_data):
-                    log.debug('response: %s', send_data)
-                    send_data = send_data.encode(self.encoding)
-                    self.request.send(send_data)
+                t = Thread(target=self._process_data, args=[recv_data])
+                t.daemon = True
+                t.start()
             except socket.timeout:
                 log.error('Socket Timeout')
                 break
@@ -60,7 +71,7 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
                 log.warn("Keyboard Interrupt!")
                 for msg in self.swank.interrupt():
                     self.request.send(msg)
-            except Exception as e:
+            except Exception:
                 log.error(traceback.format_exc())
                 break
 

@@ -87,6 +87,15 @@ class EuslimeHandler(object):
             yield [Symbol(":write-string"), self.euslisp.delim, Symbol(":repl-result")]
             self.had_output = False
 
+    def _emacs_return_string(self, process, count, msg):
+        self.euslisp.process.stdin.write(msg)
+        self.euslisp.process.stdin.flush()
+        yield IntermediateResult([Symbol(":read-string"), 0, 1])
+
+    def _emacs_interrupt(self, process):
+        yield IntermediateResult([Symbol(":read-aborted"), 0, 1])
+        raise KeyboardInterrupt
+
     def swank_connection_info(self):
         version = self.euslisp.eval_block('(slime::implementation-version)', only_result=True)
         yield {
@@ -128,6 +137,7 @@ class EuslimeHandler(object):
             return
         self.had_output = False
         finished = False
+        yield IntermediateResult([Symbol(":read-string"), 0, 1])
         for out in self.euslisp.eval(sexp):
             if finished:
                 log.debug('Additional result: %s' % out)
@@ -143,6 +153,7 @@ class EuslimeHandler(object):
                 new_prompt = self.euslisp.toplevel_prompt(self.package)
                 if new_prompt:
                     yield IntermediateResult([Symbol(":new-package")] + new_prompt)
+                yield IntermediateResult([Symbol(":read-aborted"), 0, 1])
                 for r in self.fresh_line():
                     yield IntermediateResult(r)
                 yield [Symbol(":values"), out]

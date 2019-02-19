@@ -74,6 +74,15 @@
               (slime-repl-send-input t)))
   (:one-liner "Resend the last form."))
 
+;; Override to avoid printing the warning message
+(defun slime-repl-abort-read (thread tag)
+  (with-current-buffer (slime-output-buffer)
+    (pop slime-read-string-threads)
+    (pop slime-read-string-tags)
+    (slime-repl-read-mode -1)
+    (unless slime-euslisp-mode
+      (message "Read aborted"))))
+
 ;; Support ansi-colors in popup buffers
 (add-hook 'slime-popup-buffer-mode-hook
           (lambda () (ansi-color-apply-on-region (point-min) (point-max))))

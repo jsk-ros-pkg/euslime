@@ -86,11 +86,16 @@ class Protocol(object):
                               self.command_id])
 
     def process(self, data):
-        cmd, form, pkg, thread, comm_id = loads(data)
+        data = loads(data)
+        if data[0] == Symbol(":emacs-rex"):
+            cmd, form, pkg, thread, comm_id = data
+            self.command_id = comm_id
+            self.handler.package = pkg
+        else:
+            form = data
+            comm_id = None
         func = form[0].value().replace(':', '_').replace('-', '_')
         args = form[1:]
-        self.command_id = comm_id
-        self.handler.package = pkg
 
         log.info("func: %s" % func)
         log.info("args: %s" % args)
@@ -98,8 +103,9 @@ class Protocol(object):
         try:
             gen = getattr(self.handler, func)(*args)
             if not gen:
-                for r in self.make_response(comm_id, gen):
-                    yield r
+                if comm_id:
+                    for r in self.make_response(comm_id, gen):
+                        yield r
                 return
             finished = False
             for resp in gen:
@@ -109,10 +115,10 @@ class Protocol(object):
                 if isinstance(resp, IntermediateResult):
                     yield self.dumps(resp.value)
                 else:
-                    for r in self.make_response(comm_id, resp):
+                    for r in self.make_response(self.command_id, resp):
                         yield r
                     finished = True
         except Exception as e:
             log.error(traceback.format_exc())
-            for r in self.make_error(comm_id, e):
+            for r in self.make_error(self.command_id, e):
                 yield r
