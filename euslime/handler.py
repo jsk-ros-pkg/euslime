@@ -134,26 +134,30 @@ class EuslimeHandler(object):
         self.had_output = False
         finished = False
         yield IntermediateResult([Symbol(":read-string"), 0, 1])
-        for out in self.euslisp.eval(sexp):
-            if finished:
-                log.debug('Additional result: %s' % out)
-                raise Exception('More than one result in %s' % sexp)
-            if isinstance(out, IntermediateResult):
-                if not self.had_output:
-                    self.had_output = True
+        try:
+            for out in self.euslisp.eval(sexp):
+                if finished:
+                    log.debug('Additional result: %s' % out)
+                    raise Exception('More than one result in %s' % sexp)
+                if isinstance(out, IntermediateResult):
+                    if not self.had_output:
+                        self.had_output = True
+                    else:
+                        out.value = self.euslisp.delim + out.value
+                    out.value = [Symbol(":write-string"), out.value]
+                    yield out
                 else:
-                    out.value = self.euslisp.delim + out.value
-                out.value = [Symbol(":write-string"), out.value]
-                yield out
-            else:
-                new_prompt = self.euslisp.toplevel_prompt(self.package)
-                if new_prompt:
-                    yield IntermediateResult([Symbol(":new-package")] + new_prompt)
-                yield IntermediateResult([Symbol(":read-aborted"), 0, 1])
-                for r in self.fresh_line():
-                    yield IntermediateResult(r)
-                yield [Symbol(":values"), out]
-                finished = True
+                    new_prompt = self.euslisp.toplevel_prompt(self.package)
+                    if new_prompt:
+                        yield IntermediateResult([Symbol(":new-package")] + new_prompt)
+                    yield IntermediateResult([Symbol(":read-aborted"), 0, 1])
+                    for r in self.fresh_line():
+                        yield IntermediateResult(r)
+                    yield [Symbol(":values"), out]
+                    finished = True
+        except Exception as e:
+            yield IntermediateResult([Symbol(":read-aborted"), 0, 1])
+            raise e
 
     def swank_interactive_eval(self, sexp):
         return self.swank_eval(sexp)
