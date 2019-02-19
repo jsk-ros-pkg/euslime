@@ -62,28 +62,26 @@ class Protocol(object):
                 yield r
 
     def interrupt(self):
-        if self.handler.euslisp.processing:
-            yield self.dumps([Symbol(":write-string"), "C-c"])
-            # Remove color from console, if any
-            for r in self.handler.fresh_line():
-                yield self.dumps(r)
-            if self.handler.euslisp.process.poll() is None:
-                self.handler.euslisp.process.send_signal(signal.SIGINT)
-                self.handler.euslisp.reset()
-                try:
-                    self.handler.euslisp.ping()
-                    self.handler.euslisp.processing = False
-                except Exception as e:
-                    for r in self.make_error(self.command_id, e):
-                        yield r
-                    return
-            else:
-                yield self.dumps([Symbol(":write-string"),
-                                  "Restarting process..." + self.handler.euslisp.delim])
-                self.handler.restart_euslisp_process()
-            yield self.dumps([Symbol(':return'),
-                              {'abort': "'Keyboard Interrupt'"},
-                              self.command_id])
+        yield self.dumps([Symbol(":write-string"), "C-c"])
+        # Remove color from console, if any
+        for r in self.handler.fresh_line():
+            yield self.dumps(r)
+        if self.handler.euslisp.process.poll() is None:
+            self.handler.euslisp.process.send_signal(signal.SIGINT)
+            self.handler.euslisp.reset()
+            try:
+                self.handler.euslisp.ping()
+            except Exception as e:
+                for r in self.make_error(self.command_id, e):
+                    yield r
+                return
+        else:
+            yield self.dumps([Symbol(":write-string"),
+                              "Restarting process..." + self.handler.euslisp.delim])
+            self.handler.restart_euslisp_process()
+        yield self.dumps([Symbol(':return'),
+                          {'abort': "'Keyboard Interrupt'"},
+                          self.command_id])
 
     def process(self, data):
         data = loads(data)

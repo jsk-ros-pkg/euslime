@@ -183,7 +183,6 @@ class EuslispProcess(Process):
         )
 
         self.color = color # Requires slime-repl-ansi-color
-        self.processing = False
         self.output = Queue()
         self.error = Queue()
         self.stack_error = False
@@ -290,7 +289,6 @@ class EuslispProcess(Process):
 
         cmd_str = """"{0}" {1}""".format(token, cmd_str.encode('utf-8'))
         self.input(cmd_str)
-        self.processing = True
 
         if timeout:
             start = time.time()
@@ -330,7 +328,6 @@ class EuslispProcess(Process):
                     if out[1:-1] == token:
                         # finished evaluation
                         yield self.delim.join(result)
-                        self.processing = False
                         return
                     else:
                         result.append(out)

@@ -68,9 +68,8 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
                 log.error('Socket Timeout')
                 break
             except KeyboardInterrupt:
-                log.warn("Keyboard Interrupt!")
-                for msg in self.swank.interrupt():
-                    self.request.send(msg)
+                log.warn("Nothing to interrupt!")
+                pass
             except Exception:
                 log.error(traceback.format_exc())
                 break

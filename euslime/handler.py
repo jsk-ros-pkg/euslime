@@ -131,10 +131,6 @@ class EuslimeHandler(object):
         yield False
 
     def swank_eval(self, sexp):
-        if self.euslisp.processing:
-            log.error("Process is busy!")
-            yield Symbol('nil')
-            return
         self.had_output = False
         finished = False
         yield IntermediateResult([Symbol(":read-string"), 0, 1])
@@ -280,7 +276,6 @@ class EuslimeHandler(object):
         yield IntermediateResult([Symbol(':debug-return'), 0, level, Symbol('nil')])
         yield IntermediateResult([Symbol(':return'), {'abort': 'NIL'}, deb.id + 1])
         yield IntermediateResult([Symbol(':return'), {'abort': msg}, deb.id])
-        self.euslisp.processing = False
 
     def swank_swank_require(self, *sexp):
         return
