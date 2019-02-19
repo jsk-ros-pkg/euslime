@@ -5,6 +5,7 @@ import platform
 import traceback
 from sexpdata import dumps, loads
 from sexpdata import Symbol
+from threading import Event
 
 from euslime.bridge import IntermediateResult
 from euslime.bridge import EuslispProcess
@@ -71,6 +72,7 @@ class DebuggerHandler(object):
 class EuslimeHandler(object):
     def __init__(self):
         self.euslisp = EuslispProcess()
+        self.close_request = Event()
         self.euslisp.start()
         self.package = None
         self.debugger = []
@@ -248,7 +250,7 @@ class EuslimeHandler(object):
 
     def swank_quit_lisp(self, *args):
         self.euslisp.stop()
-        exit()
+        self.close_request.set()
 
     def swank_backtrace(self, start, end):
         return []

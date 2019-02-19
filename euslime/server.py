@@ -3,8 +3,8 @@ try:
 except ImportError:
     import socketserver as S
 
+import time
 import socket
-from threading import Thread
 from thread import start_new_thread
 import traceback
 
@@ -49,9 +49,9 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
         e.g.) 000016(:return (:ok nil) 1)\n
         """
         log.debug("Entering handle loop...")
-        while True:
+        while not self.swank.handler.close_request.is_set():
             try:
-                head_data = self.request.recv(HEADER_LENGTH)
+                head_data = self.request.recv(HEADER_LENGTH, socket.MSG_DONTWAIT)
                 log.debug('raw header: %s', head_data)
                 if not head_data:
                     log.error('Empty header received. Closing socket.')
@@ -61,12 +61,13 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
                 recv_data = self.request.recv(length)
                 log.debug('raw data: %s', recv_data)
                 recv_data = recv_data.decode(self.encoding)
-                t = Thread(target=self._process_data, args=[recv_data])
-                t.daemon = True
-                t.start()
+                start_new_thread(self._process_data, (recv_data,))
             except socket.timeout:
                 log.error('Socket Timeout')
                 break
+            except socket.error:
+                time.sleep(0.01)
+                continue
             except KeyboardInterrupt:
                 log.warn("Nothing to interrupt!")
                 pass
