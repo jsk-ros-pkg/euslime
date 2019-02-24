@@ -1,132 +1,111 @@
-;;;;
-;;;;euslisp toplevel loop and error/signal handler
-;;;;
-;;;;Copyright 1987,1991, Toshihiro MATSUI, Electrotechnical Laboratory
-;;;1987-Oct
-;;;1988execute unix command
-;;;1989reset alarm signal
-;;;1991-AugHistory
-;;;1991-Novprompt
-;;;1996-May*eustop-hook* to intercept control at start-up.
+(unless (find-package "SLIME") (make-package "SLIME"))
+(in-package "SLIME")
 
-(in-package "LISP")
+;;;;;;;;;;;;;;;;;;;;
+;; Socket Connection
+;;;;;;;;;;;;;;;;;;;;
 
-;;
-;; read-list-from-line returns eof if eof hit
-;; if a list is entered, its list is returned
-;; otherwise, a list of all input items in a line is returned
-;;
+(export '(*slime-stream* slime-connect-socket socket-eval
+          slime-error slime-finish-output slimetop
+          print-callstack))
+
+(defvar *slime-stream*)
 
 (eval-when (load eval)
 
-  ;; Set signal-handler
-  ;; which is not set by default because *standard-input* is not tty
-  (unix:signal unix::sigint 'sigint-handler 2)
+(defun slime-connect-socket (port)
+  (do ((strm (connect-server "0.0.0.0" port) (connect-server "0.0.0.0" port)))
+      ((streamp strm)
+       (defconstant *slime-stream* strm)
+       strm)
+    (unix:usleep 100000)))
 
-  ;; Set *history*
-  ;; which is not done by default because *standard-input* is not tty
-  (when (fboundp 'unix:tcgets)
-    (setq *tc* (unix:tcgets *standard-input*)) 
-    (new-history *history-max*))
+(defun socket-request (command value)
+  (assert (streamp *slime-stream*))
+  (let* ((str (format nil "(~a ~s)" command value))
+         (len (substitute #\0 #\space (format nil "~6,x" (length str)))))
+    (format *slime-stream* len)
+    (format *slime-stream* str)
+    (finish-output *slime-stream*)))
 
-  ;;
-  ;; Read-Eval-Print-1
-  ;;
-  (defun rep1 (repstream eof local-bindings &optional (ttyp t))
-    ;; Overwrites to:
-    ;; 1. Print token two times, before and after output value
-    ;; 2. Do not add slime internal functions to history and output log
-    (let* ((token (read repstream nil nil))
-           (input (read-list-from-line repstream eof))
-           (slime-func (string= token "euslime-internal-token" :end1 22))
-           result)
-      (if (eq input eof) (return-from rep1 eof))
-      (when (and input (or (not (streamp input))
-                           (> (length (send input :buffer)) 0)))
-        (when (and *history* (not slime-func))
-          (add-history
-           (cond ((consp input) (format nil "~s" input))
-                 ((streamp input) (send input :buffer))
-                 (t (string input)))) )
-        ;; if something is going to be put in the history buffer,
-        ;; it certainly has some value to be processed by the hook.
-        (if *toplevel-hook* (funcall *toplevel-hook*))
-        )
-      (cond
-        ((null input) nil)
-        ((symbolp input)
-         ;; (if *history* (add-history (string input)))
-         (setq - input
-               result
-               (cond
-                 ((> *replevel* 0)
-                  (eval-dynamic input local-bindings))
-                 ((boundp input) (eval input))
-                 (t '*unbound*)))
-         ;; (if ttyp (print result repstream))
-         (print token repstream)
-         (print result repstream)
-         )
-        ((or (null (streamp input)) (listp input))
-         ;; (if *history* (add-history (format nil "~s" input)))
-         (setq - input)
-         (setq result (eval input))
-         ;;(if ttyp (print result  repstream)))
-         (print token repstream)
-         (print result  repstream))
-        ((streamp input)
-         (setq result (evaluate-stream input))
-         ;;(if ttyp  (print result repstream))
-         (print token repstream)
-         (print result repstream))
-        (t (print "?" repstream)))
-      (unless slime-func
-        (setq +++ ++ ++ + + -)
-        (setq *** ** ** * * result))
-      (print token repstream)))
+(defun socket-eval (strm)
+  (socket-request "result"
+   (evaluate-stream strm)))
 
+;; Slime Toplevel
 
-  ;; Recompile with overwritten rep1 definition
-  (defun reploop-non-select (&optional (repstream *terminal-io*)
-                               (ttyp (unix:isatty repstream)))
-                                        ;read-eval-print loop
-    (let* ((*error-handler* 'euserror)
-           (eof (gensym))
-           (input) (local-bindings) (special-bindings))
-      (if (> *replevel* 0)
-          (setq  local-bindings (sys:list-all-bindings)
-                                        ;special-bindings (sys:list-all-special-bindings)
-                 ))
-      (while t
-        (catch :reploop
-          (if ttyp (prompt repstream))
-          (if (eql (rep1 repstream eof local-bindings ttyp) eof)
-              (return-from reploop-non-select nil))
-          ))))
+(defun slime-error (code msg1 form &optional (msg2))
+  (if (and msg2 (zerop (length msg1))) (setq msg1 msg2 msg2 nil))
+  (socket-request "error"
+   (with-output-to-string (s)
+     (format s "~a" msg1)
+     (if msg2 (format s " ~a" msg2))
+     (if form (format s " in ~s" form))))
+  (let ((*replevel* (1+ *replevel*))
+        (*reptype* "E"))
+    (while (catch *replevel* (reploop #'toplevel-prompt))))
+  (throw *replevel* t))
 
-  (defun repsel (repstream eof ttyp local-bindings)
-    (if (eql (rep1 repstream eof local-bindings ttyp) eof)
-        (throw :reploop-select nil))
-    (if ttyp (prompt repstream) ))
+(defun slime-finish-output (strm)
+  (when (derivedp *slime-stream* socket-stream)
+    (format strm "~Ceuslime-token-~A" 29 ;; group separator
+            (send (lisp::socket-stream-address *slime-stream*) :port))
+    (finish-output strm)))
+
+(defun slimetop ()
+  (lisp::install-error-handler 'slime:slime-error)
+  (setq lisp::*max-callstack-depth* 0)
+  (catch :eusexit
+    (while t
+      (catch 0
+        (let ((*replevel* 0) (*reptype* ""))
+          (reploop #'toplevel-prompt))
+        (throw :eusexit nil))
+      ;; (slime:slime-finish-output *terminal-io*)
+      ))
+  (throw :eusexit nil))
+
+(defun print-callstack (n)
+  (let ((lisp::*max-callstack-depth* n))
+    (error "print-callstack")))
+)
+
+;;;;;;;;;;;;;;;;;;;;;;
+;; Toplevel Overwrites
+;;;;;;;;;;;;;;;;;;;;;;
+
+(in-package "LISP")
+
+(defun repsel (repstream eof ttyp local-bindings)
+   (if (eql (rep1 repstream eof local-bindings ttyp) eof)
+       (throw :reploop-select nil))
+   (if ttyp (prompt repstream)
+       (slime:slime-finish-output repstream)))
+
+(defun reploop (prompt &optional (repstream *terminal-io*) (ttyp (unix:isatty repstream)))
+  (let ((*prompt* prompt))
+    (unless ttyp (slime:slime-finish-output repstream))
+    (send *top-selector* :add-port slime:*slime-stream* #'slime:socket-eval slime:*slime-stream*)
+    (reploop-select repstream ttyp)))
 
 
-  ;; Remove the "interrupt" message
-  (defun sigint-handler (sig code)
-   ;; (warning-message 1 "interrupt")
-   (if (fboundp 'unix:ualarm)
-       (unix:ualarm 0 0)
-       (unix:alarm 0))
-   (let* ((*replevel* (1+ *replevel*))
-	  (*reptype* "B"))
-      (catch *replevel* (reploop #'toplevel-prompt))))
+;;;;;;;;;;;;;
+;; Setup REPL
+;;;;;;;;;;;;;
 
+(eval-when (load eval)
 
-  ;; Signal error in assert
-  (defmacro assert (pred &optional message &rest args)
-    `(if (not ,pred)
-       (error ,@(if message
-                    (cons message args)
-                    (list "Assertation Error")))))
+  ;; Set signal-handler and *history* for non-tty streams
+  (unless (unix:isatty *standard-input*)
+    (unix:signal unix::sigint 'sigint-handler 2)
+    (when (fboundp 'unix:tcgets)
+      (setq *tc* (unix:tcgets *standard-input*))
+      (new-history *history-max*)))
 
-  )
-
+  ;; Connect to socket
+  (let ((port (find "--port-" *eustop-argument* :test #'(lambda (a b) (string= a b :end2 7)))))
+    (when port
+      (setq port (read-from-string (subseq port 7)))
+      (assert (numberp port))
+      (slime:slime-connect-socket port)))
+)

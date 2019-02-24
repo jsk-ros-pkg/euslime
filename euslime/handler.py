@@ -62,7 +62,7 @@ class DebuggerHandler(object):
             self.message = error.message
             self.stack = error.stack
         elif isinstance(error, Exception):
-            self.message = error.message.strip()
+            self.message = '{}: {}'.format(type(error).__name__, error)
             self.stack = None
         else:
             self.message = error
@@ -74,9 +74,9 @@ class EuslimeHandler(object):
         self.euslisp = EuslispProcess()
         self.close_request = Event()
         self.euslisp.start()
+        self.command_id = None
         self.package = None
         self.debugger = []
-        self.had_output = False
 
     def restart_euslisp_process(self):
         color = self.euslisp.color
@@ -84,22 +84,16 @@ class EuslimeHandler(object):
         self.euslisp = EuslispProcess(color=color)
         self.euslisp.start()
 
-    def fresh_line(self):
-        if self.had_output:
-            yield [Symbol(":write-string"), self.euslisp.delim, Symbol(":repl-result")]
-            self.had_output = False
-
     def _emacs_return_string(self, process, count, msg):
-        self.euslisp.process.stdin.write(msg)
-        self.euslisp.process.stdin.flush()
+        self.euslisp.input(msg)
         yield IntermediateResult([Symbol(":read-string"), 0, 1])
 
     def _emacs_interrupt(self, process):
-        yield IntermediateResult([Symbol(":read-aborted"), 0, 1])
         raise KeyboardInterrupt
 
     def swank_connection_info(self):
-        version = self.euslisp.eval_block('(slime::implementation-version)', only_result=True)
+        version = self.euslisp.exec_internal('(slime::implementation-version)')
+        name = self.euslisp.exec_internal('(pathname-name *program-name*)')
         yield {
             'pid': os.getpid(),
             'style': False,
@@ -107,8 +101,8 @@ class EuslimeHandler(object):
                 'coding-systems': ['utf-8-unix', 'iso-latin-1-unix'],
             },
             'lisp-implementation': {
-                'type': 'irteusgl',
-                'name': 'irteusgl',
+                'type': name,
+                'name': name,
                 'version': version,
                 'program': False,
             },
@@ -118,13 +112,13 @@ class EuslimeHandler(object):
             },
             'package': {
                 'name': 'USER',
-                'prompt': 'irteusgl',
+                'prompt': name,
             },
             'version': "2.20",  # swank version
         }
 
     def swank_create_repl(self, sexp):
-        yield self.euslisp.toplevel_prompt('')
+        yield self.euslisp.exec_internal('(slime::slime-prompt "")')
 
     def swank_repl_create_repl(self, *sexp):
         return self.swank_create_repl(sexp)
@@ -133,7 +127,6 @@ class EuslimeHandler(object):
         yield False
 
     def swank_eval(self, sexp):
-        self.had_output = False
         finished = False
         yield IntermediateResult([Symbol(":read-string"), 0, 1])
         try:
@@ -142,20 +135,18 @@ class EuslimeHandler(object):
                     log.debug('Additional result: %s' % out)
                     raise Exception('More than one result in %s' % sexp)
                 if isinstance(out, IntermediateResult):
-                    if not self.had_output:
-                        self.had_output = True
-                    else:
-                        out.value = self.euslisp.delim + out.value
-                    out.value = [Symbol(":write-string"), out.value]
+                    out.value = [Symbol(":write-string"), out.value] # Symbol(":repl-result")
                     yield out
                 else:
-                    new_prompt = self.euslisp.toplevel_prompt(self.package)
+                    cmd = """(slime::slime-prompt "{0}")""".format(self.package)
+                    new_prompt = self.euslisp.exec_internal(cmd)
                     if new_prompt:
                         yield IntermediateResult([Symbol(":new-package")] + new_prompt)
                     yield IntermediateResult([Symbol(":read-aborted"), 0, 1])
-                    for r in self.fresh_line():
-                        yield IntermediateResult(r)
-                    yield [Symbol(":values"), out]
+                    if out is not None:
+                        yield [Symbol(":values"), out]
+                    else:
+                        yield out
                     finished = True
         except Exception as e:
             yield IntermediateResult([Symbol(":read-aborted"), 0, 1])
@@ -215,7 +206,8 @@ class EuslimeHandler(object):
 
     def swank_simple_completions(self, start, pkg):
         # (swank:simple-completions "vector-" (quote "USER"))
-        yield self.euslisp.find_symbol(start)
+        cmd = """(slime::slime-find-symbol "{0}")""".format(start)
+        yield self.euslisp.exec_internal(cmd)
 
     def swank_fuzzy_completions(self, prefix, pkg, _, limit, *args):
         # (swank:fuzzy-completions "a" "USER"
@@ -238,10 +230,12 @@ class EuslimeHandler(object):
 
         else:
             scope = None
-        yield self.euslisp.find_keyword(start, dumps(scope))
+        cmd = """(slime::slime-find-keyword "{0}" '{1})""".format(start, dumps(scope))
+        yield self.euslisp.exec_internal(cmd)
 
     def swank_completions_for_character(self, start):
-        yield self.euslisp.find_character(start)
+        cmd = """(slime::slime-find-character "{0}")""".format(start)
+        yield self.euslisp.exec_internal(cmd)
 
     def swank_complete_form(self, *args):
         # (swank:complete-form
@@ -253,7 +247,8 @@ class EuslimeHandler(object):
         self.close_request.set()
 
     def swank_backtrace(self, start, end):
-        return []
+        res = self.euslisp.get_callstack(end)
+        yield res[start:]
 
     def swank_throw_to_toplevel(self):
         lvl = len(self.debugger)
@@ -280,7 +275,7 @@ class EuslimeHandler(object):
         msg = deb.message.split(self.euslisp.delim)[0]
         msg = repr(msg.rsplit(' in ', 1)[0])
         yield IntermediateResult([Symbol(':debug-return'), 0, level, Symbol('nil')])
-        yield IntermediateResult([Symbol(':return'), {'abort': 'NIL'}, deb.id + 1])
+        yield IntermediateResult([Symbol(':return'), {'abort': 'NIL'}, self.command_id])
         yield IntermediateResult([Symbol(':return'), {'abort': msg}, deb.id])
 
     def swank_swank_require(self, *sexp):
@@ -294,7 +289,7 @@ class EuslimeHandler(object):
         # FIXME: This does not compile actually, just eval instead.
         for out in self.euslisp.eval(sexp):
             if isinstance(out, IntermediateResult):
-                out.value = [Symbol(":write-string"), out.value + self.euslisp.delim]
+                out.value = [Symbol(":write-string"), out.value]
                 yield out
             else:
                 yield IntermediateResult([Symbol(":write-string"), out])
@@ -319,8 +314,7 @@ class EuslimeHandler(object):
     def swank_load_file(self, filename):
         yield IntermediateResult(
             [Symbol(":write-string"), "\nLoading file: %s ..." % filename])
-        cmd = """(lisp:load "{0}")""".format(filename)
-        result = self.euslisp.eval_block(cmd, only_result=True)
+        result = self.euslisp.exec_internal('(lisp:load "{0}")'.format(filename))
         yield IntermediateResult([Symbol(":write-string"), "\nLoaded."])
         yield result
 
@@ -349,8 +343,7 @@ class EuslimeHandler(object):
 
     def swank_describe_symbol(self, sym):
         cmd = """(slime::slime-describe-symbol "{0}")""".format(sym.strip())
-        result =  self.euslisp.eval_block(cmd, only_result=True)
-        yield loads(result)
+        yield self.euslisp.exec_internal(cmd)
 
     def swank_describe_function(self, func):
         return self.swank_describe_symbol(func)
@@ -360,35 +353,29 @@ class EuslimeHandler(object):
 
     def swank_swank_expand_1(self, form):
         cmd = """(slime::slime-macroexpand '{0})""".format(form)
-        result = self.euslisp.eval_block(cmd, only_result=True)
-        yield loads(result)
+        yield self.euslisp.exec_internal(cmd)
 
     def swank_list_all_package_names(self, nicknames=None):
         cmd = """(slime::slime-all-packages {0})""".format(dumps(nicknames))
-        result = self.euslisp.eval_block(cmd, only_result=True)
-        yield loads(result)
+        yield self.euslisp.exec_internal(cmd)
 
     def swank_apropos_list_for_emacs(self, key, external_only=None, case_sensitive=None,
                                      package=None):
         # ignore 'external_only' and 'case_sensitive' arguments
         package = package[-1] # unquote
         cmd = """(slime::slime-apropos-list "{0}" {1})""".format(key, dumps(package))
-        result = self.euslisp.eval_block(cmd, only_result=True)
-        yield loads(result)
+        yield self.euslisp.exec_internal(cmd)
 
     def swank_set_package(self, name):
         cmd = """(slime::set-package "{0}")""".format(name)
-        result = self.euslisp.eval_block(cmd, only_result=True)
-        yield loads(result)
+        yield self.euslisp.exec_internal(cmd)
 
     def swank_default_directory(self):
-        result = self.euslisp.eval_block("(lisp:pwd)", only_result=True)
-        yield loads(result)
+        yield self.euslisp.exec_internal("(lisp:pwd)")
 
     def swank_set_default_directory(self, dir):
         cmd = """(progn (lisp:cd "{0}") (lisp:pwd))""".format(dir)
-        result = self.euslisp.eval_block(cmd, only_result=True)
-        yield loads(result)
+        yield self.euslisp.exec_internal(cmd)
 
 if __name__ == '__main__':
     h = EuslimeHandler()

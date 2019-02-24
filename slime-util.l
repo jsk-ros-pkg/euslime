@@ -1,9 +1,6 @@
 (unless (find-package "SLIME") (make-package "SLIME"))
 (in-package "SLIME")
 
-;; Set error-output
-(setq *error-output* *standard-output*)
-
 ;; Generate  *help-hash*
 ;; (setq help::*eus-tex-dir* "/path/to/latex/")
 (help '+ nil nil)

@@ -1,6 +1,4 @@
-from sexpdata import dumps
-from sexpdata import loads
-from sexpdata import Symbol
+from sexpdata import dumps, loads, Symbol
 import traceback
 import signal
 
@@ -12,10 +10,8 @@ log = get_logger(__name__)
 
 
 class Protocol(object):
-    def __init__(self, handler, prompt='irteusgl$ '):
+    def __init__(self, handler):
         self.handler = handler()
-        self.prompt = prompt
-        self.command_id = None
 
     def dumps(self, sexp):
         def with_header(sexp):
@@ -45,8 +41,6 @@ class Protocol(object):
             debug.stack,  # stacktrace
             [None],  # pending continuation
         ]
-        for r in self.handler.fresh_line():
-            yield self.dumps(r)
         yield self.dumps(res)
 
     def make_response(self, id, sexp):
@@ -62,32 +56,18 @@ class Protocol(object):
                 yield r
 
     def interrupt(self):
-        yield self.dumps([Symbol(":write-string"), "C-c"])
-        # Remove color from console, if any
-        for r in self.handler.fresh_line():
-            yield self.dumps(r)
-        if self.handler.euslisp.process.poll() is None:
-            self.handler.euslisp.process.send_signal(signal.SIGINT)
-            self.handler.euslisp.reset()
-            try:
-                self.handler.euslisp.ping()
-            except Exception as e:
-                for r in self.make_error(self.command_id, e):
-                    yield r
-                return
-        else:
-            yield self.dumps([Symbol(":write-string"),
-                              "Restarting process..." + self.handler.euslisp.delim])
-            self.handler.restart_euslisp_process()
+        yield self.dumps([Symbol(":read-aborted"), 0, 1])
+        self.handler.euslisp.process.send_signal(signal.SIGINT)
+        self.handler.euslisp.reset()
         yield self.dumps([Symbol(':return'),
                           {'abort': "'Keyboard Interrupt'"},
-                          self.command_id])
+                          self.handler.command_id])
 
     def process(self, data):
         data = loads(data)
         if data[0] == Symbol(":emacs-rex"):
             cmd, form, pkg, thread, comm_id = data
-            self.command_id = comm_id
+            self.handler.command_id = comm_id
             self.handler.package = pkg
         else:
             form = data
@@ -113,10 +93,10 @@ class Protocol(object):
                 if isinstance(resp, IntermediateResult):
                     yield self.dumps(resp.value)
                 else:
-                    for r in self.make_response(self.command_id, resp):
+                    for r in self.make_response(self.handler.command_id, resp):
                         yield r
                     finished = True
         except Exception as e:
             log.error(traceback.format_exc())
-            for r in self.make_error(self.command_id, e):
+            for r in self.make_error(self.handler.command_id, e):
                 yield r
