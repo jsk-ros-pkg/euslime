@@ -84,6 +84,12 @@ class EuslimeHandler(object):
         self.euslisp = EuslispProcess(color=color)
         self.euslisp.start()
 
+    def maybe_new_prompt(self):
+        cmd = """(slime::slime-prompt "{0}")""".format(self.package)
+        new_prompt = self.euslisp.exec_internal(cmd)
+        if new_prompt:
+            yield IntermediateResult([Symbol(":new-package")] + new_prompt)
+
     def _emacs_return_string(self, process, count, msg):
         self.euslisp.input(msg)
         yield IntermediateResult([Symbol(":read-string"), 0, 1])
@@ -138,11 +144,9 @@ class EuslimeHandler(object):
                     out.value = [Symbol(":write-string"), out.value] # Symbol(":repl-result")
                     yield out
                 else:
-                    cmd = """(slime::slime-prompt "{0}")""".format(self.package)
-                    new_prompt = self.euslisp.exec_internal(cmd)
-                    if new_prompt:
-                        yield IntermediateResult([Symbol(":new-package")] + new_prompt)
                     yield IntermediateResult([Symbol(":read-aborted"), 0, 1])
+                    for val in self.maybe_new_prompt():
+                        yield val
                     if out is not None:
                         yield [Symbol(":values"), out]
                     else:
@@ -276,13 +280,15 @@ class EuslimeHandler(object):
         msg = repr(msg.rsplit(' in ', 1)[0])
         yield IntermediateResult([Symbol(':debug-return'), 0, level, Symbol('nil')])
         yield IntermediateResult([Symbol(':return'), {'abort': 'NIL'}, self.command_id])
+        for val in self.maybe_new_prompt():
+            yield val
         yield IntermediateResult([Symbol(':return'), {'abort': msg}, deb.id])
 
     def swank_swank_require(self, *sexp):
         return
 
     def swank_init_presentations(self, *sexp):
-        log.info(sexp)
+        return
 
     def swank_compile_string_for_emacs(self, sexp, *args):
         # (sexp buffer-name (:position 1) (:line 1) () ())

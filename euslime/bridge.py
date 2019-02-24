@@ -82,7 +82,7 @@ class Process(object):
 
     def ping(self):
         log.debug("Ping...")
-        self.exec_internal(self.delim)
+        self.input(self.delim)
         log.debug("...Pong")
 
     def _get_stream_thread(self, name, stream, callback):
@@ -156,7 +156,7 @@ class EuslispProcess(Process):
         host, port = self.socket.getsockname()
         log.info("Connecting to euslime socket on %s:%s..." % (host, port))
         conn, _ = self.socket.accept()
-        log.info("... Connected to euslime socket!")
+        log.info("...Connected to euslime socket!")
         return conn
 
     def on_output(self, msg):
