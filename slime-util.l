@@ -176,12 +176,14 @@
 
 
 ;; REPL-PROMPT
-(defun slime-prompt (prev-pack)
-  (let ((name (package-name *package*)))
-    (unless (string-equal name prev-pack)
-      (if (eql *package* *user-package*)
-          (list name *prompt-string*)
-          (list name (format nil "~a:~a" name *prompt-string*))))))
+(defvar last-prompt)
+(defun slime-prompt ()
+  (let ((prompt
+         (string-right-trim (list #\space #\$ #\:)
+          (with-output-to-string (s) (lisp::prompt s)))))
+    (unless (equal prompt last-prompt)
+      (setq last-prompt prompt)
+      (list (package-name *package*) prompt))))
 
 
 ;; SWANK-SIMPLE-COMPLETIONS
@@ -357,4 +359,4 @@
 (defun set-package (name)
   (when (find-package name)
     (in-package name)
-    (slime-prompt "")))
+    (slime-prompt)))

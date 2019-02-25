@@ -85,8 +85,7 @@ class EuslimeHandler(object):
         self.euslisp.start()
 
     def maybe_new_prompt(self):
-        cmd = """(slime::slime-prompt "{0}")""".format(self.package)
-        new_prompt = self.euslisp.exec_internal(cmd)
+        new_prompt = self.euslisp.exec_internal("(slime::slime-prompt)")
         if new_prompt:
             yield IntermediateResult([Symbol(":new-package")] + new_prompt)
 
@@ -124,7 +123,7 @@ class EuslimeHandler(object):
         }
 
     def swank_create_repl(self, sexp):
-        yield self.euslisp.exec_internal('(slime::slime-prompt "")')
+        yield self.euslisp.exec_internal('(slime::slime-prompt)')
 
     def swank_repl_create_repl(self, *sexp):
         return self.swank_create_repl(sexp)

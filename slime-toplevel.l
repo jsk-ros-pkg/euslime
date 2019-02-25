@@ -76,6 +76,13 @@
 
 (in-package "LISP")
 
+(defun toplevel-prompt (strm)
+  (if (> *replevel* 0)
+      (format strm "~A~D-" *reptype* *replevel*))
+  (if (not (eql *package* *user-package*))
+      (format strm "~A:" (package-name *package*)))
+  (format strm "~a" *prompt-string*))
+
 (defun repsel (repstream eof ttyp local-bindings)
    (if (eql (rep1 repstream eof local-bindings ttyp) eof)
        (throw :reploop-select nil))
