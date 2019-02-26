@@ -277,12 +277,3 @@ class EuslispProcess(Process):
             else:
                 yield out
         yield EuslispResult(None)
-
-    def arglist(self, func, cursor=None, form=None):
-        cmd = """(slime::autodoc "{0}" {1} '{2})""".format(func, dumps(cursor), dumps(form))
-        result = self.exec_internal(cmd)
-        if isinstance(result, str):
-            return result
-        elif result:
-            return dumps(result)
-        return result

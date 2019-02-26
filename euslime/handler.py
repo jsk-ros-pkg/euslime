@@ -38,6 +38,10 @@ def current_scope(sexp):
     return scope, cursor
 
 
+def qstr(s):
+    return s.encode('utf-8').encode('string_escape')
+
+
 class DebuggerHandler(object):
     restarts = [
         ["QUIT", "Quit to the SLIME top level"],
@@ -84,6 +88,15 @@ class EuslimeHandler(object):
         new_prompt = self.euslisp.exec_internal("(slime::slime-prompt)")
         if new_prompt:
             yield [Symbol(":new-package")] + new_prompt
+
+    def arglist(self, func, cursor=None, form=None):
+        cmd = """(slime::autodoc "{0}" {1} '{2})""".format(qstr(func), dumps(cursor), dumps(form))
+        result = self.euslisp.exec_internal(cmd)
+        if isinstance(result, str):
+            return result
+        elif result:
+            return dumps(result)
+        return result
 
     def _emacs_return_string(self, process, count, msg):
         self.euslisp.input(msg)
@@ -176,7 +189,7 @@ class EuslimeHandler(object):
             assert cursor > 0
             func = scope[0]
             scope = scope[:-1] # remove marker
-            result = self.euslisp.arglist(func, cursor, scope)
+            result = self.arglist(func, cursor, scope)
             if result:
                 if result.startswith('"') and result.endswith('"'):
                     result = loads(result) # unquote
@@ -196,7 +209,7 @@ class EuslimeHandler(object):
 
     def swank_simple_completions(self, start, pkg):
         # (swank:simple-completions "vector-" (quote "USER"))
-        cmd = """(slime::slime-find-symbol "{0}")""".format(start)
+        cmd = """(slime::slime-find-symbol "{0}")""".format(qstr(start))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_completions_for_keyword(self, start, sexp):
@@ -211,11 +224,11 @@ class EuslimeHandler(object):
 
         else:
             scope = None
-        cmd = """(slime::slime-find-keyword "{0}" '{1})""".format(start, dumps(scope))
+        cmd = """(slime::slime-find-keyword "{0}" '{1})""".format(qstr(start), dumps(scope))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_completions_for_character(self, start):
-        cmd = """(slime::slime-find-character "{0}")""".format(start)
+        cmd = """(slime::slime-find-character "{0}")""".format(qstr(start))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_complete_form(self, *args):
@@ -301,7 +314,7 @@ class EuslimeHandler(object):
 
     def swank_load_file(self, filename):
         yield [Symbol(":write-string"), "\nLoading file: %s ..." % filename]
-        res = self.euslisp.exec_internal('(lisp:load "{0}")'.format(filename))
+        res = self.euslisp.exec_internal('(lisp:load "{0}")'.format(qstr(filename)))
         yield [Symbol(":write-string"), "\nLoaded."]
         yield EuslispResult(res)
 
@@ -322,7 +335,7 @@ class EuslimeHandler(object):
         return
 
     def swank_describe_symbol(self, sym):
-        cmd = """(slime::slime-describe-symbol "{0}")""".format(sym.strip())
+        cmd = """(slime::slime-describe-symbol "{0}")""".format(qstr(sym.strip()))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_describe_function(self, func):
@@ -343,11 +356,11 @@ class EuslimeHandler(object):
                                      package=None):
         # ignore 'external_only' and 'case_sensitive' arguments
         package = package[-1] # unquote
-        cmd = """(slime::slime-apropos-list "{0}" {1})""".format(key, dumps(package))
+        cmd = """(slime::slime-apropos-list "{0}" {1})""".format(qstr(key), dumps(package))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_set_package(self, name):
-        cmd = """(slime::set-package "{0}")""".format(name)
+        cmd = """(slime::set-package "{0}")""".format(qstr(name))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_default_directory(self):
@@ -355,7 +368,7 @@ class EuslimeHandler(object):
         yield EuslispResult(res)
 
     def swank_set_default_directory(self, dir):
-        cmd = """(progn (lisp:cd "{0}") (lisp:pwd))""".format(dir)
+        cmd = """(progn (lisp:cd "{0}") (lisp:pwd))""".format(qstr(dir))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
 if __name__ == '__main__':
