@@ -40,7 +40,7 @@ def main():
                    help="Path to file where port number is written",
                    default=str())
     p.add_argument("--log-level", "-l", type=str,
-                   help="Log Level", default="info",
+                   help="Log Level", default="debug",
                    choices=LOG_LEVELS.keys())
 
     args = p.parse_args()

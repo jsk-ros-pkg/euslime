@@ -121,7 +121,7 @@ class EuslispFatalError(EuslispError):
         self.continuable = continuable
         super(EuslispFatalError, self).__init__(message)
 
-class IntermediateResult(object):
+class EuslispResult(object):
     def __init__(self, value):
         self.value = value
 
@@ -169,21 +169,50 @@ class EuslispProcess(Process):
     def clear_socket_stack(self):
         try:
             while True:
-                head_data = self.euslime_connection.recv(HEADER_LENGTH,
-                                                         socket.MSG_DONTWAIT)
-                msg = self.get_socket_response(head_data)
+                msg = self.euslime_connection.recv(1024, socket.MSG_DONTWAIT)
                 log.debug("Ignore msg: %s" % msg)
         except socket.error:
             return
 
-    def get_socket_response(self, hex_length):
-        if hex_length == str():
-            # recv() returns null string on EOF
-            raise EuslispFatalError('Socket connection closed')
-        length = int(hex_length, 16)
-        msg = self.euslime_connection.recv(length)
-        log.debug("Socket Response: %s" % msg)
-        return loads(msg)
+    def recv_socket_data(self):
+        def recv_data(hex_len):
+            if hex_len == str():
+                # recv() returns null string on EOF
+                raise EuslispFatalError('Socket connection closed')
+            length = int(hex_len, 16)
+            while length > 0:
+                msg = self.euslime_connection.recv(length)
+                log.debug("Socket Response: %s" % msg)
+                length -= len(msg)
+                yield msg
+            return
+        log.debug('Waiting for socket data...')
+        while True:
+            try:
+                head_data = self.euslime_connection.recv(HEADER_LENGTH, socket.MSG_DONTWAIT)
+                break
+            except socket.error:
+                time.sleep(self.rate)
+                self.check_poll()
+                continue
+        return recv_data(head_data)
+
+    def get_socket_response(self, recursive=False):
+        def recv_next():
+            gen = self.recv_socket_data()
+            data = ''.join(list(gen))
+            return loads(data)
+        command = recv_next()
+        log.debug('Socket Request Type: %s' % command)
+        if command == Symbol('result'):
+            return self.recv_socket_data()
+        elif command == Symbol('error'):
+            if recursive:
+                return
+            msg = recv_next()
+            stack = self.get_callstack()
+            raise EuslispError(msg, stack)
+        raise Exception("Unhandled Socket Request Type: %s" % command)
 
     def get_output(self, recursive=False):
         while True:
@@ -193,19 +222,17 @@ class EuslispProcess(Process):
                 if has_token[0]:
                     yield has_token[0]
                 if len(has_token) >= 2 or not has_token[0]:
-                    try:
-                        head_data = self.euslime_connection.recv(HEADER_LENGTH,
-                                                                 socket.MSG_DONTWAIT)
-                        msg = self.get_socket_response(head_data)
-                        if msg[0] == Symbol('error'):
-                            if recursive:
-                                return
-                            stack = self.get_callstack()
-                            raise EuslispError(msg[1], stack)
-                        raise Exception("Unhandled Socket Request Type: %s" % msg[0])
-                    except socket.error:
-                        yield None
-                        return
+                    # Check for Errors
+                    gen = self.get_socket_response(recursive=recursive)
+                    # Print Results
+                    if gen:
+                        yield [Symbol(":presentation-start"), 0, Symbol(":repl-result")]
+                        for r in gen:
+                            yield [Symbol(":write-string"), r, Symbol(":repl-result")]
+                        yield [Symbol(":presentation-end"), 0, Symbol(":repl-result")]
+                        yield [Symbol(":write-string"), '\n', Symbol(":repl-result")]
+                        yield EuslispResult(None)
+                    return
             except Empty:
                 self.check_poll()
                 continue
@@ -216,7 +243,7 @@ class EuslispProcess(Process):
         cmd_str = '(slime:print-callstack {})'.format(end + 4)
         self.euslime_connection.send(cmd_str + self.delim)
         stack = list(self.get_output(recursive=True))
-        stack = str().join(stack)
+        stack = ''.join(stack)
         stack = [x.strip() for x in stack.split(self.delim)]
         # Remove 'Call Stack' and dummy error messages
         #  'Call Stack (max depth: 10):',
@@ -224,7 +251,7 @@ class EuslispProcess(Process):
         #  '1: at slime:slime-error',
         #  '2: at slime:slime-error'
         stack = stack[4:]
-        strace = list()
+        strace = []
         for i,line in enumerate(stack):
             split_line = line.split(": at ", 1)
             if len(split_line) == 2:
@@ -238,22 +265,9 @@ class EuslispProcess(Process):
         self.clear_socket_stack()
         log.debug('exec_internal: %s' % cmd_str)
         self.euslime_connection.send(cmd_str + self.delim)
-        while True:
-            try:
-                head_data = self.euslime_connection.recv(HEADER_LENGTH,
-                                                         socket.MSG_DONTWAIT)
-                msg = self.get_socket_response(head_data)
-                if msg[0] == Symbol('result'):
-                    log.info('result: %s' % msg[1])
-                    return msg[1]
-                elif msg[0] == Symbol('error'):
-                    stack = self.get_callstack()
-                    raise EuslispError(msg[1], stack)
-                raise Exception("Unhandled Socket Request Type: %s" % msg[0])
-            except socket.error:
-                time.sleep(self.rate)
-                self.check_poll()
-                continue
+        gen = self.get_socket_response()
+        res = ''.join(list(gen))
+        return loads(res)
 
     def eval(self, cmd_str):
         self.output = Queue()
@@ -261,8 +275,8 @@ class EuslispProcess(Process):
         log.debug('eval: %s' % cmd_str)
         self.input(cmd_str)
         for out in self.get_output():
-            if out:
-                yield IntermediateResult(out)
+            if isinstance(out, str):
+                yield [Symbol(":write-string"), out]
             else:
                 yield out
 

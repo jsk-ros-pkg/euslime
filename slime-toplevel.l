@@ -22,11 +22,13 @@
 
 (defun socket-request (command value)
   (assert (streamp *slime-stream*))
-  (let* ((str (format nil "(~a ~s)" command value))
-         (len (substitute #\0 #\space (format nil "~6,x" (length str)))))
-    (format *slime-stream* len)
-    (format *slime-stream* str)
-    (finish-output *slime-stream*)))
+  (flet ((send-request (str)
+           (let ((len (substitute #\0 #\space (format nil "~6,x" (length str)))))
+             (format *slime-stream* len)
+             (format *slime-stream* str)
+             (finish-output *slime-stream*))))
+    (send-request command)
+    (send-request (format nil "~s" value))))
 
 (defun socket-eval (strm)
   (socket-request "result"
@@ -84,10 +86,16 @@
   (format strm "~a" *prompt-string*))
 
 (defun repsel (repstream eof ttyp local-bindings)
-   (if (eql (rep1 repstream eof local-bindings ttyp) eof)
-       (throw :reploop-select nil))
-   (if ttyp (prompt repstream)
-       (slime:slime-finish-output repstream)))
+  ;; Do not print the evaluation result to *standard-output*
+  ;; Instead, redirect it to *slime-stream*
+  (let* ((out (send repstream :outstream))
+         (repstream (make-two-way-stream
+                     (send repstream :instream)
+                     (make-string-output-stream)))
+         (result (rep1 repstream eof local-bindings ttyp)))
+    (if (eql result eof) (throw :reploop-select nil))
+    (slime:slime-finish-output out)
+    (slime::socket-request "result" result)))
 
 (defun reploop (prompt &optional (repstream *terminal-io*) (ttyp (unix:isatty repstream)))
   (let ((*prompt* prompt))

@@ -2,7 +2,7 @@ from sexpdata import dumps, loads, Symbol
 import traceback
 import signal
 
-from euslime.bridge import IntermediateResult
+from euslime.bridge import EuslispResult
 from euslime.handler import DebuggerHandler
 from euslime.logger import get_logger
 
@@ -45,11 +45,7 @@ class Protocol(object):
 
     def make_response(self, id, sexp):
         try:
-            res = [
-                Symbol(':return'),
-                {'ok': sexp},
-                id,
-            ]
+            res = [Symbol(':return'), {'ok': sexp}, id]
             yield self.dumps(res)
         except Exception as e:
             for r in self.make_error(id, e):
@@ -82,20 +78,15 @@ class Protocol(object):
             gen = getattr(self.handler, func)(*args)
             if not gen:
                 if comm_id:
-                    for r in self.make_response(comm_id, gen):
+                    for r in self.make_response(comm_id, None):
                         yield r
                 return
-            finished = False
             for resp in gen:
-                if finished:
-                    log.debug('Additional result: %s' % resp)
-                    raise Exception('More than one result in %s' % func)
-                if isinstance(resp, IntermediateResult):
-                    yield self.dumps(resp.value)
-                else:
-                    for r in self.make_response(self.handler.command_id, resp):
+                if isinstance(resp, EuslispResult):
+                    for r in self.make_response(self.handler.command_id, resp.value):
                         yield r
-                    finished = True
+                else:
+                    yield self.dumps(resp)
         except Exception as e:
             log.error(traceback.format_exc())
             for r in self.make_error(self.handler.command_id, e):

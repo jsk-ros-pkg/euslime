@@ -235,7 +235,7 @@
            (incf cursor))
           (&key
            (return-from function-autodoc (set-keyword arglist i (car (last form)))))))
-      (if (>= cursor len)
+      (if (or (zerop cursor) (>= cursor len))
           arglist
           (set-cursor arglist cursor)))))
 
