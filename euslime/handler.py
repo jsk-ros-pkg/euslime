@@ -10,7 +10,6 @@ from threading import Event
 from euslime.bridge import EuslispResult
 from euslime.bridge import EuslispProcess
 from euslime.bridge import EuslispError
-from euslime.bridge import EuslispFatalError
 from euslime.logger import get_logger
 
 log = get_logger(__name__)
@@ -48,11 +47,8 @@ class DebuggerHandler(object):
 
     def __init__(self, id, error):
         self.id = id
-        if isinstance(error, EuslispFatalError):
-            if error.continuable:
-                self.restarts = self.restarts[1:] # No QUIT
-            else:
-                self.restarts = self.restarts[2:] # No QUIT & CONTINUE
+        if isinstance(error, EuslispError) and error.fatal:
+            self.restarts = self.restarts[2:] # No QUIT & CONTINUE
         else:
             self.restarts = self.restarts
         self.restarts_dict = {}
@@ -129,6 +125,9 @@ class EuslimeHandler(object):
 
     def swank_repl_create_repl(self, *sexp):
         return self.swank_create_repl(sexp)
+
+    def swank_buffer_first_change(self, filename):
+        yield EuslispResult(False)
 
     def swank_eval(self, sexp):
         yield [Symbol(":read-string"), 0, 1]
@@ -268,15 +267,24 @@ class EuslimeHandler(object):
     def swank_init_presentations(self, *sexp):
         return
 
-    def swank_compile_string_for_emacs(self, sexp, *args):
+    def swank_compile_string_for_emacs(self, cmd_str, *args):
         # (sexp buffer-name (:position 1) (:line 1) () ())
         # FIXME: This does not compile actually, just eval instead.
-        for out in self.euslisp.eval(sexp):
-            yield out
+        try:
+            sexp = loads(cmd_str, nil=None)
+            assert isinstance(sexp, list)
+        except AssertionError:
+            raise Exception('Invalid s-expression in %s' % cmd_str)
+        self.euslisp.exec_internal(cmd_str)
+        if len(sexp) > 2:
+            msg = dumps(sexp[:2] + [None], none_as='...')
+        else:
+            msg = cmd_str
+        yield [Symbol(":write-string"), "; Loaded {}".format(msg)]
         errors = []
         seconds = 0.01
-        yield [Symbol(":compilation-result"), errors, True,
-               seconds, None, None]
+        yield EuslispResult([Symbol(":compilation-result"), errors, True,
+                             seconds, None, None])
 
     def swank_compile_notes_for_emacs(self, *args):
         return self.swank_compile_string_for_emacs(*args)
@@ -288,8 +296,8 @@ class EuslimeHandler(object):
         # FIXME: This returns without checking/compiling the file
         errors = []
         seconds = 0.01
-        yield [Symbol(":compilation-result"), errors, True,
-               seconds, loadp, filename]
+        yield EuslispResult([Symbol(":compilation-result"), errors, True,
+                             seconds, loadp, filename])
 
     def swank_load_file(self, filename):
         yield [Symbol(":write-string"), "\nLoading file: %s ..." % filename]

@@ -2,7 +2,6 @@ from __future__ import print_function
 
 import os
 import sys
-import errno
 import re
 import traceback
 import subprocess
@@ -101,7 +100,7 @@ class Process(object):
         if self.process.poll() is not None:
             signum = abs(self.process.returncode)
             msg ="Process exited with code %d (%s)" % (signum, get_signal(signum))
-            raise EuslispFatalError(msg)
+            raise EuslispError(msg, fatal=True)
 
     def input(self, cmd):
         cmd = cmd.strip().encode('utf-8')
@@ -112,14 +111,10 @@ class Process(object):
 
 
 class EuslispError(Exception):
-    def __init__(self, message, stack=None):
+    def __init__(self, message, stack=None, fatal=False):
         self.stack = stack
+        self.fatal = fatal
         super(EuslispError, self).__init__(message.capitalize())
-
-class EuslispFatalError(EuslispError):
-    def __init__(self, message, continuable=False):
-        self.continuable = continuable
-        super(EuslispFatalError, self).__init__(message)
 
 class EuslispResult(object):
     def __init__(self, value):
@@ -178,7 +173,7 @@ class EuslispProcess(Process):
         def recv_data(hex_len):
             if hex_len == str():
                 # recv() returns null string on EOF
-                raise EuslispFatalError('Socket connection closed')
+                raise EuslispError('Socket connection closed', fatal=True)
             length = int(hex_len, 16)
             while length > 0:
                 msg = self.euslime_connection.recv(length)
@@ -228,7 +223,8 @@ class EuslispProcess(Process):
                     if gen:
                         yield [Symbol(":presentation-start"), 0, Symbol(":repl-result")]
                         for r in gen:
-                            yield [Symbol(":write-string"), r, Symbol(":repl-result")]
+                            # Colors are not allowed in :repl-result formatting
+                            yield [Symbol(":write-string"), no_color(r), Symbol(":repl-result")]
                         yield [Symbol(":presentation-end"), 0, Symbol(":repl-result")]
                         yield [Symbol(":write-string"), '\n', Symbol(":repl-result")]
                         yield EuslispResult(None)
@@ -263,7 +259,7 @@ class EuslispProcess(Process):
 
     def exec_internal(self, cmd_str):
         self.clear_socket_stack()
-        log.debug('exec_internal: %s' % cmd_str)
+        log.info('exec_internal: %s' % cmd_str)
         self.euslime_connection.send(cmd_str + self.delim)
         gen = self.get_socket_response()
         res = ''.join(list(gen))
@@ -272,7 +268,7 @@ class EuslispProcess(Process):
     def eval(self, cmd_str):
         self.output = Queue()
         self.clear_socket_stack()
-        log.debug('eval: %s' % cmd_str)
+        log.info('eval: %s' % cmd_str)
         self.input(cmd_str)
         for out in self.get_output():
             if isinstance(out, str):
