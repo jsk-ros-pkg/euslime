@@ -207,6 +207,8 @@ class EuslispProcess(Process):
             msg = recv_next()
             stack = self.get_callstack()
             raise EuslispError(msg, stack)
+        elif command == Symbol('abort'):
+            return
         raise Exception("Unhandled Socket Request Type: %s" % command)
 
     def get_output(self, recursive=False):
@@ -227,7 +229,6 @@ class EuslispProcess(Process):
                             yield [Symbol(":write-string"), no_color(r), Symbol(":repl-result")]
                         yield [Symbol(":presentation-end"), 0, Symbol(":repl-result")]
                         yield [Symbol(":write-string"), '\n', Symbol(":repl-result")]
-                        yield EuslispResult(None)
                     return
             except Empty:
                 self.check_poll()
@@ -275,6 +276,7 @@ class EuslispProcess(Process):
                 yield [Symbol(":write-string"), out]
             else:
                 yield out
+        yield EuslispResult(None)
 
     def arglist(self, func, cursor=None, form=None):
         cmd = """(slime::autodoc "{0}" {1} '{2})""".format(func, dumps(cursor), dumps(form))

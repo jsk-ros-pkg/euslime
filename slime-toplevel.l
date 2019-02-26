@@ -99,7 +99,8 @@
 
 (defun reploop (prompt &optional (repstream *terminal-io*) (ttyp (unix:isatty repstream)))
   (let ((*prompt* prompt))
-    (unless ttyp (slime:slime-finish-output repstream))
+    (slime:slime-finish-output repstream)
+    (slime::socket-request "abort" nil)
     (send *top-selector* :add-port slime:*slime-stream* #'slime:socket-eval slime:*slime-stream*)
     (reploop-select repstream ttyp)))
 
