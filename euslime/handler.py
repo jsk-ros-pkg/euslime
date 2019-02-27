@@ -200,6 +200,10 @@ class EuslimeHandler(object):
             log.error(traceback.format_exc())
             yield EuslispResult([Symbol(":not-available"), True])
 
+    def swank_operator_arglist(self, func, pkg):
+        #  (swank:operator-arglist "format" "USER")
+        yield EuslispResult(self.arglist(func))
+
     def swank_completions(self, start, pkg):
         if start and start[0] == ':':
             return self.swank_completions_for_keyword(start, None)
