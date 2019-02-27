@@ -75,13 +75,22 @@
                 (aif (find-external-symbol name p)
                      (return-from find-callable-symbol it))))))))
 
-(defun find-callable-symbol-value (name)
-  (let ((sym (find-callable-symbol name)))
-    (if (and sym (boundp sym))
-        (let ((vtype (symbol-vtype sym)))
-          (if (< vtype 3)
-              (symbol-value sym)
-              (elt (system::thread-specials) vtype))))))
+(defmacro with-callable-symbol-value (var-lst &rest body)
+  ;; var-lst is in form (val-var symbol-name &optional result) OR
+  ;; ((sym-var val-var) symbol-name &optional result)
+  (let ((val-var (if (consp (car var-lst))
+                     (cadar var-lst)
+                     (car var-lst)))
+        (sym-var (if (consp (car var-lst))
+                     (caar var-lst)
+                     (gensym))))
+    `(let ((,sym-var (find-callable-symbol ,(cadr var-lst))))
+       (if (and ,sym-var (boundp ,sym-var))
+           (let ((,val-var (if (< (symbol-vtype ,sym-var) 3)
+                               (symbol-value ,sym-var)
+                               (elt (system::thread-specials) (symbol-vtype ,sym-var)))))
+             ,@body
+             ,@(cddr var-lst))))))
 
 ;; Prefix related
 (defun append-common (match-lst start-len)
@@ -213,8 +222,9 @@
        (function-autodoc name cursor form))
       ((string= last "")
        (function-autodoc name (1- cursor) (butlast form)))
-      ((aand (find-callable-symbol last) (boundp it))
-       (format nil "~a => ~s" last (find-callable-symbol-value last)))
+      ((with-callable-symbol-value ((sym value) last)
+         (unless (eq (symbol-package sym) *keyword-package*)
+           (format nil "~a => ~s" last value))))
       (t
        (function-autodoc name (1- cursor) form)))))
 
@@ -242,8 +252,8 @@
 (defun method-lambda-list-from-form (form)
   ;; form: '("send" "obj" ":selector" ...)
   (if (and (cddr form) (string-equal (car form) "send") (stringp (cadr form)))
-      (aif (find-callable-symbol-value (cadr form))
-           (method-lambda-list it (third form)))))
+      (with-callable-symbol-value (value (cadr form))
+        (method-lambda-list value (third form)))))
 
 (defun set-cursor (lst pos)
   ;; TODO: use string not symbols
@@ -266,12 +276,11 @@
        (slime-find-symbol (subseq start 1) ":")))
     ((string-equal (car form) "send")
      (if (stringp (cadr form))
-         (aif (find-callable-symbol-value (cadr form))
-              (if (cddr form)
-                  (let ((keys (keyword-list (method-lambda-list-from-form form))))
-                    (find-prefix start keys 1))
-                  (find-prefix start (method-list it) 1)))))
-
+         (with-callable-symbol-value (value (cadr form))
+           (if (cddr form)
+               (let ((keys (keyword-list (method-lambda-list-from-form form))))
+                 (find-prefix start keys 1))
+               (find-prefix start (method-list value) 1)))))
     (t
      (let ((keys (keyword-list (lambda-list (car form)))))
        (find-prefix start keys 1)))))
