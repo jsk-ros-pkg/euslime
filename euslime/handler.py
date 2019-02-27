@@ -106,6 +106,9 @@ class EuslimeHandler(object):
         raise KeyboardInterrupt
 
     def swank_connection_info(self):
+        # Wait for euslisp connection
+        self.euslisp.recv_socket_data()
+        log.info("Successfully started Euslisp process!")
         version = self.euslisp.exec_internal('(slime::implementation-version)')
         name = self.euslisp.exec_internal('(pathname-name *program-name*)')
         res = {
