@@ -279,9 +279,9 @@
 
 ;; SWANK-COMPLETIONS-FOR-CHARACTER
 (defun slime-find-character (start)
-  (find-prefix start char-lst))
+  (find-prefix start *char-lst*))
 
-(defconstant char-lst
+(defconstant *char-lst*
   '("Space" "Newline" "Linefeed"
     "Backspace" "Delete" "Rubout"
     "Return" "Page" "Formfeed"

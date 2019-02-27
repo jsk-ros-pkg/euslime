@@ -5,13 +5,12 @@
 ;; Socket Connection
 ;;;;;;;;;;;;;;;;;;;;
 
-(export '(*slime-stream* slime-connect-socket socket-eval
-          slime-error slime-finish-output slimetop
-          print-callstack))
+(eval-when (load eval)
+
+(export '(*slime-stream* slime-connect-socket socket-eval socket-request
+          slime-error slime-finish-output slimetop print-callstack))
 
 (defvar *slime-stream*)
-
-(eval-when (load eval)
 
 (defun slime-connect-socket (port)
   (do ((strm (connect-server "0.0.0.0" port) (connect-server "0.0.0.0" port)))
@@ -55,7 +54,7 @@
     (finish-output strm)))
 
 (defun slimetop ()
-  (lisp::install-error-handler 'slime:slime-error)
+  (lisp::install-error-handler 'slime::slime-error)
   (setq lisp::*max-callstack-depth* 0)
   (catch :eusexit
     (while t
@@ -63,7 +62,6 @@
         (let ((*replevel* 0) (*reptype* ""))
           (reploop #'toplevel-prompt))
         (throw :eusexit nil))
-      ;; (slime:slime-finish-output *terminal-io*)
       ))
   (throw :eusexit nil))
 
@@ -77,6 +75,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;
 
 (in-package "LISP")
+
+(eval-when (load eval)
 
 (defun toplevel-prompt (strm)
   (if (> *replevel* 0)
@@ -94,16 +94,16 @@
                      (make-string-output-stream)))
          (result (rep1 repstream eof local-bindings ttyp)))
     (if (eql result eof) (throw :reploop-select nil))
-    (slime:slime-finish-output out)
+    (slime::slime-finish-output out)
     (slime::socket-request "result" result)))
 
 (defun reploop (prompt &optional (repstream *terminal-io*) (ttyp (unix:isatty repstream)))
   (let ((*prompt* prompt))
-    (slime:slime-finish-output repstream)
+    (slime::slime-finish-output repstream)
     (slime::socket-request "abort" nil)
-    (send *top-selector* :add-port slime:*slime-stream* #'slime:socket-eval slime:*slime-stream*)
+    (send *top-selector* :add-port slime::*slime-stream* #'slime::socket-eval slime::*slime-stream*)
     (reploop-select repstream ttyp)))
-
+)
 
 ;;;;;;;;;;;;;
 ;; Setup REPL
@@ -123,5 +123,5 @@
     (when port
       (setq port (read-from-string (subseq port 7)))
       (assert (numberp port))
-      (slime:slime-connect-socket port)))
+      (slime::slime-connect-socket port)))
 )
