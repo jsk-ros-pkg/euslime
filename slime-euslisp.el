@@ -87,6 +87,12 @@
 (add-hook 'slime-popup-buffer-mode-hook
           (lambda () (ansi-color-apply-on-region (point-min) (point-max))))
 
+(defun slime-set-minibuffer-completion ()
+  (let ((buf (other-buffer (current-buffer) t)))
+    (if (local-variable-if-set-p 'slime-complete-symbol-function buf)
+        (setq-local slime-complete-symbol-function
+          (buffer-local-value 'slime-complete-symbol-function buf)))))
+
 ;; DEFINE MINOR MODE
 (defun slime-euslisp--doc-map-prefix ()
   (concat
@@ -101,6 +107,7 @@
               (,(concat prefix "p") . slime-apropos-symbol-package)))
   ;; Use simple-completions rather than fuzzy-completions
   (setq-local slime-complete-symbol-function 'slime-complete-symbol*)
+  (add-hook 'minibuffer-setup-hook 'slime-set-minibuffer-completion)
   ;; Remove unsupported ASDF commands
   (setq-local slime-repl-shortcut-table (remove-asdf-system-shortcuts))
   ;; Keep history record in a different file
