@@ -54,7 +54,9 @@
   (cond ((not (comint-check-proc buffer))
          (slime-start-lisp program program-args env directory buffer))
         ((slime-reinitialize-inferior-lisp-p program program-args env buffer)
-         (if slime-euslisp-mode (keyboard-quit))
+         (when (string= program "euslime")
+           (switch-to-buffer (slime-output-buffer))
+           (keyboard-quit))
          (let ((conn (cl-find (get-buffer-process buffer)
                               slime-net-processes
                               :key #'slime-inferior-process)))
