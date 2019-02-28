@@ -222,9 +222,10 @@
        (function-autodoc name cursor form))
       ((string= last "")
        (function-autodoc name (1- cursor) (butlast form)))
-      ((with-callable-symbol-value ((sym value) last)
-         (unless (eq (symbol-package sym) *keyword-package*)
-           (format nil "~a => ~s" last value))))
+      ((and (> cursor 1)
+            (with-callable-symbol-value ((sym value) last)
+              (unless (eq (symbol-package sym) *keyword-package*)
+                (format nil "~a => ~s" last value)))))
       (t
        (function-autodoc name (1- cursor) form)))))
 

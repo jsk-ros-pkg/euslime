@@ -93,10 +93,10 @@ class EuslimeHandler(object):
         cmd = """(slime::autodoc "{0}" {1} '{2})""".format(qstr(func), dumps(cursor), dumps(form))
         result = self.euslisp.exec_internal(cmd)
         if isinstance(result, str):
-            return result
+            return [result, False]
         elif result:
-            return dumps(result)
-        return result
+            return [dumps(result), True]
+        return None
 
     def _emacs_return_string(self, process, count, msg):
         self.euslisp.input(msg)
@@ -194,9 +194,7 @@ class EuslimeHandler(object):
             scope = scope[:-1] # remove marker
             result = self.arglist(func, cursor, scope)
             if result:
-                if result.startswith('"') and result.endswith('"'):
-                    result = loads(result) # unquote
-                yield EuslispResult([result, True])
+                yield EuslispResult(result)
             else:
                 yield EuslispResult([Symbol(":not-available"), True])
         except Exception as e:
@@ -205,7 +203,10 @@ class EuslimeHandler(object):
 
     def swank_operator_arglist(self, func, pkg):
         #  (swank:operator-arglist "format" "USER")
-        yield EuslispResult(self.arglist(func))
+        result = self.arglist(func)
+        if result:
+            result = result[0]
+        yield EuslispResult(result)
 
     def swank_completions(self, start, pkg):
         if start and start[0] == ':':

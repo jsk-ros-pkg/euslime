@@ -222,12 +222,15 @@ class EuslispProcess(Process):
                     # Check for Errors
                     gen = self.get_socket_response(recursive=recursive)
                     # Print Results
+                    # Do not use :repl-result presentation to enable copy-paste of
+                    # previous results, which are signilized as swank objects otherwise
+                    # e.g. #.(swank:lookup-presented-object-or-lose 0.)
                     if gen:
-                        yield [Symbol(":presentation-start"), 0, Symbol(":repl-result")]
+                        # yield [Symbol(":presentation-start"), 0, Symbol(":repl-result")]
                         for r in gen:
                             # Colors are not allowed in :repl-result formatting
                             yield [Symbol(":write-string"), no_color(r), Symbol(":repl-result")]
-                        yield [Symbol(":presentation-end"), 0, Symbol(":repl-result")]
+                        # yield [Symbol(":presentation-end"), 0, Symbol(":repl-result")]
                         yield [Symbol(":write-string"), '\n', Symbol(":repl-result")]
                     return
             except Empty:
