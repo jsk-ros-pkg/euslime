@@ -220,6 +220,10 @@ class EuslimeHandler(object):
         cmd = """(slime::slime-find-symbol "{0}")""".format(qstr(start))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
+    def swank_fuzzy_completions(self, start, pkg, *args):
+        # Unsupported. Use swank_simple_completions instead
+        yield EuslispResult([None, None])
+
     def swank_completions_for_keyword(self, start, sexp):
         # args: [u':meth', [Symbol(u'quote'), [u'send', u'c', u'', Symbol(cursor)]]]
         if sexp:

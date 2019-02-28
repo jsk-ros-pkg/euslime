@@ -89,6 +89,21 @@
 (add-hook 'slime-popup-buffer-mode-hook
           (lambda () (ansi-color-apply-on-region (point-min) (point-max))))
 
+;; COMPLETION FUNCTIONS
+(defun slime-maybe-complete-as-filename ()
+   "If point is at a string starting with \", complete it as filename.
+ Return nil if point is not at filename."
+   (when (save-excursion (re-search-backward "\"[^ \t\n]+\\="
+                                            (max (point-min)
+                                                 (- (point) 1000)) t))
+     ;; TODO complete ros packages "package://..."
+     ;; ROSEMACS (comint-dynamic-complete-ros-package)
+     (let ((comint-completion-addsuffix '("/" . "\"")))
+       ;; (comint-replace-by-expanded-filename)
+       (setq default-directory (slime-eval `(swank:default-directory)))
+       (comint-dynamic-complete-filename)
+      t)))
+
 (defun slime-set-minibuffer-completion ()
   (let ((buf (other-buffer (current-buffer) t)))
     (if (local-variable-if-set-p 'slime-complete-symbol-function buf)
@@ -110,6 +125,7 @@
   ;; Use simple-completions rather than fuzzy-completions
   (setq-local slime-complete-symbol-function 'slime-complete-symbol*)
   (add-hook 'minibuffer-setup-hook 'slime-set-minibuffer-completion)
+  (setq-local slime-complete-symbol*-fancy nil)
   ;; Remove unsupported ASDF commands
   (setq-local slime-repl-shortcut-table (remove-asdf-system-shortcuts))
   ;; Keep history record in a different file
