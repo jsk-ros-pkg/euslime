@@ -107,6 +107,24 @@
         (message "Compiling files...")
         (shell-command cmd-str)))))
 
+(defun euslime-prepare-tags ()
+  (let ((eusdir (getenv "EUSDIR"))
+        (eustag (format "%s/EUSTAGS" euslime-compile-path))
+        (irttag (format "%s/IRTEUSTAGS" euslime-compile-path)))
+    (euslime-maybe-generate-tag
+     (format "%s/lisp" eusdir) eustag
+     (format "etags %s/lisp/l/*.l -l none --regex='/pointer [A-Z_0-9]+[ ]*(/' --no-globals %s/lisp/c/*.c -o %s" eusdir eusdir eustag))
+    (euslime-maybe-generate-tag
+     (format "%s/irteus" eusdir) irttag
+     (format "etags %s/irteus/*.l -o %s" eusdir irttag))
+    ;; (visit-tags-table eustag)
+    (setq tags-table-list (list eustag irttag))))
+
+(defun euslime-maybe-generate-tag (src-dir tag-file cmd)
+  (when (file-newer-than-file-p src-dir tag-file)
+    (message (format "Generating %s file..." tag-file))
+    (shell-command cmd)))
+
 (defun euslime-init (file _)
   (setq slime-protocol-version 'ignore)
   (format "--port %s --port-filename %s %s\n" euslime-port file
@@ -117,6 +135,7 @@
   "euslime"
   (interactive)
   (euslime-prepare-files)
+  (euslime-prepare-tags)
   (slime 'euslisp))
 
 (provide 'euslime)

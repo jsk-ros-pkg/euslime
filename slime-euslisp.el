@@ -121,7 +121,9 @@
   :lighter " eus"
   :keymap (let ((prefix (slime-euslisp--doc-map-prefix)))
             `((,(concat prefix (kbd "C-p")) . slime-apropos-symbol-package)
-              (,(concat prefix "p") . slime-apropos-symbol-package)))
+              (,(concat prefix "p") . slime-apropos-symbol-package)
+              (,(kbd "M-,") . tags-loop-continue)
+              (,(kbd "M-.") . find-tag)))
   ;; Use simple-completions rather than fuzzy-completions
   (setq-local slime-complete-symbol-function 'slime-complete-symbol*)
   (add-hook 'minibuffer-setup-hook 'slime-set-minibuffer-completion)
