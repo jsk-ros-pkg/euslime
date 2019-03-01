@@ -10,8 +10,8 @@ log = get_logger(__name__)
 
 
 class Protocol(object):
-    def __init__(self, handler):
-        self.handler = handler()
+    def __init__(self, handler, *args, **kwargs):
+        self.handler = handler(*args, **kwargs)
 
     def dumps(self, sexp):
         def with_header(sexp):

@@ -25,7 +25,7 @@ log = get_logger(__name__)
 
 class EuslimeRequestHandler(S.BaseRequestHandler, object):
     def __init__(self, request, client_address, server):
-        self.swank = Protocol(EuslimeHandler)
+        self.swank = Protocol(EuslimeHandler, server.program, server.loader)
         self.swank.handler.euslisp.color = server.color
         self.encoding = ENCODINGS.get(server.encoding, 'utf-8')
         self.interrupt_request = Event()
@@ -93,9 +93,13 @@ class EuslimeServer(S.TCPServer, object):
     def __init__(self, server_address,
                  handler_class=EuslimeRequestHandler,
                  encoding='utf-8',
+                 program='roseus',
+                 loader='~/.euslime/slime-loader.l',
                  color=False):
         log.info("Starting server with encoding {} and color {}".format(encoding, color))
         self.encoding = encoding
+        self.program = program
+        self.loader = loader
         self.color = color
 
         super(EuslimeServer, self).__init__(server_address, handler_class)
@@ -110,9 +114,12 @@ class EuslimeServer(S.TCPServer, object):
         log.info('Serving on %s:%d', *self.socket.getsockname())
 
 
-def serve(host='0.0.0.0', port=0, port_filename=str(), encoding='utf-8', color=False):
+def serve(host='0.0.0.0', port=0, port_filename=str(), encoding='utf-8',
+          program='roseus', loader='~/.euslime/slime-loader.l', color=False):
     server = EuslimeServer((host, port),
                            encoding=encoding,
+                           program=program,
+                           loader=loader,
                            color=color)
 
     host, port = server.socket.getsockname()

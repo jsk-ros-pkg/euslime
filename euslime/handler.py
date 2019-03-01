@@ -70,8 +70,8 @@ class DebuggerHandler(object):
 
 
 class EuslimeHandler(object):
-    def __init__(self):
-        self.euslisp = EuslispProcess()
+    def __init__(self, *args, **kwargs):
+        self.euslisp = EuslispProcess(*args, **kwargs)
         self.close_request = Event()
         self.euslisp.start()
         self.command_id = None
@@ -79,9 +79,11 @@ class EuslimeHandler(object):
         self.debugger = []
 
     def restart_euslisp_process(self):
+        program = self.euslisp.program
+        init_file = self.euslisp.init_file
         color = self.euslisp.color
         self.euslisp.stop()
-        self.euslisp = EuslispProcess(color=color)
+        self.euslisp = EuslispProcess(program, init_file, color=color)
         self.euslisp.start()
 
     def maybe_new_prompt(self):

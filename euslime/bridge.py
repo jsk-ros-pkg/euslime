@@ -48,6 +48,7 @@ class Process(object):
         # as explained in section 8 of http://wiki.ros.org/rosconsole
         slime_env['ROSCONSOLE_STDOUT_LINE_BUFFERED'] = '1'
 
+        log.debug("Starting process with command %s" % self.cmd)
         self.process = subprocess.Popen(
             self.cmd,
             stdout=subprocess.PIPE,
@@ -121,13 +122,16 @@ class EuslispResult(object):
         self.value = value
 
 class EuslispProcess(Process):
-    def __init__(self, exec_rate=None, buflen=None, color=False):
+    def __init__(self, program=None, init_file=None, exec_rate=None, buflen=None, color=False):
+        self.program = program
+        self.init_file = init_file
+
         self.socket = self._start_socket()
         host, port = self.socket.getsockname()
         self.token = '{}euslime-token-{}'.format(chr(29), port)
 
         super(EuslispProcess, self).__init__(
-            cmd=["roseus", "~/.euslime/slime-loader.l", "--port-{}".format(port)],
+            cmd=[self.program, self.init_file, "--port-{}".format(port)],
             on_output=self.on_output,
         )
 

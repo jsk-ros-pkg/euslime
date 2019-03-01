@@ -27,16 +27,22 @@ def main():
                    help="Launch with emacs mode")
     p.add_argument("--color", action="store_true",
                    help="Support colored output")
+    p.add_argument("--init-file", "-i", type=str,
+                   help="Initialization file",
+                   default="~/.euslime/slime-loader.l")
+    p.add_argument("--euslisp-program", "-e", type=str,
+                   help="Backend Euslisp program",
+                   default="roseus")
     p.add_argument("--host", type=str,
                    help="Host to serve",
                    default="0.0.0.0")
     p.add_argument("--port", "-p", type=int,
                    help="Port number to serve",
                    default=0)
-    p.add_argument("--encoding", "-e", type=str,
+    p.add_argument("--encoding", type=str,
                    help="Encoding for communication",
                    default="utf-8")
-    p.add_argument("--port-filename", "-w", type=str,
+    p.add_argument("--port-filename", type=str,
                    help="Path to file where port number is written",
                    default=str())
     p.add_argument("--log-level", "-l", type=str,
@@ -54,6 +60,8 @@ def main():
     serve(host=args.host, port=args.port,
           port_filename=args.port_filename,
           encoding=args.encoding,
+          program=args.euslisp_program,
+          loader=args.init_file,
           color=args.color)
 
 if __name__ == '__main__':

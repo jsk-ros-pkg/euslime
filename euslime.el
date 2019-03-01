@@ -31,9 +31,13 @@
   "Directory containing the Euslisp SLIME package.")
 (setq euslime-path (file-name-directory load-file-name))
 
-(defvar euslime-compile-path nil
-  "Path to Euslisp SLIME compiled files.")
-(setq euslime-compile-path (expand-file-name "~/.euslime/"))
+(defcustom euslime-compile-path (expand-file-name "~/.euslime/")
+  "Path to Euslisp SLIME compiled files."
+  :type 'string)
+
+(defcustom inferior-euslisp-program "roseus"
+  "Backend program invoked by Euslisp SLIME."
+  :type 'string)
 
 (defvar slime-lisp-implementations)
 (unless slime-lisp-implementations
@@ -110,26 +114,41 @@
 (defun euslime-prepare-tags ()
   (let ((eusdir (getenv "EUSDIR"))
         (eustag (format "%s/EUSTAGS" euslime-compile-path))
-        (irttag (format "%s/IRTEUSTAGS" euslime-compile-path)))
+        (irttag (format "%s/IRTEUSTAGS" euslime-compile-path))
+        (rostag (format "%s/ROSEUSTAGS" euslime-compile-path)))
     (euslime-maybe-generate-tag
-     (format "%s/lisp" eusdir) eustag
+     eustag "eus"
+     (format "%s/lisp" eusdir)
      (format "etags %s/lisp/l/*.l -l none --regex='/pointer [A-Z_0-9]+[ ]*(/' --no-globals %s/lisp/c/*.c -o %s" eusdir eusdir eustag))
     (euslime-maybe-generate-tag
-     (format "%s/irteus" eusdir) irttag
+     irttag "\\(irteus\\|roseus\\)"
+     (format "%s/irteus" eusdir)
      (format "etags %s/irteus/*.l -o %s" eusdir irttag))
-    ;; (visit-tags-table eustag)
-    (setq tags-table-list (list eustag irttag))))
+    ;; TODO: Use rosemacs to probe/find roseus package
+    (let ((rosdir (if (= (shell-command "rospack find roseus") 0)
+                      (replace-regexp-in-string "\n$" ""
+                        (shell-command-to-string "rospack find roseus")))))
+      (when rosdir
+        (euslime-maybe-generate-tag
+         rostag "roseus"
+         (format "%s/euslisp" rosdir)
+         (format "etags %s/euslisp/*.l -o %s" rosdir rostag))))))
 
-(defun euslime-maybe-generate-tag (src-dir tag-file cmd)
-  (when (file-newer-than-file-p src-dir tag-file)
-    (message (format "Generating %s file..." tag-file))
-    (shell-command cmd)))
+(defun euslime-maybe-generate-tag (tag-file match-str src-dir cmd)
+  (when (string-match-p match-str inferior-euslisp-program)
+    (when (file-newer-than-file-p src-dir tag-file)
+      (message (format "Generating %s file..." tag-file))
+      (shell-command cmd))
+    (cl-pushnew tag-file tags-table-list)))
 
 (defun euslime-init (file _)
   (setq slime-protocol-version 'ignore)
-  (format "--port %s --port-filename %s %s\n" euslime-port file
-          (if (member 'slime-repl-ansi-color slime-contribs)
-              "--color" "")))
+  (format "--euslisp-program %s --init-file %s --port %s --port-filename %s %s\n"
+          inferior-euslisp-program
+          (expand-file-name "slime-loader.l" euslime-compile-path)
+          euslime-port
+          file
+          (if (member 'slime-repl-ansi-color slime-contribs) "--color" "")))
 
 (defun euslime ()
   "euslime"
