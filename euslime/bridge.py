@@ -1,17 +1,16 @@
 from __future__ import print_function
 
 import os
-import sys
 import re
-import traceback
-import subprocess
-import socket
 import signal
+import socket
+import subprocess
+import sys
 import time
-from threading import Thread
-from threading import Lock
+import traceback
+from threading import Lock, Thread
 from Queue import Queue, Empty
-from sexpdata import dumps, loads, Symbol
+from sexpdata import loads, Symbol
 from euslime.logger import get_logger
 
 log = get_logger(__name__)
@@ -23,11 +22,14 @@ EXEC_RATE = 0.005
 DELIM = os.linesep
 REGEX_ANSI = re.compile(r'\x1b[^m]*m')
 
+
 def get_signal(signum):
-    return [v for v,k in signal.__dict__.iteritems() if k == signum][0]
+    return [v for v, k in signal.__dict__.iteritems() if k == signum][0]
+
 
 def no_color(msg):
     return REGEX_ANSI.sub(str(), msg)
+
 
 class Process(object):
     def __init__(self, cmd,
@@ -92,7 +94,7 @@ class Process(object):
                 callback(buf)
                 if len(buf) < self.buflen * 0.8:
                     time.sleep(self.rate)
-            except Exception as e:
+            except Exception:
                 log.error(traceback.format_exc())
         else:
             log.debug("Thread %s is dead" % name)
@@ -100,7 +102,8 @@ class Process(object):
     def check_poll(self):
         if self.process.poll() is not None:
             signum = abs(self.process.returncode)
-            msg ="Process exited with code %d (%s)" % (signum, get_signal(signum))
+            msg = "Process exited with code {0} ({1})".format(
+                signum, get_signal(signum))
             raise EuslispError(msg, fatal=True)
 
     def input(self, cmd):
@@ -117,12 +120,15 @@ class EuslispError(Exception):
         self.fatal = fatal
         super(EuslispError, self).__init__(message.capitalize())
 
+
 class EuslispResult(object):
     def __init__(self, value):
         self.value = value
 
+
 class EuslispProcess(Process):
-    def __init__(self, program=None, init_file=None, exec_rate=None, buflen=None, color=False):
+    def __init__(self, program=None, init_file=None, exec_rate=None,
+                 buflen=None, color=False):
         self.program = program
         self.init_file = init_file
 
@@ -135,7 +141,7 @@ class EuslispProcess(Process):
             on_output=self.on_output,
         )
 
-        self.color = color # Requires slime-repl-ansi-color
+        self.color = color  # Requires slime-repl-ansi-color
         self.output = Queue()
         self.rate = exec_rate or EXEC_RATE
         self.buflen = buflen or BUFLENGTH
@@ -188,7 +194,8 @@ class EuslispProcess(Process):
         log.debug('Waiting for socket data...')
         while True:
             try:
-                head_data = self.euslime_connection.recv(HEADER_LENGTH, socket.MSG_DONTWAIT)
+                head_data = self.euslime_connection.recv(HEADER_LENGTH,
+                                                         socket.MSG_DONTWAIT)
                 break
             except socket.error:
                 time.sleep(self.rate)
@@ -226,16 +233,21 @@ class EuslispProcess(Process):
                     # Check for Errors
                     gen = self.get_socket_response(recursive=recursive)
                     # Print Results
-                    # Do not use :repl-result presentation to enable copy-paste of
-                    # previous results, which are signilized as swank objects otherwise
+                    # Do not use :repl-result presentation
+                    # to enable copy-paste of previous results,
+                    # which are signilized as swank objects otherwise
                     # e.g. #.(swank:lookup-presented-object-or-lose 0.)
                     if gen:
-                        # yield [Symbol(":presentation-start"), 0, Symbol(":repl-result")]
+                        # yield [Symbol(":presentation-start"), 0,
+                        #        Symbol(":repl-result")]
                         for r in gen:
                             # Colors are not allowed in :repl-result formatting
-                            yield [Symbol(":write-string"), no_color(r), Symbol(":repl-result")]
-                        # yield [Symbol(":presentation-end"), 0, Symbol(":repl-result")]
-                        yield [Symbol(":write-string"), '\n', Symbol(":repl-result")]
+                            yield [Symbol(":write-string"), no_color(r),
+                                   Symbol(":repl-result")]
+                        # yield [Symbol(":presentation-end"), 0,
+                        #        Symbol(":repl-result")]
+                        yield [Symbol(":write-string"), '\n',
+                               Symbol(":repl-result")]
                     return
             except Empty:
                 self.check_poll()
@@ -256,10 +268,11 @@ class EuslispProcess(Process):
         #  '2: at slime:slime-error'
         stack = stack[4:]
         strace = []
-        for i,line in enumerate(stack):
+        for i, line in enumerate(stack):
             split_line = line.split(": at ", 1)
             if len(split_line) == 2:
-                strace.append([i, split_line[1], [Symbol(":restartable"), False]])
+                strace.append(
+                    [i, split_line[1], [Symbol(":restartable"), False]])
             else:
                 break
         self.euslime_connection.send('(reset *replevel*)' + self.delim)

@@ -1,6 +1,6 @@
 from sexpdata import dumps, loads, Symbol
-import traceback
 import signal
+import traceback
 
 from euslime.bridge import EuslispResult
 from euslime.handler import DebuggerHandler
@@ -25,7 +25,8 @@ class Protocol(object):
             # For example in (apropos "default")
             log.warn('UnicodeDecodeError at %s' % sexp)
             assert isinstance(sexp, list)
-            sexp = [unicode(x, 'utf-8', 'ignore') if isinstance(x,str) else x for x in sexp]
+            sexp = [unicode(x, 'utf-8', 'ignore') if isinstance(x, str)
+                    else x for x in sexp]
             return with_header(sexp)
 
     def make_error(self, id, err):
@@ -83,7 +84,8 @@ class Protocol(object):
                 return
             for resp in gen:
                 if isinstance(resp, EuslispResult):
-                    for r in self.make_response(self.handler.command_id, resp.value):
+                    for r in self.make_response(self.handler.command_id,
+                                                resp.value):
                         yield r
                 else:
                     yield self.dumps(resp)

@@ -3,13 +3,12 @@ from __future__ import print_function
 import os
 import platform
 import traceback
-from sexpdata import dumps, loads
-from sexpdata import Symbol
+from sexpdata import dumps, loads, Symbol
 from threading import Event
 
-from euslime.bridge import EuslispResult
-from euslime.bridge import EuslispProcess
 from euslime.bridge import EuslispError
+from euslime.bridge import EuslispProcess
+from euslime.bridge import EuslispResult
 from euslime.logger import get_logger
 
 log = get_logger(__name__)
@@ -52,7 +51,7 @@ class DebuggerHandler(object):
     def __init__(self, id, error):
         self.id = id
         if isinstance(error, EuslispError) and error.fatal:
-            self.restarts = self.restarts[2:] # No QUIT & CONTINUE
+            self.restarts = self.restarts[2:]  # No QUIT & CONTINUE
         else:
             self.restarts = self.restarts
         self.restarts_dict = {}
@@ -92,7 +91,8 @@ class EuslimeHandler(object):
             yield [Symbol(":new-package")] + new_prompt
 
     def arglist(self, func, cursor=None, form=None):
-        cmd = """(slime::autodoc "{0}" {1} '{2})""".format(qstr(func), dumps(cursor), dumps(form))
+        cmd = """(slime::autodoc "{0}" {1} '{2})""".format(
+            qstr(func), dumps(cursor), dumps(form))
         result = self.euslisp.exec_internal(cmd)
         if isinstance(result, str):
             return [result, False]
@@ -193,13 +193,13 @@ class EuslimeHandler(object):
             log.debug("scope: %s, cursor: %s" % (scope, cursor))
             assert cursor > 0
             func = scope[0]
-            scope = scope[:-1] # remove marker
+            scope = scope[:-1]  # remove marker
             result = self.arglist(func, cursor, scope)
             if result:
                 yield EuslispResult(result)
             else:
                 yield EuslispResult([Symbol(":not-available"), True])
-        except Exception as e:
+        except Exception:
             log.error(traceback.format_exc())
             yield EuslispResult([Symbol(":not-available"), True])
 
@@ -215,7 +215,8 @@ class EuslimeHandler(object):
             return self.swank_completions_for_keyword(start, None)
         else:
             return self.swank_simple_completions(start, pkg)
-        #return self.swank_fuzzy_completions(start, pkg, ':limit', 300, ':time-limit-in-msec', 1500)
+        # return self.swank_fuzzy_completions(start, pkg, ':limit', 300,
+        #                                     ':time-limit-in-msec', 1500)
 
     def swank_simple_completions(self, start, pkg):
         # (swank:simple-completions "vector-" (quote "USER"))
@@ -227,18 +228,18 @@ class EuslimeHandler(object):
         yield EuslispResult([None, None])
 
     def swank_completions_for_keyword(self, start, sexp):
-        # args: [u':meth', [Symbol(u'quote'), [u'send', u'c', u'', Symbol(cursor)]]]
         if sexp:
-            sexp = sexp[1] # unquote
+            sexp = sexp[1]  # unquote
             scope, _ = current_scope(sexp)
             if scope:
-                scope = scope[:-1] # remove marker
-                if scope[-1] in ['', u'']: # remove null string
+                scope = scope[:-1]  # remove marker
+                if scope[-1] in ['', u'']:  # remove null string
                     scope = scope[:-1]
 
         else:
             scope = None
-        cmd = """(slime::slime-find-keyword "{0}" '{1})""".format(qstr(start), dumps(scope))
+        cmd = """(slime::slime-find-keyword "{0}" '{1})""".format(
+            qstr(start), dumps(scope))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_completions_for_character(self, start):
@@ -267,7 +268,7 @@ class EuslimeHandler(object):
         res_dict = deb.restarts_dict
 
         def check_key(key):
-            return res_dict.has_key(key) and num == res_dict[key]
+            return key in res_dict and num == res_dict[key]
 
         if check_key('RESTART'):
             self.debugger = []
@@ -328,7 +329,8 @@ class EuslimeHandler(object):
 
     def swank_load_file(self, filename):
         yield [Symbol(":write-string"), "\nLoading file: %s ..." % filename]
-        res = self.euslisp.exec_internal('(lisp:load "{0}")'.format(qstr(filename)))
+        res = self.euslisp.exec_internal('(lisp:load "{0}")'.format(
+            qstr(filename)))
         yield [Symbol(":write-string"), "\nLoaded."]
         yield EuslispResult(res)
 
@@ -349,7 +351,8 @@ class EuslimeHandler(object):
         return
 
     def swank_describe_symbol(self, sym):
-        cmd = """(slime::slime-describe-symbol "{0}")""".format(qstr(sym.strip()))
+        cmd = """(slime::slime-describe-symbol "{0}")""".format(
+            qstr(sym.strip()))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_describe_function(self, func):
@@ -363,14 +366,16 @@ class EuslimeHandler(object):
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_list_all_package_names(self, nicknames=None):
-        cmd = """(slime::slime-all-packages {0})""".format(dumps(nicknames))
+        cmd = """(slime::slime-all-packages {0})""".format(
+            dumps(nicknames))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
-    def swank_apropos_list_for_emacs(self, key, external_only=None, case_sensitive=None,
-                                     package=None):
+    def swank_apropos_list_for_emacs(self, key, external_only=None,
+                                     case_sensitive=None, package=None):
         # ignore 'external_only' and 'case_sensitive' arguments
-        package = package[-1] # unquote
-        cmd = """(slime::slime-apropos-list "{0}" {1})""".format(qstr(key), dumps(package))
+        package = package[-1]  # unquote
+        cmd = """(slime::slime-apropos-list "{0}" {1})""".format(
+            qstr(key), dumps(package))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_set_package(self, name):
@@ -384,6 +389,7 @@ class EuslimeHandler(object):
     def swank_set_default_directory(self, dir):
         cmd = """(progn (lisp:cd "{0}") (lisp:pwd))""".format(qstr(dir))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
+
 
 if __name__ == '__main__':
     h = EuslimeHandler()

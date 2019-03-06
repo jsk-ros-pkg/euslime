@@ -64,5 +64,6 @@ def main():
           loader=args.init_file,
           color=args.color)
 
+
 if __name__ == '__main__':
     main()

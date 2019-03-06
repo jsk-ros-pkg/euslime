@@ -3,15 +3,14 @@ try:
 except ImportError:
     import socketserver as S
 
-import time
 import socket
-from threading import Event
-from thread import start_new_thread
+import time
 import traceback
+from thread import start_new_thread
+from threading import Event
 
-from euslime.protocol import Protocol
 from euslime.handler import EuslimeHandler
-from euslime.bridge import EuslispError
+from euslime.protocol import Protocol
 from euslime.logger import get_logger
 
 ENCODINGS = {
@@ -57,7 +56,8 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
         log.debug("Entering handle loop...")
         while not self.swank.handler.close_request.is_set():
             try:
-                head_data = self.request.recv(HEADER_LENGTH, socket.MSG_DONTWAIT)
+                head_data = self.request.recv(HEADER_LENGTH,
+                                              socket.MSG_DONTWAIT)
                 log.debug('raw header: %s', head_data)
                 if not head_data:
                     log.error('Empty header received. Closing socket.')
@@ -96,7 +96,8 @@ class EuslimeServer(S.TCPServer, object):
                  program='roseus',
                  loader='~/.euslime/slime-loader.l',
                  color=False):
-        log.info("Starting server with encoding {} and color {}".format(encoding, color))
+        log.info("Starting server with encoding {} and color {}".format(
+            encoding, color))
         self.encoding = encoding
         self.program = program
         self.loader = loader
@@ -134,7 +135,7 @@ def serve(host='0.0.0.0', port=0, port_filename=str(), encoding='utf-8',
 
     try:
         server.serve_forever()
-    except Exception as e:
+    except Exception:
         log.error(traceback.format_exc())
     finally:
         server.server_close()
