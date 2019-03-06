@@ -263,7 +263,8 @@
 
 (defun set-keyword (arglist start item)
   (let* ((keys (keyword-list arglist start))
-         (pos (position item keys :test #'string-equal)))
+         (pos (and (stringp item)
+                   (position item keys :test #'string-equal))))
     (if pos
         (set-cursor arglist (+ start pos))
         arglist)))

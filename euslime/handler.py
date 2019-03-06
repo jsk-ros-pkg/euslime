@@ -38,7 +38,8 @@ def current_scope(sexp):
 
 
 def qstr(s):
-    return s.encode('utf-8').encode('string_escape')
+    # double escape characters for string formatting
+    return s.encode('utf-8').encode('string_escape').replace('"', '\\"')
 
 
 class DebuggerHandler(object):
@@ -91,6 +92,9 @@ class EuslimeHandler(object):
             yield [Symbol(":new-package")] + new_prompt
 
     def arglist(self, func, cursor=None, form=None):
+        if not isinstance(func, unicode) and not isinstance(func, str):
+            log.debug("Expected string at: %s" % func)
+            return None
         cmd = """(slime::autodoc "{0}" {1} '{2})""".format(
             qstr(func), dumps(cursor), dumps(form))
         result = self.euslisp.exec_internal(cmd)
