@@ -41,6 +41,8 @@ def qstr(s):
     # double escape characters for string formatting
     return s.encode('utf-8').encode('string_escape').replace('"', '\\"')
 
+def dumps_lisp(s):
+    return dumps(s, true_as='lisp:t', false_as='lisp:nil', none_as='lisp:nil')
 
 class DebuggerHandler(object):
     restarts = [
@@ -87,7 +89,7 @@ class EuslimeHandler(object):
         self.euslisp.start()
 
     def maybe_new_prompt(self):
-        new_prompt = self.euslisp.exec_internal("(slime::slime-prompt)")
+        new_prompt = self.euslisp.exec_internal('(slime::slime-prompt)')
         if new_prompt:
             yield [Symbol(":new-package")] + new_prompt
 
@@ -95,8 +97,8 @@ class EuslimeHandler(object):
         if not isinstance(func, unicode) and not isinstance(func, str):
             log.debug("Expected string at: %s" % func)
             return None
-        cmd = """(slime::autodoc "{0}" {1} '{2})""".format(
-            qstr(func), dumps(cursor), dumps(form))
+        cmd = '(slime::autodoc "{0}" {1} (lisp:quote {2}))'.format(
+            qstr(func), dumps_lisp(cursor), dumps_lisp(form))
         result = self.euslisp.exec_internal(cmd)
         if isinstance(result, str):
             return [result, False]
@@ -116,7 +118,7 @@ class EuslimeHandler(object):
         self.euslisp.recv_socket_data()
         log.info("Successfully started Euslisp process!")
         version = self.euslisp.exec_internal('(slime::implementation-version)')
-        name = self.euslisp.exec_internal('(pathname-name *program-name*)')
+        name = self.euslisp.exec_internal('(lisp:pathname-name lisp:*program-name*)')
         res = {
             'pid': os.getpid(),
             'style': False,
@@ -224,7 +226,7 @@ class EuslimeHandler(object):
 
     def swank_simple_completions(self, start, pkg):
         # (swank:simple-completions "vector-" (quote "USER"))
-        cmd = """(slime::slime-find-symbol "{0}")""".format(qstr(start))
+        cmd = '(slime::slime-find-symbol "{0}")'.format(qstr(start))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_fuzzy_completions(self, start, pkg, *args):
@@ -242,12 +244,12 @@ class EuslimeHandler(object):
 
         else:
             scope = None
-        cmd = """(slime::slime-find-keyword "{0}" '{1})""".format(
-            qstr(start), dumps(scope))
+        cmd = '(slime::slime-find-keyword "{0}" (lisp:quote {1}))'.format(
+            qstr(start), dumps_lisp(scope))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_completions_for_character(self, start):
-        cmd = """(slime::slime-find-character "{0}")""".format(qstr(start))
+        cmd = '(slime::slime-find-character "{0}")'.format(qstr(start))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_complete_form(self, *args):
@@ -355,7 +357,7 @@ class EuslimeHandler(object):
         return
 
     def swank_describe_symbol(self, sym):
-        cmd = """(slime::slime-describe-symbol "{0}")""".format(
+        cmd = '(slime::slime-describe-symbol "{0}")'.format(
             qstr(sym.strip()))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
@@ -366,32 +368,32 @@ class EuslimeHandler(object):
         return self.swank_describe_symbol(name)
 
     def swank_swank_expand_1(self, form):
-        cmd = """(slime::slime-macroexpand '{0})""".format(form)
+        cmd = '(slime::slime-macroexpand (lisp:quote {0}))'.format(form)
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_list_all_package_names(self, nicknames=None):
-        cmd = """(slime::slime-all-packages {0})""".format(
-            dumps(nicknames))
+        cmd = '(slime::slime-all-packages {0})'.format(
+            dumps_lisp(nicknames))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_apropos_list_for_emacs(self, key, external_only=None,
                                      case_sensitive=None, package=None):
         # ignore 'external_only' and 'case_sensitive' arguments
         package = package[-1]  # unquote
-        cmd = """(slime::slime-apropos-list "{0}" {1})""".format(
-            qstr(key), dumps(package))
+        cmd = '(slime::slime-apropos-list "{0}" {1})'.format(
+            qstr(key), dumps_lisp(package))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_set_package(self, name):
-        cmd = """(slime::set-package "{0}")""".format(qstr(name))
+        cmd = '(slime::set-package "{0}")'.format(qstr(name))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_default_directory(self):
-        res = self.euslisp.exec_internal("(lisp:pwd)")
+        res = self.euslisp.exec_internal('(lisp:pwd)')
         yield EuslispResult(res)
 
     def swank_set_default_directory(self, dir):
-        cmd = """(progn (lisp:cd "{0}") (lisp:pwd))""".format(qstr(dir))
+        cmd = '(lisp:progn (lisp:cd "{0}") (lisp:pwd))'.format(qstr(dir))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
 

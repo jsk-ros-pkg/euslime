@@ -80,7 +80,7 @@ class Process(object):
                 log.warn("failed to terminate: %s" % e)
 
     def reset(self):
-        self.euslime_connection.send("(reset)" + self.delim)
+        self.euslime_connection.send("(lisp:reset)" + self.delim)
 
     def ping(self):
         log.debug("Ping...")
@@ -235,7 +235,7 @@ class EuslispProcess(Process):
                         # e.g. error from ros::subscribe callback
                         yield has_token[1]
                         # reset sigint reploop to process socket request
-                        self.input('(reset *replevel*)')
+                        self.input('(lisp:reset lisp:*replevel*)')
                         self.ping()
                     # Check for Errors
                     gen = self.get_socket_response(recursive=recursive)
@@ -282,7 +282,7 @@ class EuslispProcess(Process):
                     [i, split_line[1], [Symbol(":restartable"), False]])
             else:
                 break
-        self.euslime_connection.send('(reset *replevel*)' + self.delim)
+        self.euslime_connection.send('(lisp:reset lisp:*replevel*)' + self.delim)
         return strace
 
     def exec_internal(self, cmd_str):
@@ -291,7 +291,10 @@ class EuslispProcess(Process):
         self.euslime_connection.send(cmd_str + self.delim)
         gen = self.get_socket_response()
         res = ''.join(list(gen))
-        return loads(res)
+        res = loads(res)
+        if res == Symbol("lisp:nil"):
+            return []
+        return res
 
     def eval(self, cmd_str):
         self.output = Queue()
