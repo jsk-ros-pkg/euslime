@@ -291,7 +291,14 @@ class EuslispProcess(Process):
         self.euslime_connection.send(cmd_str + self.delim)
         gen = self.get_socket_response()
         res = ''.join(list(gen))
-        res = loads(res)
+        try:
+            res = loads(res)
+        except AssertionError:
+            # for instance when parsing lisp objects
+            # Do not raise errors, return string instead
+            # Mainly for `swank_compile_string_for_emacs'
+            log.error("Failed to generate s-expression: %s" % res)
+            return res
         if res == Symbol("lisp:nil"):
             return []
         return res
