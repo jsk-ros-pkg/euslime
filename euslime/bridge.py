@@ -230,6 +230,13 @@ class EuslispProcess(Process):
                 if has_token[0]:
                     yield has_token[0]
                 if len(has_token) >= 2 or not has_token[0]:
+                    if has_token[1]:
+                        # when both error and segmentation fault occurs
+                        # e.g. error from ros::subscribe callback
+                        yield has_token[1]
+                        # reset sigint reploop to process socket request
+                        self.input('(reset *replevel*)')
+                        self.ping()
                     # Check for Errors
                     gen = self.get_socket_response(recursive=recursive)
                     # Print Results
