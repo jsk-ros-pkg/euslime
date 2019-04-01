@@ -15,7 +15,7 @@ Affonso Guilherme de Campos <<affonso@jsk.imi.i.u-tokyo.ac.jp>>
     ```bash
     mkdir euslime_dir
     cd euslime_dir/
-    git clone https://github.com/Affonso-Gui/euslime.git
+    git clone https://github.com/furushchev/euslime.git
     git clone https://github.com/slime/slime.git
     git clone https://github.com/deadtrickster/slime-repl-ansi-color.git
     ```
