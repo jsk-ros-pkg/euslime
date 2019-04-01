@@ -4,11 +4,13 @@ except ImportError:
     import socketserver as S
 
 import socket
-from thread import start_new_thread
+import time
 import traceback
+from thread import start_new_thread
+from threading import Event
 
-from euslime.protocol import Protocol
 from euslime.handler import EuslimeHandler
+from euslime.protocol import Protocol
 from euslime.logger import get_logger
 
 ENCODINGS = {
@@ -22,10 +24,27 @@ log = get_logger(__name__)
 
 class EuslimeRequestHandler(S.BaseRequestHandler, object):
     def __init__(self, request, client_address, server):
-        self.swank = Protocol(EuslimeHandler)
+        self.swank = Protocol(EuslimeHandler, server.program, server.loader)
+        self.swank.handler.euslisp.color = server.color
         self.encoding = ENCODINGS.get(server.encoding, 'utf-8')
+        self.interrupt_request = Event()
         super(EuslimeRequestHandler, self).__init__(
             request, client_address, server)
+
+    def _process_data(self, recv_data):
+        try:
+            for send_data in self.swank.process(recv_data):
+                if self.interrupt_request.is_set():
+                    self.interrupt_request.clear()
+                    return
+                log.debug('response: %s', send_data)
+                send_data = send_data.encode(self.encoding)
+                self.request.send(send_data)
+        except KeyboardInterrupt:
+            log.warn("Keyboard Interrupt!")
+            self.interrupt_request.set()
+            for msg in self.swank.interrupt():
+                self.request.send(msg)
 
     def handle(self):
         """This method handles packets from swank client.
@@ -34,10 +53,11 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
 
         e.g.) 000016(:return (:ok nil) 1)\n
         """
-        log.debug("handle")
-        while True:
+        log.debug("Entering handle loop...")
+        while not self.swank.handler.close_request.is_set():
             try:
-                head_data = self.request.recv(HEADER_LENGTH)
+                head_data = self.request.recv(HEADER_LENGTH,
+                                              socket.MSG_DONTWAIT)
                 log.debug('raw header: %s', head_data)
                 if not head_data:
                     log.error('Empty header received. Closing socket.')
@@ -45,23 +65,23 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
                     break
                 length = int(head_data, 16)
                 recv_data = self.request.recv(length)
-                log.info('raw data: %s', recv_data)
+                log.debug('raw data: %s', recv_data)
                 recv_data = recv_data.decode(self.encoding)
-                for send_data in self.swank.process(recv_data):
-                    log.info('response: %s', send_data)
-                    send_data = send_data.encode(self.encoding)
-                    self.request.send(send_data)
+                start_new_thread(self._process_data, (recv_data,))
             except socket.timeout:
-                log.error('socket timeout')
+                log.error('Socket Timeout')
                 break
-            except KeyboardInterrupt:
-                break
-            except Exception as e:
-                log.error(e)
+            except socket.error:
+                try:
+                    time.sleep(0.01)
+                except KeyboardInterrupt:
+                    log.warn("Nothing to interrupt!")
+                continue
+            except Exception:
                 log.error(traceback.format_exc())
                 break
 
-        log.info("Server is shutting down")
+        log.warn("Server is shutting down")
 
         # to kill daemon
         def kill_server(s):
@@ -72,24 +92,38 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
 class EuslimeServer(S.TCPServer, object):
     def __init__(self, server_address,
                  handler_class=EuslimeRequestHandler,
-                 encoding='utf-8'):
+                 encoding='utf-8',
+                 program='roseus',
+                 loader='~/.euslime/slime-loader.l',
+                 color=False):
+        log.info("Starting server with encoding {} and color {}".format(
+            encoding, color))
         self.encoding = encoding
+        self.program = program
+        self.loader = loader
+        self.color = color
 
         super(EuslimeServer, self).__init__(server_address, handler_class)
 
         addr, port = self.server_address
-        log.info('Serving on %s:%d', addr, port)
 
     def server_bind(self):
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         self.socket.settimeout(3)
         self.socket.bind(self.server_address)
+        log.info('Serving on %s:%d', *self.socket.getsockname())
 
 
-def serve(host='0.0.0.0', port=4005, port_filename=str(), encoding='utt-8'):
+def serve(host='0.0.0.0', port=0, port_filename=str(), encoding='utf-8',
+          program='roseus', loader='~/.euslime/slime-loader.l', color=False):
     server = EuslimeServer((host, port),
-                           encoding=encoding)
+                           encoding=encoding,
+                           program=program,
+                           loader=loader,
+                           color=color)
+
+    host, port = server.socket.getsockname()
 
     # writing port number to file
     if port_filename:
@@ -101,8 +135,7 @@ def serve(host='0.0.0.0', port=4005, port_filename=str(), encoding='utt-8'):
 
     try:
         server.serve_forever()
-    except Exception as e:
-        log.error(e)
+    except Exception:
         log.error(traceback.format_exc())
     finally:
         server.server_close()

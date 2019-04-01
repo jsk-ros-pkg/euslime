@@ -1,78 +1,74 @@
-import os
-from sexpdata import dumps
-from sexpdata import loads
-from sexpdata import Symbol
+from sexpdata import dumps, loads, Symbol
+import signal
 import traceback
 
-from euslime.bridge import EuslispError
+from euslime.bridge import EuslispResult
+from euslime.handler import DebuggerHandler
 from euslime.logger import get_logger
 
 log = get_logger(__name__)
 
 
 class Protocol(object):
-    def __init__(self, handler, prompt='irteusgl$ '):
-        self.handler = handler()
-        self.prompt = prompt
+    def __init__(self, handler, *args, **kwargs):
+        self.handler = handler(*args, **kwargs)
 
     def dumps(self, sexp):
-        res = dumps(sexp, false_as='nil', none_as='nil')
-        header = '{0:06x}'.format(len(res))
-        return header + res
+        def with_header(sexp):
+            res = dumps(sexp, false_as='nil', none_as='nil')
+            # encode to adapt to japanese characters
+            header = '{0:06x}'.format(len(res.encode('utf-8')))
+            return header + res
+        try:
+            return with_header(sexp)
+        except UnicodeDecodeError:
+            # For example in (apropos "default")
+            log.warn('UnicodeDecodeError at %s' % sexp)
+            assert isinstance(sexp, list)
+            sexp = [unicode(x, 'utf-8', 'ignore') if isinstance(x, str)
+                    else x for x in sexp]
+            return with_header(sexp)
 
     def make_error(self, id, err):
-        desc = str()
-        strace = list()
-        if isinstance(err, EuslispError):
-            err_msgs = err.message.strip().split()
-            if err_msgs and err_msgs[0].startswith("Call Stack"):
-                # parse stack trace
-                desc_idx = 0
-                for i, l in enumerate(err_msgs[1:]):
-                    try:
-                        num, msg = l.strip().split(": at ")
-                        strace.append([int(num), msg,
-                                       [Symbol(":restartable"), False]])
-                    except:
-                        desc_idx = i
-                        break
-                desc = os.linesep.join(err_msgs[desc_idx:])
-            else:
-                desc = err.message.strip()
-        elif isinstance(err, Exception):
-            desc = err.message.strip()
-        else:
-            desc = err
-
-        restarts = [
-            ["QUIT", "Quit to the SLIME top level"],
-            ["RESTART", "Restart euslisp process"]
-        ]
+        debug = DebuggerHandler(id, err)
+        self.handler.debugger.append(debug)
 
         res = [
             Symbol(':debug'),
             0,  # the thread which threw the condition
-            1,  # the depth of the condition
-            [desc, str(), None],  # s-exp with a description
-            restarts,  # list of available restarts for the condition
-            strace,  # stacktrace
+            len(self.handler.debugger),  # the depth of the condition
+            [debug.message, str(), None],  # s-exp with a description
+            debug.restarts,  # list of available restarts
+            debug.stack,  # stacktrace
             [None],  # pending continuation
         ]
-        return self.dumps(res)
+        yield self.dumps(res)
 
     def make_response(self, id, sexp):
         try:
-            res = [
-                Symbol(':return'),
-                {'ok': sexp},
-                id,
-            ]
-            return self.dumps(res)
+            res = [Symbol(':return'), {'ok': sexp}, id]
+            yield self.dumps(res)
         except Exception as e:
-            return self.make_error(id, e)
+            for r in self.make_error(id, e):
+                yield r
+
+    def interrupt(self):
+        yield self.dumps([Symbol(":read-aborted"), 0, 1])
+        self.handler.euslisp.process.send_signal(signal.SIGINT)
+        self.handler.euslisp.reset()
+        yield self.dumps([Symbol(':return'),
+                          {'abort': "'Keyboard Interrupt'"},
+                          self.handler.command_id])
 
     def process(self, data):
-        cmd, form, pkg, thread, comm_id = loads(data)
+        data = loads(data)
+        if data[0] == Symbol(":emacs-rex"):
+            cmd, form, pkg, thread, comm_id = data
+            self.handler.command_id = comm_id
+            self.handler.package = pkg
+        else:
+            form = data
+            comm_id = None
         func = form[0].value().replace(':', '_').replace('-', '_')
         args = form[1:]
 
@@ -82,18 +78,18 @@ class Protocol(object):
         try:
             gen = getattr(self.handler, func)(*args)
             if not gen:
-                yield self.make_response(comm_id, gen)
+                if comm_id:
+                    for r in self.make_response(comm_id, None):
+                        yield r
                 return
-            last_resp = gen.next()
-            while True:
-                try:
-                    resp = gen.next()
-                    yield self.dumps(last_resp)
-                    last_resp = resp
-                except StopIteration:
-                    yield self.make_response(comm_id, last_resp)
-                    return
+            for resp in gen:
+                if isinstance(resp, EuslispResult):
+                    for r in self.make_response(self.handler.command_id,
+                                                resp.value):
+                        yield r
+                else:
+                    yield self.dumps(resp)
         except Exception as e:
-            log.error(e)
             log.error(traceback.format_exc())
-            yield self.make_error(comm_id, e)
+            for r in self.make_error(self.handler.command_id, e):
+                yield r
