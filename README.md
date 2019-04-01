@@ -5,7 +5,9 @@ Slime for Euslisp
 
 ## Author
 
-Yuki Fututa <<furushchev@jsk.imi.i.u-tokyo.ac.jp>>
+Yuki Furuta <<furushchev@jsk.imi.i.u-tokyo.ac.jp>>
+
+Affonso Guilherme de Campos <<affonso@jsk.imi.i.u-tokyo.ac.jp>>
 
 ## Setup
 
