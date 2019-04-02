@@ -89,6 +89,10 @@
 (add-hook 'slime-popup-buffer-mode-hook
           (lambda () (ansi-color-apply-on-region (point-min) (point-max))))
 
+;; Use find-tag when `tags-table-list' is set
+(add-hook 'slime-edit-definition-hooks
+          (lambda (name where) (if (or tags-file-name tags-table-list) (find-tag name where))))
+
 ;; COMPLETION FUNCTIONS
 (defun slime-maybe-complete-as-filename ()
    "If point is at a string starting with \", complete it as filename.
@@ -121,9 +125,9 @@
   :lighter " eus"
   :keymap (let ((prefix (slime-euslisp--doc-map-prefix)))
             `((,(concat prefix (kbd "C-p")) . slime-apropos-symbol-package)
-              (,(concat prefix "p") . slime-apropos-symbol-package)
-              (,(kbd "M-,") . tags-loop-continue)
-              (,(kbd "M-.") . find-tag)))
+              (,(concat prefix "p") . slime-apropos-symbol-package)))
+              ;; (,(kbd "M-,") . tags-loop-continue)
+              ;; (,(kbd "M-.") . find-tag)))
   ;; Use simple-completions rather than fuzzy-completions
   (setq-local slime-complete-symbol-function 'slime-complete-symbol*)
   (add-hook 'minibuffer-setup-hook 'slime-set-minibuffer-completion)

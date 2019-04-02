@@ -119,11 +119,10 @@
     (euslime-maybe-generate-tag
      eustag "eus"
      (format "%s/lisp" eusdir)
-     (format "etags %s/lisp/l/*.l -l none --regex='/pointer [A-Z_0-9]+[ ]*(/' --no-globals %s/lisp/c/*.c -o %s" eusdir eusdir eustag))
+     t "l" "c")
     (euslime-maybe-generate-tag
      irttag "\\(irteus\\|roseus\\)"
-     (format "%s/irteus" eusdir)
-     (format "etags %s/irteus/*.l -o %s" eusdir irttag))
+     (format "%s/irteus" eusdir))
     ;; TODO: Use rosemacs to probe/find roseus package
     (let ((rosdir (if (= (shell-command "rospack find roseus") 0)
                       (replace-regexp-in-string "\n$" ""
@@ -131,14 +130,22 @@
       (when rosdir
         (euslime-maybe-generate-tag
          rostag "roseus"
-         (format "%s/euslisp" rosdir)
-         (format "etags %s/euslisp/*.l -o %s" rosdir rostag))))))
+         (format "%s/euslisp" rosdir))))))
 
-(defun euslime-maybe-generate-tag (tag-file match-str src-dir cmd)
+(defun euslime-maybe-generate-tag (tag-file match-str src-dir &optional ctags ldir cdir)
   (when (string-match-p match-str inferior-euslisp-program)
     (when (file-newer-than-file-p src-dir tag-file)
       (message (format "Generating %s file..." tag-file))
-      (shell-command cmd))
+      (shell-command
+       ;; Include `(:methods' in l files
+       (format "etags --regex='/[ \\t]*(:[^ \\t\\$]*/' %s/*.l %s-o %s"
+               (expand-file-name (or ldir "") src-dir)
+               ;; Include `pointer FUNCTIONS' in c files
+               (if ctags
+                   (format "-l none -R --regex='/pointer [A-Z_0-9]+[ ]*(/' --no-globals %s/*.c "
+                           (expand-file-name (or cdir "") src-dir))
+                 "")
+               tag-file)))
     (cl-pushnew tag-file tags-table-list)))
 
 (defun euslime-init (file _)
