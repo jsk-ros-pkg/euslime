@@ -309,7 +309,7 @@ class EuslimeHandler(object):
             assert isinstance(sexp, list)
         except AssertionError:
             raise Exception('Invalid s-expression in %s' % cmd_str)
-        self.euslisp.exec_internal(cmd_str)
+        list(self.euslisp.eval(cmd_str))
         if len(sexp) > 2:
             msg = dumps(sexp[:2] + [None], none_as='...')
         else:
