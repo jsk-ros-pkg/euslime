@@ -5,6 +5,11 @@
 ;; Socket Connection
 ;;;;;;;;;;;;;;;;;;;;
 
+(defmacro ensure-print (&rest body)
+  `(let ((*print-case* :downcase)
+         *print-length* *print-level*)
+     ,@body))
+
 (eval-when (load eval)
 
 (export '(*slime-stream* slime-connect-socket socket-eval socket-request
@@ -22,16 +27,17 @@
 (defun socket-request (command value)
   (assert (streamp *slime-stream*) "Cannot connect to *slime-stream*!")
   (flet ((send-request (str)
-           (let ((len (substitute #\0 #\space (format nil "~6,x" (length str)))))
-             (princ len *slime-stream*)
-             (princ str *slime-stream*)
-             (finish-output *slime-stream*))))
+           (ensure-print
+            (let ((len (substitute #\0 #\space (format nil "~6,x" (length str)))))
+              (princ len *slime-stream*)
+              (princ str *slime-stream*)
+              (finish-output *slime-stream*)))))
     (send-request command)
-    (send-request (format nil "~s" value))))
+    (send-request (prin1-to-string value))))
 
 (defun socket-eval (strm)
-  (socket-request "result"
-   (evaluate-stream strm)))
+  (ensure-print
+   (socket-request "result" (evaluate-stream strm))))
 
 ;; Slime Toplevel
 
@@ -49,9 +55,10 @@
 
 (defun slime-finish-output (strm)
   (when (derivedp *slime-stream* socket-stream)
-    (format strm "~Ceuslime-token-~A" 29 ;; group separator
-            (send (lisp::socket-stream-address *slime-stream*) :port))
-    (finish-output strm)))
+    (ensure-print
+     (format strm "~Ceuslime-token-~A" 29 ;; group separator
+             (send (lisp::socket-stream-address *slime-stream*) :port))
+     (finish-output strm))))
 
 (defun slimetop ()
   (lisp::install-error-handler 'slime::slime-error)
@@ -83,7 +90,7 @@
       (format strm "~A~D-" *reptype* *replevel*))
   (if (not (eql *package* *user-package*))
       (format strm "~A:" (package-name *package*)))
-  (format strm "~a" *prompt-string*))
+  (princ *prompt-string* strm))
 
 (defun repsel (repstream eof ttyp local-bindings)
   ;; Do not print the evaluation result to *standard-output*
