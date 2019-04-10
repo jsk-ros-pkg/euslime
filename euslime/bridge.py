@@ -118,7 +118,9 @@ class EuslispError(Exception):
     def __init__(self, message, stack=None, fatal=False):
         self.stack = stack
         self.fatal = fatal
-        super(EuslispError, self).__init__(message.capitalize())
+        # capitalize() converts the rest of the string to downcase
+        message = message[0].upper() + message[1:]
+        super(EuslispError, self).__init__(message)
 
 
 class EuslispResult(object):
