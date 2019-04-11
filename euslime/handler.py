@@ -173,6 +173,8 @@ class EuslimeHandler(object):
         return self.swank_eval(sexp)
 
     def swank_repl_listener_eval(self, sexp):
+        if self.debugger:
+            return self.swank_throw_to_toplevel()
         return self.swank_eval(sexp)
 
     def swank_pprint_eval(self, sexp):
