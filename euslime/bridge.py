@@ -139,7 +139,7 @@ class EuslispProcess(Process):
         self.token = '{}euslime-token-{}'.format(chr(29), port)
 
         super(EuslispProcess, self).__init__(
-            cmd=[self.program, self.init_file, "--port-{}".format(port)],
+            cmd=[self.program, self.init_file, "--port={}".format(port)],
             on_output=self.on_output,
         )
 

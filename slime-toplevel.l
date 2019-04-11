@@ -41,6 +41,11 @@
 
 ;; Slime Toplevel
 
+(defun clean-eustop ()
+  (setq lisp::*eustop-argument*
+        (delete-if #'(lambda (val) (string= val "--port=" :end1 7))
+                   lisp::*eustop-argument* :count 1)))
+
 (defun slime-error (code msg1 form &optional (msg2))
   (if (and msg2 (zerop (length msg1))) (setq msg1 msg2 msg2 nil))
   (socket-request "error"
@@ -61,6 +66,7 @@
      (finish-output strm))))
 
 (defun slimetop ()
+  (clean-eustop)
   (lisp::install-error-handler 'slime::slime-error)
   (setq lisp::*max-callstack-depth* 0)
   (catch :eusexit
@@ -126,7 +132,7 @@
       (new-history *history-max*)))
 
   ;; Connect to socket
-  (let ((port (find "--port-" *eustop-argument* :test #'(lambda (a b) (string= a b :end2 7)))))
+  (let ((port (find "--port=" *eustop-argument* :test #'(lambda (a b) (string= a b :end2 7)))))
     (when port
       (setq port (read-from-string (subseq port 7)))
       (assert (numberp port))
