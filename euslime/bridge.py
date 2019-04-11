@@ -181,18 +181,19 @@ class EuslispProcess(Process):
         except socket.error:
             return
 
+    def recv_socket_length(self, hex_len):
+        if hex_len == str():
+            # recv() returns null string on EOF
+            raise EuslispError('Socket connection closed', fatal=True)
+        length = int(hex_len, 16)
+        while length > 0:
+            msg = self.euslime_connection.recv(length)
+            log.debug("Socket Response: %s" % msg)
+            length -= len(msg)
+            yield msg
+        return
+
     def recv_socket_data(self):
-        def recv_data(hex_len):
-            if hex_len == str():
-                # recv() returns null string on EOF
-                raise EuslispError('Socket connection closed', fatal=True)
-            length = int(hex_len, 16)
-            while length > 0:
-                msg = self.euslime_connection.recv(length)
-                log.debug("Socket Response: %s" % msg)
-                length -= len(msg)
-                yield msg
-            return
         log.debug('Waiting for socket data...')
         while True:
             try:
@@ -203,7 +204,7 @@ class EuslispProcess(Process):
                 time.sleep(self.rate)
                 self.check_poll()
                 continue
-        return recv_data(head_data)
+        return self.recv_socket_length(head_data)
 
     def get_socket_response(self, recursive=False):
         def recv_next():
@@ -223,6 +224,22 @@ class EuslispProcess(Process):
         elif command == Symbol('abort'):
             return
         raise Exception("Unhandled Socket Request Type: %s" % command)
+
+    def try_get_socket_result(self):
+        def gen_to_string(gen):
+            return ''.join(list(gen))
+        try:
+            head_data = self.euslime_connection.recv(HEADER_LENGTH,
+                                                     socket.MSG_DONTWAIT)
+            gen = self.recv_socket_length(head_data)
+            msg = gen_to_string(gen)
+            if msg == 'result':
+                gen = self.recv_socket_data()
+                return  gen_to_string(gen)
+        except socket.error:
+            return
+        except ValueError:
+            return
 
     def get_output(self, recursive=False):
         while True:
@@ -293,14 +310,7 @@ class EuslispProcess(Process):
         self.euslime_connection.send(cmd_str + self.delim)
         gen = self.get_socket_response()
         res = ''.join(list(gen))
-        try:
-            res = loads(res)
-        except AssertionError:
-            # for instance when parsing lisp objects
-            # Do not raise errors, return string instead
-            # Mainly for `swank_compile_string_for_emacs'
-            log.error("Failed to generate s-expression: %s" % res)
-            return res
+        res = loads(res)
         if res == Symbol("lisp:nil"):
             return []
         return res
@@ -315,4 +325,12 @@ class EuslispProcess(Process):
                 yield [Symbol(":write-string"), out]
             else:
                 yield out
+        # Previously pendant output is sometimes post processed,
+        # leading to virtually having more than one result per evaluation
+        # e.g. (read) [RET] 10 [RET] [RET]
+        # e.g. (lisp:none 10) [RET] [RET]
+        second_result = self.try_get_socket_result()
+        if second_result:
+            log.warn("Second result: %s", second_result)
+            yield [Symbol(":write-string"), second_result]
         yield EuslispResult(None)
