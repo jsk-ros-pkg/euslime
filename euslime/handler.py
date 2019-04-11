@@ -304,17 +304,18 @@ class EuslimeHandler(object):
     def swank_compile_string_for_emacs(self, cmd_str, *args):
         # (sexp buffer-name (:position 1) (:line 1) () ())
         # FIXME: This does not compile actually, just eval instead.
-        try:
-            sexp = loads(cmd_str, nil=None)
-            assert isinstance(sexp, list)
-        except AssertionError:
-            raise Exception('Invalid s-expression in %s' % cmd_str)
+        # Although compiling it would have effect on the Call Stack
+        cmd_str = "(lisp:progn " + cmd_str + ")"
+        messages = []
+        sexp = loads(cmd_str, nil=None)
+        for exp in sexp[1:]:
+            if len(exp) > 2:
+                messages.append(dumps(exp[:2] + [None], none_as='...'))
+            else:
+                messages.append(exp)
         list(self.euslisp.eval(cmd_str))
-        if len(sexp) > 2:
-            msg = dumps(sexp[:2] + [None], none_as='...')
-        else:
-            msg = cmd_str
-        yield [Symbol(":write-string"), "; Loaded {}".format(msg)]
+        for msg in messages:
+            yield [Symbol(":write-string"), "; Loaded {}\n".format(msg)]
         errors = []
         seconds = 0.01
         yield EuslispResult([Symbol(":compilation-result"), errors, True,
@@ -334,10 +335,10 @@ class EuslimeHandler(object):
                              seconds, loadp, filename])
 
     def swank_load_file(self, filename):
-        yield [Symbol(":write-string"), "\nLoading file: %s ..." % filename]
+        yield [Symbol(":write-string"), "Loading file: %s ...\n" % filename]
         res = self.euslisp.exec_internal('(lisp:load "{0}")'.format(
             qstr(filename)))
-        yield [Symbol(":write-string"), "\nLoaded."]
+        yield [Symbol(":write-string"), "Loaded.\n"]
         yield EuslispResult(res)
 
     def swank_inspect_current_condition(self):
