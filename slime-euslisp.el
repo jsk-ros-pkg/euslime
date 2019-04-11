@@ -89,6 +89,10 @@
 (add-hook 'slime-popup-buffer-mode-hook
           (lambda () (ansi-color-apply-on-region (point-min) (point-max))))
 
+;; Wrap lines on slime debugger
+(add-hook 'sldb-mode-hook
+          (lambda () (visual-line-mode nil)))
+
 ;; Use find-tag when `tags-table-list' is set
 (add-hook 'slime-edit-definition-hooks
           (lambda (name where) (if (or tags-file-name tags-table-list) (find-tag name where))))
