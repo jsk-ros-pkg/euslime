@@ -41,8 +41,10 @@ def qstr(s):
     # double escape characters for string formatting
     return s.encode('utf-8').encode('string_escape').replace('"', '\\"')
 
+
 def dumps_lisp(s):
     return dumps(s, true_as='lisp:t', false_as='lisp:nil', none_as='lisp:nil')
+
 
 class DebuggerHandler(object):
     restarts = [
@@ -118,7 +120,8 @@ class EuslimeHandler(object):
         self.euslisp.recv_socket_data()
         log.info("Successfully started Euslisp process!")
         version = self.euslisp.exec_internal('(slime::implementation-version)')
-        name = self.euslisp.exec_internal('(lisp:pathname-name lisp:*program-name*)')
+        name = self.euslisp.exec_internal(
+            '(lisp:pathname-name lisp:*program-name*)')
         res = {
             'pid': os.getpid(),
             'style': False,

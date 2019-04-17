@@ -235,7 +235,7 @@ class EuslispProcess(Process):
             msg = gen_to_string(gen)
             if msg == 'result':
                 gen = self.recv_socket_data()
-                return  gen_to_string(gen)
+                return gen_to_string(gen)
         except socket.error:
             return
         except ValueError:
@@ -301,7 +301,8 @@ class EuslispProcess(Process):
                     [i, split_line[1], [Symbol(":restartable"), False]])
             else:
                 break
-        self.euslime_connection.send('(lisp:reset lisp:*replevel*)' + self.delim)
+        self.euslime_connection.send(
+            '(lisp:reset lisp:*replevel*)' + self.delim)
         return strace
 
     def exec_internal(self, cmd_str):
