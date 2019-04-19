@@ -55,7 +55,7 @@ Affonso Guilherme de Campos <<affonso@jsk.imi.i.u-tokyo.ac.jp>>
     (require 'euslime)
     (setq inferior-lisp-program "sbcl")
     (setq inferior-euslisp-program "roseus")
-    (setq slime-contribs '(slime-fancy slime-repl-ansi-color))
+    (slime-setup '(slime-fancy slime-repl-ansi-color slime-banner))
     ```
 
 1. Launch emacs
