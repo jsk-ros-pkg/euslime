@@ -241,7 +241,9 @@
       (dotimes (i (min len (1+ cursor)))
         (case (nth i arglist)
           (&rest
-           (return-from function-autodoc (set-cursor arglist (1+ i))))
+           (aif (position '&key arglist :start (1+ i))
+                (return-from function-autodoc (set-keyword arglist it (car (last form))))
+                (return-from function-autodoc (set-cursor arglist (1+ i)))))
           (&optional
            (incf cursor))
           (&key
