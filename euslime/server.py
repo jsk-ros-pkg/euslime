@@ -83,6 +83,8 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
 
         log.warn("Server is shutting down")
 
+        self.swank.handler.swank_quit_lisp()
+
         # to kill daemon
         def kill_server(s):
             s.shutdown()
