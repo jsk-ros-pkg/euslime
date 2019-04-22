@@ -4,21 +4,31 @@
 
 import pprint
 import socket
+import time
 import unittest
 
 from euslime.logger import get_logger
+from euslime.server import EuslimeServer
+from thread import start_new_thread
 
 HEADER_LENGTH = 6
 
 log = get_logger(__name__)
-host = '0.0.0.0'
-port = 5050
 
 class EuslimeTest(unittest.TestCase):
     def setUp(self):
-        socket.setdefaulttimeout(5)
+        self.server = EuslimeServer(('0.0.0.0', 0))
+        host, port = self.server.socket.getsockname()
+        start_new_thread(self.server.serve_forever, ())
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # self.socket.settimeout(5)
         self.socket.connect((host, port))
+
+    def tearDown(self):
+        log.info("Tearing down...")
+        self.socket.shutdown(socket.SHUT_RDWR)
+        time.sleep(0.1)
+        log.info("...DONE")
 
     def socket_recv(self, times):
         def recv_one():
