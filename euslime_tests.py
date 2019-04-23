@@ -3,6 +3,7 @@
 # Test suite for EusLisp SLIME
 
 import pprint
+import re
 import socket
 import time
 import unittest
@@ -12,6 +13,7 @@ from euslime.server import EuslimeServer
 from thread import start_new_thread
 
 HEADER_LENGTH = 6
+REGEX_ADDR = re.compile(r'#X[0-9a-f]{7} ')
 
 log = get_logger(__name__)
 
@@ -58,12 +60,25 @@ class EuslimeTestBase(unittest.TestCase):
         header = '{0:06x}'.format(len(req))
         self.socket.send(header + req)
 
-    def assertSocket(self, req, *res):
+    def socket_get_response(self, req, n):
         log.info('request: \n%s', req)
-        log.info('expected response: \n%s', pprint.pformat(res, width=5))
         # self.socket_clean()
         self.socket_send(req)
-        response = self.socket_recv(len(res))
+        return self.socket_recv(n)
+
+    def assertSocket(self, req, *res):
+        log.info('expected response: \n%s', pprint.pformat(res, width=5))
+        response = self.socket_get_response(req, len(res))
+        log.info('received response: \n%s', pprint.pformat(response, width=5))
+        self.assertEqual(res, response)
+
+    def assertSocketIgnoreAddress(self, req, *res):
+        def substitute_address(lst):
+            return [REGEX_ADDR.sub(str(), msg) for msg in lst]
+        res = substitute_address(res)
+        log.info('expected response: \n%s', pprint.pformat(res, width=5))
+        response = self.socket_get_response(req, len(res))
+        response = substitute_address(response)
         log.info('received response: \n%s', pprint.pformat(response, width=5))
         self.assertEqual(res, response)
 
@@ -153,6 +168,113 @@ class EuslimeTestBase(unittest.TestCase):
             '(:write-string "\\n" :repl-result)',
             '(:read-aborted 0 1)',
             '(:return (:ok nil) 21)')
+
+    def test_swank_eval_8(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(setq *print-case* :upcase)\n") "USER" :repl-thread 39)',
+            '(:read-string 0 1)',
+            '(:write-string ":UPCASE" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 39)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(list \'a \'b \'c)\n") "USER" :repl-thread 44)',
+            '(:read-string 0 1)',
+            '(:write-string "(A B C)" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 44)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(setq *print-case* :downcase)\n") "USER" :repl-thread 49)',
+            '(:read-string 0 1)',
+            '(:write-string ":downcase" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 49)')
+
+    def test_swank_eval_9(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(setq *print-level* 0)\n") "USER" :repl-thread 60)',
+            '(:read-string 0 1)',
+            '(:write-string "#" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 60)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "10\n") "USER" :repl-thread 61)',
+            '(:read-string 0 1)',
+            '(:write-string "#" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 61)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(list 1 2 3)\n") "USER" :repl-thread 62)',
+            '(:read-string 0 1)',
+            '(:write-string "#" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 62)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(setq *print-level* nil)\n") "USER" :repl-thread 63)',
+            '(:read-string 0 1)',
+            '(:write-string "nil" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 63)')
+
+    # COMPILE REGION
+    def test_compile_region_1(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:compile-string-for-emacs "(defun foo (a) (1+ a))" "test.l" (quote ((:position 1) (:line 1 1))) "/tmp/test.l" (quote nil)) "USER" t 24)',
+            '(:write-string "; Loaded (defun foo ...)\\n")',
+            '(:return (:ok (:compilation-result () t 0.01 nil nil)) 24)')
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc (quote ("foo" "" swank::%cursor-marker%)) :print-right-margin 203) "USER" t 25)',
+            '(:return (:ok ("(foo ===> a <===)" t)) 25)')
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc (quote ("foo" "1" swank::%cursor-marker%)) :print-right-margin 203) "USER" t 26)',
+            '(:return (:ok ("(foo ===> a <===)" t)) 26)')
+        self.assertSocket(
+            '(:emacs-rex (swank:compile-string-for-emacs "(setq c (foo 1))" "test.l" (quote ((:position 25) (:line 3 1))) "/tmp/test.l" (quote nil)) "USER" t 29)',
+            '(:write-string "; Loaded (setq c ...)\\n")',
+            '(:return (:ok (:compilation-result () t 0.01 nil nil)) 29)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "c\n") "USER" :repl-thread 30)',
+            '(:read-string 0 1)',
+            '(:write-string "2" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 30)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(makunbound \'c)\n") "USER" :repl-thread 32)',
+            '(:read-string 0 1)',
+            '(:write-string "t" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 32)')
+
+    def test_compile_region_2(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:compile-string-for-emacs "(print 1)\n(print 2)\n(print 3)\n(setq c (list 1 2 3))\n" "test.l" (quote ((:position 1) (:line 1 1))) "/tmp/test.l" (quote nil)) "USER" t 14)',
+            '(:write-string "; Loaded (print 1)\\n")',
+            '(:write-string "; Loaded (print 2)\\n")',
+            '(:write-string "; Loaded (print 3)\\n")',
+            '(:write-string "; Loaded (setq c ...)\\n")',
+            '(:return (:ok (:compilation-result () t 0.01 nil nil)) 14)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "c\n") "USER" :repl-thread 15)',
+            '(:read-string 0 1)',
+            '(:write-string "(1 2 3)" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 15)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(makunbound \'c)\n") "USER" :repl-thread 17)',
+            '(:read-string 0 1)',
+            '(:write-string "t" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 17)')
 
     # AUTODOC
     def test_swank_autodoc_1(self):
@@ -392,6 +514,16 @@ class EuslimeTestBase(unittest.TestCase):
             '(:emacs-rex (swank:completions-for-keyword ":test" (quote nil)) "USER" :repl-thread 47)',
             '(:return (:ok ((":test" ":test-not") ":test")) 47)')
 
+    def test_completions_14(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-character "Ne") "USER" :repl-thread 19)',
+            '(:return (:ok (("Newline") "Newline")) 19)')
+
+    def test_completions_15(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-character "") "USER" :repl-thread 20)',
+            '(:return (:ok (("Space" "Newline" "Linefeed" "Backspace" "Delete" "Rubout" "Return" "Page" "Formfeed" "Esc" "Escape" "Tab" "Left-Paren" "Right-Paren" "Lparen" "Rparen" "Bell" "Null" "SOH" "STX" "ETX") "")) 20)')
+
     # EMACS INTERRUPT
     def test_emacs_interrupt(self):
         self.assertSocket(
@@ -423,6 +555,21 @@ class EuslimeTestBase(unittest.TestCase):
             '(:emacs-rex (swank:apropos-list-for-emacs "prompt" t nil (quote nil)) "USER" :repl-thread 17)',
             '(:return (:ok ((:designator "*PROMPT*" :variable :not-documented) (:designator "*PROMPT-STRING*" :variable :not-documented) (:designator "LISP::PROMPT" :function "(strm)") (:designator "SLIME::LAST-PROMPT" :variable :not-documented) (:designator "SLIME::SLIME-PROMPT" :function "nil") (:designator "TOPLEVEL-PROMPT" :function "(strm)"))) 17)')
 
+    def test_apropos_2(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:apropos-list-for-emacs "find-" t nil (quote "LISP")) "USER" :repl-thread 10)',
+            '(:return (:ok ((:designator "FIND-EXECUTABLE" :function "(progname)") (:designator "FIND-IF" :function "(pred seq &key (start 0) (end (length seq)) (key #\'identity))") (:designator "FIND-IF-NOT" :function "(pred seq &key (start 0) (end (length seq)) (key #\'identity))") (:designator "FIND-METHOD" :function :not-documented) (:designator "FIND-PACKAGE" :function :not-documented) (:designator "FIND-SYMBOL" :function :not-documented))) 10)')
+
+    # DESCRIBE
+    def test_describe_1(self):
+        self.assertSocketIgnoreAddress(
+            '(:emacs-rex (swank:describe-definition-for-emacs "*PROMPT-STRING*" :variable) "USER" t 13)',
+            '(:return (:ok "NAME\\n     *prompt-string*\\nTYPE\\n     variable\\nDESCRIPTION\\n     prompt string used by \x1b[1meustop\x1b[m. \\n\\nPROPERTIES\\n\\nplist=nil\\nvalue=\\"irteusgl\\"\\nvtype=2\\nfunction=*unbound*\\npname=\\"*PROMPT-STRING*\\"\\nhomepkg=#<package #X5f12ae8 LISP>\\n") 13)')
+
+    def test_describe_2(self):
+        self.assertSocketIgnoreAddress(
+            '(:emacs-rex (swank:describe-symbol "*prompt-string*") "USER" :repl-thread 16)',
+            '(:return (:ok "NAME\\n     *prompt-string*\\nTYPE\\n     variable\\nDESCRIPTION\\n     prompt string used by \x1b[1meustop\x1b[m. \\n\\nPROPERTIES\\n\\nplist=nil\\nvalue=\\"irteusgl\\"\\nvtype=2\\nfunction=*unbound*\\npname=\\"*PROMPT-STRING*\\"\\nhomepkg=#<package #X5f12ae8 LISP>\\n") 16)')
 
 if __name__ == '__main__':
     unittest.main()
