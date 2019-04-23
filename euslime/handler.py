@@ -317,7 +317,7 @@ class EuslimeHandler(object):
             if len(exp) > 2:
                 messages.append(dumps(exp[:2] + [None], none_as='...'))
             else:
-                messages.append(exp)
+                messages.append(dumps(exp))
         list(self.euslisp.eval(cmd_str))
         for msg in messages:
             yield [Symbol(":write-string"), "; Loaded {}\n".format(msg)]
