@@ -32,22 +32,27 @@ class EuslimeTestBase(unittest.TestCase):
         time.sleep(0.1)
         log.info("...DONE")
 
+    def socket_recv_one(self, *options):
+        try:
+            len = self.socket.recv(HEADER_LENGTH, *options)
+            hex_len = int(len, 16)
+            return self.socket.recv(hex_len)
+        except socket.error:
+            return;
+
     def socket_recv(self, times):
-        def recv_one():
-            try:
-                len = self.socket.recv(HEADER_LENGTH)
-                hex_len = int(len, 16)
-                return self.socket.recv(hex_len)
-            except socket.error:
-                return;
         result = []
         for i in range(times):
-            res = recv_one()
+            res = self.socket_recv_one()
             log.info(res)
             if res == None:
                 break
             result.append(res)
         return tuple(result) or None
+
+    def socket_clean(self):
+        while self.socket_recv_one(socket.MSG_DONTWAIT):
+            pass
 
     def socket_send(self, req):
         header = '{0:06x}'.format(len(req))
