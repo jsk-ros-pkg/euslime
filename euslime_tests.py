@@ -15,8 +15,9 @@ HEADER_LENGTH = 6
 
 log = get_logger(__name__)
 
-class EuslimeTest(unittest.TestCase):
-    def setUp(self):
+class EuslimeTestBase(unittest.TestCase):
+    @classmethod
+    def setUpClass(self):
         self.server = EuslimeServer(('0.0.0.0', 0))
         host, port = self.server.socket.getsockname()
         start_new_thread(self.server.serve_forever, ())
@@ -24,7 +25,8 @@ class EuslimeTest(unittest.TestCase):
         # self.socket.settimeout(5)
         self.socket.connect((host, port))
 
-    def tearDown(self):
+    @classmethod
+    def tearDownClass(self):
         log.info("Tearing down...")
         self.socket.shutdown(socket.SHUT_RDWR)
         time.sleep(0.1)
@@ -59,18 +61,80 @@ class EuslimeTest(unittest.TestCase):
         response = self.socket_recv(len(res))
         log.info('received response: \n%s', pprint.pformat(response, width=5))
         self.assertEqual(res, response)
-        # assert res == response
 
-    def test_1(self):
-        log.info('TEST 1')
+
+    ### TESTS
+
+    # CREATE-REPL
+    def test_001_swank_repl_create_repl(self):
         self.assertSocket(
-            '(:emacs-rex (swank-repl:listener-eval "(+ 1 1)\n") "USER" :repl-thread 7)',
+            '(:emacs-rex (swank-repl:create-repl nil :coding-system "utf-8-unix") "COMMON-LISP-USER" t 4)',
+            '(:return (:ok ("USER" "irteusgl")) 4)')
+
+    # LISTENER-EVAL
+    def test_swank_eval_1(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(list 1 2 3)\n") "USER" :repl-thread 8)',
             '(:read-string 0 1)',
-            '(:write-string "2" :repl-result)',
+            '(:write-string "(1 2 3)" :repl-result)',
             '(:write-string "\\n" :repl-result)',
             '(:read-aborted 0 1)',
-            '(:new-package "USER" "irteusgl")',
-            '(:return (:ok nil) 7)')
+            '(:return (:ok nil) 8)')
+
+    def test_swank_eval_2(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(find 4 \'((1 . a) (2 . b) (3 . c) (4 . d) (4 . e)) :key #\'car)\n") "USER" :repl-thread 33)',
+            '(:read-string 0 1)',
+            '(:write-string "(4 . d)" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 33)')
+
+    # AUTODOC
+    def test_swank_autodoc_1(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc (quote ("list" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 5)',
+            '(:return (:ok ("(list &rest ===> elements <===)" t)) 5)')
+
+    def test_swank_autodoc_2(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc (quote ("list" "1" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 6)',
+            '(:return (:ok ("(list &rest ===> elements <===)" t)) 6)')
+
+    def test_swank_autodoc_3(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc (quote ("list" "1" "2" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 7)',
+            '(:return (:ok ("(list &rest ===> elements <===)" t)) 7)')
+
+    def test_swank_autodoc_4(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc (quote ("find" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 5)',
+            '(:return (:ok ("(find ===> item <=== seq &key start end test test-not key (count 1))" t)) 5)')
+
+    def test_swank_autodoc_5(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc (quote ("find" "4" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 6)',
+            '(:return (:ok ("(find item ===> seq <=== &key start end test test-not key (count 1))" t)) 6)')
+
+    def test_swank_autodoc_6(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc (quote ("find" "4" (("" swank::%cursor-marker%)))) :print-right-margin 100) "USER" :repl-thread 7)',
+            '(:return (:ok (:not-available t)) 7)')
+
+    def test_swank_autodoc_7(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc (quote ("find" "4" (("1" "." "a") ("2" "." "b") ("3" "." "c") ("4" "." "" swank::%cursor-marker%)))) :print-right-margin 100) "USER" :repl-thread 22)',
+            '(:return (:ok (:not-available t)) 22)')
+
+    def test_swank_autodoc_8(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc (quote ("find" "4" (("1" "." "a") ("2" "." "b") ("3" "." "c") ("4" "." "d") ("4" "." "e")) "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 28)',
+            '(:return (:ok ("(find item seq &key start end test test-not key (count 1))" t)) 28)')
+
+    def test_swank_autodoc_9(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc (quote ("find" "4" (("1" "." "a") ("2" "." "b") ("3" "." "c") ("4" "." "d") ("4" "." "e")) ":key" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 29)',
+            '(:return (:ok ("(find item seq &key start end test test-not ===> key <=== (count 1))" t)) 29)')
 
 
 if __name__ == '__main__':
