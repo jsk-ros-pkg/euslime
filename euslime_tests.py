@@ -32,8 +32,17 @@ class EuslimeTestBase(unittest.TestCase):
     def tearDownClass(self):
         log.info("Tearing down...")
         self.socket.shutdown(socket.SHUT_RDWR)
+        self.socket.close()
         time.sleep(0.1)
         log.info("...DONE")
+
+    def __del__(self):
+        try:
+            self.socket.send('')
+            # Close the socket if is still alive
+            self.tearDownClass()
+        except Exception:
+            pass
 
     def socket_recv_one(self, *options):
         try:
