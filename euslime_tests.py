@@ -141,6 +141,19 @@ class EuslimeTestBase(unittest.TestCase):
             '(:read-aborted 0 1)',
             '(:return (:ok nil) 41)')
 
+    def test_swank_eval_7(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(y-or-n-p)\n") "USER" :repl-thread 21)',
+            '(:read-string 0 1)',
+            '(:write-string "(Y or N): ")')
+        self.assertSocket(
+            '(:emacs-return-string 0 1 "y\n")',
+            '(:read-string 0 1)',
+            '(:write-string "t" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 21)')
+
     # AUTODOC
     def test_swank_autodoc_1(self):
         self.assertSocket(
@@ -243,6 +256,56 @@ class EuslimeTestBase(unittest.TestCase):
             '(:read-aborted 0 1)',
             '(:return (:ok nil) 29)')
 
+    def test_swank_autodoc_16(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(progn (setq c (make-coords :name \\"test\\")) (send c :name))\n") "USER" :repl-thread 25)',
+            '(:read-string 0 1)',
+            '(:write-string "\\"test\\"" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 25)')
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc (quote ("send" "c" ":pos" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 30)',
+            '(:return (:ok ("(:pos)" t)) 30)')
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc (quote ("send" "c" ":replace-pos" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 37)',
+            '(:return (:ok ("(:replace-pos ===> p <===)" t)) 37)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(makunbound \'c)\n") "USER" :repl-thread 42)',
+            '(:read-string 0 1)',
+            '(:write-string "t" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 42)')
+
+    def test_swank_autodoc_17(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(progn (make-irtviewer) (send *irtviewer* :name))\n") "USER" :repl-thread 78)',
+            '(:read-string 0 1)',
+            '(:write-string "\\"IRT viewer\\"" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 78)')
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc (quote ("send" "*irtviewer*" ":view" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 85)',
+            '(:return (:ok ("(:view)" t)) 85)')
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc (quote ("send" "*irtviewer*" ":viewtarget" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 87)',
+            '(:return (:ok ("(:viewtarget &optional ===> p <===)" t)) 87)')
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc (quote ("send" "*irtviewer*" ":quit" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 93)',
+            '(:return (:ok ("(:quit &rest args)" t)) 93)')
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc (quote ("send" "*irtviewer*" ":quit" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 94)',
+            '(:return (:ok ("(:quit &rest ===> args <===)" t)) 94)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(send *irtviewer* :quit )\n") "USER" :repl-thread 95)',
+            '(:read-string 0 1)',
+            '(:write-string ":destroyed" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 95)')
+
     # COMPLETIONS
     def test_swank_completions_1(self):
         self.assertSocket(
@@ -268,6 +331,66 @@ class EuslimeTestBase(unittest.TestCase):
         self.assertSocket(
             '(:emacs-rex (swank:completions "*prompt-" (quote "USER")) "USER" :repl-thread 23)',
             '(:return (:ok (("*prompt-string*") "*prompt-string*")) 23)')
+
+    def test_completions_6(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":test" (quote ("find" "1" ("list" "1" "2" "3") "" swank::%cursor-marker%))) "USER" :repl-thread 17)',
+            '(:return (:ok ((":test" ":test-not") ":test")) 17)')
+
+    def test_completions_7(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":test-n" (quote ("find" "1" ("list" "1" "2" "3") "" swank::%cursor-marker%))) "USER" :repl-thread 19)',
+            '(:return (:ok ((":test-not") ":test-not")) 19)')
+
+    def test_completions_8(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":count" (quote ("find" "1" ("list" "1" "2" "3") ":test-not" "" swank::%cursor-marker%))) "USER" :repl-thread 22)',
+            '(:return (:ok ((":count") ":count")) 22)')
+
+    def test_completions_9(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":none" (quote ("find" "1" ("list" "1" "2" "3") ":test-not" ":count" "" swank::%cursor-marker%))) "USER" :repl-thread 26)',
+            '(:return (:ok ()) 26)')
+
+    def test_completions_10(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:completions ":none" (quote "USER")) "USER" :repl-thread 27)',
+            '(:return (:ok ()) 27)')
+
+    def test_completions_11(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(progn (setq c (make-coords :name \\"test\\")) (send c :name))\n") "USER" :repl-thread 31)',
+            '(:read-string 0 1)',
+            '(:write-string "\\"test\\"" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 31)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":pos" (quote ("send" "c" "" swank::%cursor-marker%))) "USER" :repl-thread 35)',
+            '(:return (:ok ((":pos") ":pos")) 35)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":" (quote ("send" "c" "" swank::%cursor-marker%))) "USER" :repl-thread 37)',
+            '(:return (:ok ((":dimension" ":rot" ":pos" ":x-axis" ":y-axis" ":z-axis" ":newcoords" ":replace-rot" ":replace-pos" ":replace-coords" ":copy-rot" ":copy-pos" ":copy-coords" ":coords" ":worldrot" ":worldpos" ":worldcoords" ":copy-worldcoords" ":parentcoords" ":changed" ":reset-coords" ":move-to" ":rotate-vector" ":transform-vector" ":inverse-transform-vector" ":inverse-transformation" ":transformation" ":transform" ":rotate-with-matrix" ":rotate" ":orient-with-matrix" ":orient" ":parent-vector" ":parent-orientation" ":translate" ":locate" ":scale" ":euler" ":euler-angle" ":rpy" ":rpy-angle" ":rotation-angle" ":4x4" ":create" ":init" ":axis" ":difference-position" ":difference-rotation" ":move-coords" ":inverse-rotate-vector" ":vertices" ":draw-on" ":plist" ":get" ":put" ":name" ":remprop" ":prin1" ":warning" ":error" ":slots" ":methods" ":super" ":get-val" ":set-val") ":")) 37)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":world" (quote ("send" "c" "" swank::%cursor-marker%))) "USER" :repl-thread 39)',
+            '(:return (:ok ((":worldrot" ":worldpos" ":worldcoords") ":world")) 39)')        
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(makunbound \'c)\n") "USER" :repl-thread 45)',
+            '(:read-string 0 1)',
+            '(:write-string "t" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 45)')
+
+    def test_completions_12(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":position" (quote nil)) "USER" :repl-thread 46)',
+            '(:return (:ok ((":position" ":position-list" ":position_covariance" ":position_covariance_type") ":position")) 46)')
+
+    def test_completions_13(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":test" (quote nil)) "USER" :repl-thread 47)',
+            '(:return (:ok ((":test" ":test-not") ":test")) 47)')
 
     # EMACS INTERRUPT
     def test_emacs_interrupt(self):
