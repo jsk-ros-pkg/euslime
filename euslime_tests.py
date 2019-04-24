@@ -2,6 +2,15 @@
 # -*- coding: utf-8 -*-
 # Test suite for EusLisp SLIME
 
+## RUN ALL TESTS:
+# ./euslime_tests.py
+
+## RUN TESTS FOR EUSLISP PROGRAM
+# ./euslime_tests.py eus
+# ./euslime_tests.py irteusgl
+# ./euslime_tests.py roseus
+
+import argparse
 import pprint
 import re
 import socket
@@ -17,16 +26,21 @@ REGEX_ADDR = re.compile(r' #X[0-9a-f]{7}')
 
 log = get_logger(__name__)
 
-class EuslimeTestBase(unittest.TestCase):
+class eus(unittest.TestCase):
+    EUSLISP_PROGRAM = 'eus'
+    EUSLISP_PROGRAM_NAME = 'eus'
+
     @classmethod
     def setUpClass(self):
         self.maxDiff = None
-        self.server = EuslimeServer(('0.0.0.0', 0))
+        self.server = EuslimeServer(('0.0.0.0', 0), program=self.EUSLISP_PROGRAM)
         host, port = self.server.socket.getsockname()
         start_new_thread(self.server.serve_forever, ())
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # self.socket.settimeout(5)
         self.socket.connect((host, port))
+        # Wait for process to fully start
+        time.sleep(1)
 
     @classmethod
     def tearDownClass(self):
@@ -98,7 +112,7 @@ class EuslimeTestBase(unittest.TestCase):
     def test_001_swank_repl_create_repl(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:create-repl nil :coding-system "utf-8-unix") "COMMON-LISP-USER" t 4)',
-            '(:return (:ok ("USER" "irteusgl")) 4)')
+            '(:return (:ok ("USER" "{}")) 4)'.format(self.EUSLISP_PROGRAM_NAME))
 
     # LISTENER-EVAL
     def test_swank_eval_1(self):
@@ -135,7 +149,7 @@ class EuslimeTestBase(unittest.TestCase):
             '(:write-string "\\"LISP\\"" :repl-result)',
             '(:write-string "\\n" :repl-result)',
             '(:read-aborted 0 1)',
-            '(:new-package "LISP" "LISP:irteusgl")',
+            '(:new-package "LISP" "LISP:{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:ok nil) 30)')
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(progn (setq *package* *user-package*) (send *package* :name))\n") "LISP" :repl-thread 31)',
@@ -143,7 +157,7 @@ class EuslimeTestBase(unittest.TestCase):
             '(:write-string "\\"USER\\"" :repl-result)',
             '(:write-string "\\n" :repl-result)',
             '(:read-aborted 0 1)',
-            '(:new-package "USER" "irteusgl")',
+            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:ok nil) 31)')
 
     def test_swank_eval_5(self):
@@ -339,7 +353,7 @@ class EuslimeTestBase(unittest.TestCase):
     def test_swank_autodoc_11(self):
         self.assertSocket(
             '(:emacs-rex (swank:autodoc (quote ("list" "*prompt-string*" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 24)',
-            '(:return (:ok ("*prompt-string* => \\"irteusgl\\"" nil)) 24)')
+            '(:return (:ok ("*prompt-string* => \\"{}\\"" nil)) 24)'.format(self.EUSLISP_PROGRAM_NAME))
 
     def test_swank_autodoc_12(self):
         self.assertSocket(
@@ -408,34 +422,6 @@ class EuslimeTestBase(unittest.TestCase):
             '(:write-string "\\n" :repl-result)',
             '(:read-aborted 0 1)',
             '(:return (:ok nil) 42)')
-
-    def test_swank_autodoc_17(self):
-        self.assertSocket(
-            '(:emacs-rex (swank-repl:listener-eval "(progn (make-irtviewer) (send *irtviewer* :name))\n") "USER" :repl-thread 78)',
-            '(:read-string 0 1)',
-            '(:write-string "\\"IRT viewer\\"" :repl-result)',
-            '(:write-string "\\n" :repl-result)',
-            '(:read-aborted 0 1)',
-            '(:return (:ok nil) 78)')
-        self.assertSocket(
-            '(:emacs-rex (swank:autodoc (quote ("send" "*irtviewer*" ":view" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 85)',
-            '(:return (:ok ("(:view)" t)) 85)')
-        self.assertSocket(
-            '(:emacs-rex (swank:autodoc (quote ("send" "*irtviewer*" ":viewtarget" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 87)',
-            '(:return (:ok ("(:viewtarget &optional ===> p <===)" t)) 87)')
-        self.assertSocket(
-            '(:emacs-rex (swank:autodoc (quote ("send" "*irtviewer*" ":quit" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 93)',
-            '(:return (:ok ("(:quit &rest args)" t)) 93)')
-        self.assertSocket(
-            '(:emacs-rex (swank:autodoc (quote ("send" "*irtviewer*" ":quit" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 94)',
-            '(:return (:ok ("(:quit &rest ===> args <===)" t)) 94)')
-        self.assertSocket(
-            '(:emacs-rex (swank-repl:listener-eval "(send *irtviewer* :quit )\n") "USER" :repl-thread 95)',
-            '(:read-string 0 1)',
-            '(:write-string ":destroyed" :repl-result)',
-            '(:write-string "\\n" :repl-result)',
-            '(:read-aborted 0 1)',
-            '(:return (:ok nil) 95)')
 
     # COMPLETIONS
     def test_swank_completions_1(self):
@@ -558,7 +544,7 @@ class EuslimeTestBase(unittest.TestCase):
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 1) "USER" 0 18)',
             '(:debug-return 0 1 nil)',
             '(:return (:abort "NIL") 18)',
-            '(:new-package "USER" "E1-irteusgl")',
+            '(:new-package "USER" "E1-{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:abort "\'Test\'") 17)')
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(eval-dynamic \'a)\n") "USER" :repl-thread 21)',
@@ -577,7 +563,7 @@ class EuslimeTestBase(unittest.TestCase):
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 26)',
             '(:debug-return 0 1 nil)',
             '(:return (:abort "NIL") 26)',
-            '(:new-package "USER" "irteusgl")',
+            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:abort "\'Test\'") 25)')
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(eval-dynamic \'a)\n") "USER" :repl-thread 27)',
@@ -640,10 +626,10 @@ class EuslimeTestBase(unittest.TestCase):
     def test_swank_set_package(self):
         self.assertSocket(
             '(:emacs-rex (swank:set-package "LISP") "USER" :repl-thread 33)',
-            '(:return (:ok ("LISP" "LISP:irteusgl")) 33)')
+            '(:return (:ok ("LISP" "LISP:{}")) 33)'.format(self.EUSLISP_PROGRAM_NAME))
         self.assertSocket(
             '(:emacs-rex (swank:set-package "USER") "LISP" :repl-thread 35)',
-            '(:return (:ok ("USER" "irteusgl")) 35)')
+            '(:return (:ok ("USER" "{}")) 35)'.format(self.EUSLISP_PROGRAM_NAME))
 
     # APROPOS
     def test_apropos_1(self):
@@ -660,12 +646,12 @@ class EuslimeTestBase(unittest.TestCase):
     def test_describe_1(self):
         self.assertSocketIgnoreAddress(
             '(:emacs-rex (swank:describe-definition-for-emacs "*PROMPT-STRING*" :variable) "USER" t 13)',
-            '(:return (:ok "NAME\\n     *prompt-string*\\nTYPE\\n     variable\\nDESCRIPTION\\n     prompt string used by \x1b[1meustop\x1b[m. \\n\\nPROPERTIES\\n\\nplist=nil\\nvalue=\\"irteusgl\\"\\nvtype=2\\nfunction=*unbound*\\npname=\\"*PROMPT-STRING*\\"\\nhomepkg=#<package #X5f12ae8 LISP>\\n") 13)')
+            '(:return (:ok "NAME\\n     *prompt-string*\\nTYPE\\n     variable\\nDESCRIPTION\\n     prompt string used by \x1b[1meustop\x1b[m. \\n\\nPROPERTIES\\n\\nplist=nil\\nvalue=\\"{}\\"\\nvtype=2\\nfunction=*unbound*\\npname=\\"*PROMPT-STRING*\\"\\nhomepkg=#<package #X5f12ae8 LISP>\\n") 13)'.format(self.EUSLISP_PROGRAM_NAME))
 
     def test_describe_2(self):
         self.assertSocketIgnoreAddress(
             '(:emacs-rex (swank:describe-symbol "*prompt-string*") "USER" :repl-thread 16)',
-            '(:return (:ok "NAME\\n     *prompt-string*\\nTYPE\\n     variable\\nDESCRIPTION\\n     prompt string used by \x1b[1meustop\x1b[m. \\n\\nPROPERTIES\\n\\nplist=nil\\nvalue=\\"irteusgl\\"\\nvtype=2\\nfunction=*unbound*\\npname=\\"*PROMPT-STRING*\\"\\nhomepkg=#<package #X5f12ae8 LISP>\\n") 16)')
+            '(:return (:ok "NAME\\n     *prompt-string*\\nTYPE\\n     variable\\nDESCRIPTION\\n     prompt string used by \x1b[1meustop\x1b[m. \\n\\nPROPERTIES\\n\\nplist=nil\\nvalue=\\"{}\\"\\nvtype=2\\nfunction=*unbound*\\npname=\\"*PROMPT-STRING*\\"\\nhomepkg=#<package #X5f12ae8 LISP>\\n") 16)'.format(self.EUSLISP_PROGRAM_NAME))
 
     # MACRO EXPAND
     def test_swank_expand(self):
@@ -679,6 +665,44 @@ class EuslimeTestBase(unittest.TestCase):
         self.assertSocket(
             '(:emacs-rex (swank:swank-expand-1 "(foo (print 1) (print 2) (print 3))") "USER" :repl-thread 27)',
             '(:return (:ok "(progn (print 3) (print 2) (print 1))\\n") 27)')
+
+
+class irteusgl(eus):
+    EUSLISP_PROGRAM = 'irteusgl'
+    EUSLISP_PROGRAM_NAME = 'irteusgl'
+
+    def test_swank_autodoc_17(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(progn (make-irtviewer) (send *irtviewer* :name))\n") "USER" :repl-thread 78)',
+            '(:read-string 0 1)',
+            '(:write-string "\\"IRT viewer\\"" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 78)')
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc (quote ("send" "*irtviewer*" ":view" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 85)',
+            '(:return (:ok ("(:view)" t)) 85)')
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc (quote ("send" "*irtviewer*" ":viewtarget" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 87)',
+            '(:return (:ok ("(:viewtarget &optional ===> p <===)" t)) 87)')
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc (quote ("send" "*irtviewer*" ":quit" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 93)',
+            '(:return (:ok ("(:quit &rest args)" t)) 93)')
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc (quote ("send" "*irtviewer*" ":quit" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 94)',
+            '(:return (:ok ("(:quit &rest ===> args <===)" t)) 94)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(send *irtviewer* :quit )\n") "USER" :repl-thread 95)',
+            '(:read-string 0 1)',
+            '(:write-string ":destroyed" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 95)')
+
+
+class roseus(irteusgl):
+    EUSLISP_PROGRAM = 'roseus'
+    EUSLISP_PROGRAM_NAME = 'irteusgl'
 
 
 if __name__ == '__main__':
