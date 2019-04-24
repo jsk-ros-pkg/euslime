@@ -18,11 +18,17 @@
 (defvar *slime-stream*)
 
 (defun slime-connect-socket (port)
-  (do ((strm (connect-server "0.0.0.0" port) (connect-server "0.0.0.0" port)))
-      ((streamp strm)
-       (defconstant *slime-stream* strm)
-       strm)
-    (unix:usleep 100000)))
+  (flet ((try-connect (&optional (timeout 5))
+           (make-client-socket-stream
+            ;; `service' must be null when working in docker environments
+            ;; because (unix:getservbyname "echo" nil) return error
+            (make-socket-address :host "0.0.0.0" :port port :service nil)
+            timeout)))
+    (do ((strm (try-connect) (try-connect)))
+        ((streamp strm)
+         (defconstant *slime-stream* strm)
+         (unix:usleep 100000)
+         strm))))
 
 (defun socket-request (command value)
   (assert (streamp *slime-stream*) "Cannot connect to *slime-stream*!")
