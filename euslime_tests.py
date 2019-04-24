@@ -109,13 +109,13 @@ class eus(unittest.TestCase):
     ### TESTS
 
     # CREATE-REPL
-    def test_001_swank_repl_create_repl(self):
+    def test_001_repl_create_repl(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:create-repl nil :coding-system "utf-8-unix") "COMMON-LISP-USER" t 4)',
             '(:return (:ok ("USER" "{}")) 4)'.format(self.EUSLISP_PROGRAM_NAME))
 
     # LISTENER-EVAL
-    def test_swank_eval_1(self):
+    def test_eval_1(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(list 1 2 3)\n") "USER" :repl-thread 8)',
             '(:read-string 0 1)',
@@ -124,7 +124,7 @@ class eus(unittest.TestCase):
             '(:read-aborted 0 1)',
             '(:return (:ok nil) 8)')
 
-    def test_swank_eval_2(self):
+    def test_eval_2(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(find 4 \'((1 . a) (2 . b) (3 . c) (4 . d) (4 . e)) :key #\'car)\n") "USER" :repl-thread 33)',
             '(:read-string 0 1)',
@@ -133,7 +133,7 @@ class eus(unittest.TestCase):
             '(:read-aborted 0 1)',
             '(:return (:ok nil) 33)')
 
-    def test_swank_eval_3(self):
+    def test_eval_3(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "list 1 2 3\n") "USER" :repl-thread 5)',
             '(:read-string 0 1)',
@@ -142,7 +142,7 @@ class eus(unittest.TestCase):
             '(:read-aborted 0 1)',
             '(:return (:ok nil) 5)')
 
-    def test_swank_eval_4(self):
+    def test_eval_4(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(progn (setq *package* *lisp-package*) (send *package* :name))\n") "USER" :repl-thread 30)',
             '(:read-string 0 1)',
@@ -160,7 +160,7 @@ class eus(unittest.TestCase):
             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:ok nil) 31)')
 
-    def test_swank_eval_5(self):
+    def test_eval_5(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(print \\"this\\")\n") "USER" :repl-thread 43)',
             '(:read-string 0 1)',
@@ -170,7 +170,7 @@ class eus(unittest.TestCase):
             '(:read-aborted 0 1)',
             '(:return (:ok nil) 43)')
 
-    def test_swank_eval_6(self):
+    def test_eval_6(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(format nil \\"~S\\" \\"this\\")\n") "USER" :repl-thread 41)',
             '(:read-string 0 1)',
@@ -179,7 +179,7 @@ class eus(unittest.TestCase):
             '(:read-aborted 0 1)',
             '(:return (:ok nil) 41)')
 
-    def test_swank_eval_7(self):
+    def test_eval_7(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(y-or-n-p)\n") "USER" :repl-thread 21)',
             '(:read-string 0 1)',
@@ -192,7 +192,7 @@ class eus(unittest.TestCase):
             '(:read-aborted 0 1)',
             '(:return (:ok nil) 21)')
 
-    def test_swank_eval_8(self):
+    def test_eval_8(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(setq *print-case* :upcase)\n") "USER" :repl-thread 39)',
             '(:read-string 0 1)',
@@ -215,7 +215,7 @@ class eus(unittest.TestCase):
             '(:read-aborted 0 1)',
             '(:return (:ok nil) 49)')
 
-    def test_swank_eval_9(self):
+    def test_eval_9(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(setq *print-level* 0)\n") "USER" :repl-thread 60)',
             '(:read-string 0 1)',
@@ -300,77 +300,77 @@ class eus(unittest.TestCase):
             '(:return (:ok nil) 17)')
 
     # AUTODOC
-    def test_swank_autodoc_1(self):
+    def test_autodoc_1(self):
         self.assertSocket(
             '(:emacs-rex (swank:autodoc (quote ("list" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 5)',
             '(:return (:ok ("(list &rest ===> elements <===)" t)) 5)')
 
-    def test_swank_autodoc_2(self):
+    def test_autodoc_2(self):
         self.assertSocket(
             '(:emacs-rex (swank:autodoc (quote ("list" "1" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 6)',
             '(:return (:ok ("(list &rest ===> elements <===)" t)) 6)')
 
-    def test_swank_autodoc_3(self):
+    def test_autodoc_3(self):
         self.assertSocket(
             '(:emacs-rex (swank:autodoc (quote ("list" "1" "2" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 7)',
             '(:return (:ok ("(list &rest ===> elements <===)" t)) 7)')
 
-    def test_swank_autodoc_4(self):
+    def test_autodoc_4(self):
         self.assertSocket(
             '(:emacs-rex (swank:autodoc (quote ("find" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 5)',
             '(:return (:ok ("(find ===> item <=== seq &key start end test test-not key (count 1))" t)) 5)')
 
-    def test_swank_autodoc_5(self):
+    def test_autodoc_5(self):
         self.assertSocket(
             '(:emacs-rex (swank:autodoc (quote ("find" "4" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 6)',
             '(:return (:ok ("(find item ===> seq <=== &key start end test test-not key (count 1))" t)) 6)')
 
-    def test_swank_autodoc_6(self):
+    def test_autodoc_6(self):
         self.assertSocket(
             '(:emacs-rex (swank:autodoc (quote ("find" "4" (("" swank::%cursor-marker%)))) :print-right-margin 100) "USER" :repl-thread 7)',
             '(:return (:ok (:not-available t)) 7)')
 
-    def test_swank_autodoc_7(self):
+    def test_autodoc_7(self):
         self.assertSocket(
             '(:emacs-rex (swank:autodoc (quote ("find" "4" (("1" "." "a") ("2" "." "b") ("3" "." "c") ("4" "." "" swank::%cursor-marker%)))) :print-right-margin 100) "USER" :repl-thread 22)',
             '(:return (:ok (:not-available t)) 22)')
 
-    def test_swank_autodoc_8(self):
+    def test_autodoc_8(self):
         self.assertSocket(
             '(:emacs-rex (swank:autodoc (quote ("find" "4" (("1" "." "a") ("2" "." "b") ("3" "." "c") ("4" "." "d") ("4" "." "e")) "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 28)',
             '(:return (:ok ("(find item seq &key start end test test-not key (count 1))" t)) 28)')
 
-    def test_swank_autodoc_9(self):
+    def test_autodoc_9(self):
         self.assertSocket(
             '(:emacs-rex (swank:autodoc (quote ("find" "4" (("1" "." "a") ("2" "." "b") ("3" "." "c") ("4" "." "d") ("4" "." "e")) ":key" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 29)',
             '(:return (:ok ("(find item seq &key start end test test-not ===> key <=== (count 1))" t)) 29)')
 
-    def test_swank_autodoc_10(self):
+    def test_autodoc_10(self):
         self.assertSocket(
             '(:emacs-rex (swank:autodoc (quote ("setq" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 6)',
             '(:return (:ok ("(setq &rest ===> forms <===)" t)) 6)')
 
-    def test_swank_autodoc_11(self):
+    def test_autodoc_11(self):
         self.assertSocket(
             '(:emacs-rex (swank:autodoc (quote ("list" "*prompt-string*" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 24)',
             '(:return (:ok ("*prompt-string* => \\"{}\\"" nil)) 24)'.format(self.EUSLISP_PROGRAM_NAME))
 
-    def test_swank_autodoc_12(self):
+    def test_autodoc_12(self):
         self.assertSocket(
             '(:emacs-rex (swank:autodoc (quote ("print" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 30)',
             '(:return (:ok ("(print ===> obj <=== &optional stream)" t)) 30)')
 
-    def test_swank_autodoc_13(self):
+    def test_autodoc_13(self):
         self.assertSocket(
             '(:emacs-rex (swank:autodoc (quote ("print" "\\"this\\"" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 31)',
             '(:return (:ok ("(print obj &optional ===> stream <===)" t)) 31)')
 
-    def test_swank_autodoc_14(self):
+    def test_autodoc_14(self):
         self.assertSocket(
             '(:emacs-rex (swank:autodoc (quote ("print" "\\"this\\"" "nil" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 32)',
             '(:return (:ok ("(print obj &optional ===> stream <===)" t)) 32)')
 
-    def test_swank_autodoc_15(self):
+    def test_autodoc_15(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(defun foo (a b &rest args &key c &allow-other-keys)\n            (list a b c))\n") "USER" :repl-thread 20)',
             '(:read-string 0 1)',
@@ -401,7 +401,7 @@ class eus(unittest.TestCase):
             '(:read-aborted 0 1)',
             '(:return (:ok nil) 29)')
 
-    def test_swank_autodoc_16(self):
+    def test_autodoc_16(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(progn (setq c (make-coords :name \\"test\\")) (send c :name))\n") "USER" :repl-thread 25)',
             '(:read-string 0 1)',
@@ -424,27 +424,27 @@ class eus(unittest.TestCase):
             '(:return (:ok nil) 42)')
 
     # COMPLETIONS
-    def test_swank_completions_1(self):
+    def test_completions_1(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions "find-if" (quote "USER")) "USER" :repl-thread 11)',
             '(:return (:ok (("find-if" "find-if-not") "find-if")) 11)')
 
-    def test_swank_completions_2(self):
+    def test_completions_2(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions "find-if-no" (quote "USER")) "USER" :repl-thread 13)',
             '(:return (:ok (("find-if-not") "find-if-not")) 13)')
 
-    def test_swank_completions_3(self):
+    def test_completions_3(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions "*pro" (quote "USER")) "USER" :repl-thread 18)',
             '(:return (:ok (("*program-name*" "*projected-edges*" "*prompt*" "*prompt-string*") "*pro")) 18)')
 
-    def test_swank_completions_4(self):
+    def test_completions_4(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions "*prompt" (quote "USER")) "USER" :repl-thread 20)',
             '(:return (:ok (("*prompt*" "*prompt-string*") "*prompt")) 20)')
 
-    def test_swank_completions_5(self):
+    def test_completions_5(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions "*prompt-" (quote "USER")) "USER" :repl-thread 23)',
             '(:return (:ok (("*prompt-string*") "*prompt-string*")) 23)')
@@ -623,7 +623,7 @@ class eus(unittest.TestCase):
             '(:return (:ok nil) 6)')
 
     # SET PACKAGE
-    def test_swank_set_package(self):
+    def test_set_package(self):
         self.assertSocket(
             '(:emacs-rex (swank:set-package "LISP") "USER" :repl-thread 33)',
             '(:return (:ok ("LISP" "LISP:{}")) 33)'.format(self.EUSLISP_PROGRAM_NAME))
@@ -654,7 +654,7 @@ class eus(unittest.TestCase):
             '(:return (:ok "NAME\\n     *prompt-string*\\nTYPE\\n     variable\\nDESCRIPTION\\n     prompt string used by \x1b[1meustop\x1b[m. \\n\\nPROPERTIES\\n\\nplist=nil\\nvalue=\\"{}\\"\\nvtype=2\\nfunction=*unbound*\\npname=\\"*PROMPT-STRING*\\"\\nhomepkg=#<package #X5f12ae8 LISP>\\n") 16)'.format(self.EUSLISP_PROGRAM_NAME))
 
     # MACRO EXPAND
-    def test_swank_expand(self):
+    def test_macro_expand(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(defmacro foo (&rest body) `(progn ,@(reverse body)))\n") "USER" :repl-thread 16)',
             '(:read-string 0 1)',
@@ -671,7 +671,7 @@ class irteusgl(eus):
     EUSLISP_PROGRAM = 'irteusgl'
     EUSLISP_PROGRAM_NAME = 'irteusgl'
 
-    def test_swank_autodoc_17(self):
+    def test_autodoc_17(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(progn (make-irtviewer) (send *irtviewer* :name))\n") "USER" :repl-thread 78)',
             '(:read-string 0 1)',
