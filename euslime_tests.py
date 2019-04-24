@@ -436,8 +436,8 @@ class eus(unittest.TestCase):
 
     def test_completions_3(self):
         self.assertSocket(
-            '(:emacs-rex (swank:completions "*pro" (quote "USER")) "USER" :repl-thread 18)',
-            '(:return (:ok (("*program-name*" "*projected-edges*" "*prompt*" "*prompt-string*") "*pro")) 18)')
+            '(:emacs-rex (swank:completions "*er" (quote "USER")) "USER" :repl-thread 5)',
+            '(:return (:ok (("*error-handler*" "*error-output*") "*error-")) 5)')
 
     def test_completions_4(self):
         self.assertSocket(
@@ -476,45 +476,20 @@ class eus(unittest.TestCase):
 
     def test_completions_11(self):
         self.assertSocket(
-            '(:emacs-rex (swank-repl:listener-eval "(progn (setq c (make-coords :name \\"test\\")) (send c :name))\n") "USER" :repl-thread 31)',
-            '(:read-string 0 1)',
-            '(:write-string "\\"test\\"" :repl-result)',
-            '(:write-string "\\n" :repl-result)',
-            '(:read-aborted 0 1)',
-            '(:return (:ok nil) 31)')
-        self.assertSocket(
-            '(:emacs-rex (swank:completions-for-keyword ":pos" (quote ("send" "c" "" swank::%cursor-marker%))) "USER" :repl-thread 35)',
-            '(:return (:ok ((":pos") ":pos")) 35)')
-        self.assertSocket(
-            '(:emacs-rex (swank:completions-for-keyword ":" (quote ("send" "c" "" swank::%cursor-marker%))) "USER" :repl-thread 37)',
-            '(:return (:ok ((":dimension" ":rot" ":pos" ":x-axis" ":y-axis" ":z-axis" ":newcoords" ":replace-rot" ":replace-pos" ":replace-coords" ":copy-rot" ":copy-pos" ":copy-coords" ":coords" ":worldrot" ":worldpos" ":worldcoords" ":copy-worldcoords" ":parentcoords" ":changed" ":reset-coords" ":move-to" ":rotate-vector" ":transform-vector" ":inverse-transform-vector" ":inverse-transformation" ":transformation" ":transform" ":rotate-with-matrix" ":rotate" ":orient-with-matrix" ":orient" ":parent-vector" ":parent-orientation" ":translate" ":locate" ":scale" ":euler" ":euler-angle" ":rpy" ":rpy-angle" ":rotation-angle" ":4x4" ":create" ":init" ":axis" ":difference-position" ":difference-rotation" ":move-coords" ":inverse-rotate-vector" ":vertices" ":draw-on" ":plist" ":get" ":put" ":name" ":remprop" ":prin1" ":warning" ":error" ":slots" ":methods" ":super" ":get-val" ":set-val") ":")) 37)')
-        self.assertSocket(
-            '(:emacs-rex (swank:completions-for-keyword ":world" (quote ("send" "c" "" swank::%cursor-marker%))) "USER" :repl-thread 39)',
-            '(:return (:ok ((":worldrot" ":worldpos" ":worldcoords") ":world")) 39)')        
-        self.assertSocket(
-            '(:emacs-rex (swank-repl:listener-eval "(makunbound \'c)\n") "USER" :repl-thread 45)',
-            '(:read-string 0 1)',
-            '(:write-string "t" :repl-result)',
-            '(:write-string "\\n" :repl-result)',
-            '(:read-aborted 0 1)',
-            '(:return (:ok nil) 45)')
+            '(:emacs-rex (swank:completions-for-keyword ":test" (quote nil)) "USER" :repl-thread 5)',
+            '(:return (:ok ((":test" ":test-not") ":test")) 5)')
 
     def test_completions_12(self):
-        self.assertSocket(
-            '(:emacs-rex (swank:completions-for-keyword ":position" (quote nil)) "USER" :repl-thread 46)',
-            '(:return (:ok ((":position" ":position-list" ":position_covariance" ":position_covariance_type") ":position")) 46)')
-
-    def test_completions_13(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions-for-keyword ":test" (quote nil)) "USER" :repl-thread 47)',
             '(:return (:ok ((":test" ":test-not") ":test")) 47)')
 
-    def test_completions_14(self):
+    def test_completions_13(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions-for-character "Ne") "USER" :repl-thread 19)',
             '(:return (:ok (("Newline") "Newline")) 19)')
 
-    def test_completions_15(self):
+    def test_completions_14(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions-for-character "") "USER" :repl-thread 20)',
             '(:return (:ok (("Space" "Newline" "Linefeed" "Backspace" "Delete" "Rubout" "Return" "Page" "Formfeed" "Esc" "Escape" "Tab" "Left-Paren" "Right-Paren" "Lparen" "Rparen" "Bell" "Null" "SOH" "STX" "ETX") "")) 20)')
@@ -670,6 +645,31 @@ class eus(unittest.TestCase):
 class irteusgl(eus):
     EUSLISP_PROGRAM = 'irteusgl'
     EUSLISP_PROGRAM_NAME = 'irteusgl'
+
+    def test_completions_15(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(progn (setq c (make-coords :name \\"test\\")) (send c :name))\n") "USER" :repl-thread 31)',
+            '(:read-string 0 1)',
+            '(:write-string "\\"test\\"" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 31)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":pos" (quote ("send" "c" "" swank::%cursor-marker%))) "USER" :repl-thread 35)',
+            '(:return (:ok ((":pos") ":pos")) 35)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":" (quote ("send" "c" "" swank::%cursor-marker%))) "USER" :repl-thread 37)',
+            '(:return (:ok ((":dimension" ":rot" ":pos" ":x-axis" ":y-axis" ":z-axis" ":newcoords" ":replace-rot" ":replace-pos" ":replace-coords" ":copy-rot" ":copy-pos" ":copy-coords" ":coords" ":worldrot" ":worldpos" ":worldcoords" ":copy-worldcoords" ":parentcoords" ":changed" ":reset-coords" ":move-to" ":rotate-vector" ":transform-vector" ":inverse-transform-vector" ":inverse-transformation" ":transformation" ":transform" ":rotate-with-matrix" ":rotate" ":orient-with-matrix" ":orient" ":parent-vector" ":parent-orientation" ":translate" ":locate" ":scale" ":euler" ":euler-angle" ":rpy" ":rpy-angle" ":rotation-angle" ":4x4" ":create" ":init" ":axis" ":difference-position" ":difference-rotation" ":move-coords" ":inverse-rotate-vector" ":vertices" ":draw-on" ":plist" ":get" ":put" ":name" ":remprop" ":prin1" ":warning" ":error" ":slots" ":methods" ":super" ":get-val" ":set-val") ":")) 37)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":world" (quote ("send" "c" "" swank::%cursor-marker%))) "USER" :repl-thread 39)',
+            '(:return (:ok ((":worldrot" ":worldpos" ":worldcoords") ":world")) 39)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(makunbound \'c)\n") "USER" :repl-thread 45)',
+            '(:read-string 0 1)',
+            '(:write-string "t" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 45)')
 
     def test_autodoc_17(self):
         self.assertSocket(
