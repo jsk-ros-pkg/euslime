@@ -17,12 +17,13 @@ import socket
 import time
 import unittest
 
-from euslime.logger import get_logger
+from euslime.logger import get_logger, set_log_level
 from euslime.server import EuslimeServer
 from thread import start_new_thread
 
 HEADER_LENGTH = 6
-REGEX_ADDR = re.compile(r' #X[0-9a-f]{7}')
+SLEEP_TIME = 0.1
+REGEX_ADDR = re.compile(r' #X[0-9a-f]*')
 
 log = get_logger(__name__)
 
@@ -47,7 +48,7 @@ class eus(unittest.TestCase):
         log.info("Tearing down...")
         self.socket.shutdown(socket.SHUT_RDWR)
         self.socket.close()
-        time.sleep(0.1)
+        time.sleep(SLEEP_TIME)
         log.info("...DONE")
 
     def __del__(self):
@@ -87,6 +88,7 @@ class eus(unittest.TestCase):
         log.info('request: \n%s', req)
         # self.socket_clean()
         self.socket_send(req)
+        # time.sleep(SLEEP_TIME)
         return self.socket_recv(n)
 
     def assertSocket(self, req, *res):
@@ -501,7 +503,7 @@ class eus(unittest.TestCase):
             '(:read-string 0 1)',
             '(:read-aborted 0 1)',
             '(:debug 0 1 ("Integer expected in (1+ nil)" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(1+ nil)" (:restartable nil)) (1 "(slime:slimetop)" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "#<compiled-code #X6102f08>" (:restartable nil))) (nil))')
-        time.sleep(0.1)
+        time.sleep(SLEEP_TIME)
         self.assertSocket(
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 8)',
             '(:debug-return 0 1 nil)',
@@ -514,7 +516,7 @@ class eus(unittest.TestCase):
             '(:read-string 0 1)',
             '(:read-aborted 0 1)',
             '(:debug 0 1 ("Test in (error \\"test\\")" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(error \\"test\\")" (:restartable nil)) (1 "(let ((a 1)) (error \\"test\\"))" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "(slime:slimetop)" (:restartable nil)) (4 "#<compiled-code #X6102f08>" (:restartable nil))) (nil))')
-        time.sleep(0.1)
+        time.sleep(SLEEP_TIME)
         self.assertSocket(
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 1) "USER" 0 18)',
             '(:debug-return 0 1 nil)',
@@ -533,7 +535,7 @@ class eus(unittest.TestCase):
             '(:read-string 0 1)',
             '(:read-aborted 0 1)',
             '(:debug 0 1 ("Test in (error \\"test\\")" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(error \\"test\\")" (:restartable nil)) (1 "(let ((b 2)) (error \\"test\\"))" (:restartable nil)) (2 "slime:slime-error" (:restartable nil)) (3 "slime:slime-error" (:restartable nil)) (4 "(error \\"test\\")" (:restartable nil)) (5 "(let ((a 1)) (error \\"test\\"))" (:restartable nil)) (6 "(slime:slimetop)" (:restartable nil)) (7 "(slime:slimetop)" (:restartable nil)) (8 "#<compiled-code #X6102f08>" (:restartable nil))) (nil))')
-        time.sleep(0.1)
+        time.sleep(SLEEP_TIME)
         self.assertSocket(
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 26)',
             '(:debug-return 0 1 nil)',
@@ -561,7 +563,7 @@ class eus(unittest.TestCase):
             '(:read-string 0 1)',
             '(:read-aborted 0 1)',
             '(:debug 0 1 ("Integer expected in (1+ nil)" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(1+ nil)" (:restartable nil)) (1 "(slime:slimetop)" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "#<compiled-code #X6102f08>" (:restartable nil))) (nil))')
-        time.sleep(0.1)
+        time.sleep(SLEEP_TIME)
         self.assertSocket(
             '(:emacs-rex (swank:throw-to-toplevel) "USER" 0 32)',
             '(:debug-return 0 1 nil)',
@@ -574,7 +576,7 @@ class eus(unittest.TestCase):
             '(:read-string 0 1)',
             '(:read-aborted 0 1)',
             '(:debug 0 1 ("Integer expected in (1+ nil)" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(1+ nil)" (:restartable nil)) (1 "(slime:slimetop)" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "#<compiled-code #X6102f08>" (:restartable nil))) (nil))')
-        time.sleep(0.1)
+        time.sleep(SLEEP_TIME)
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "\n") "USER" :repl-thread 34)',
             '(:debug-return 0 1 nil)',
@@ -706,4 +708,5 @@ class roseus(irteusgl):
 
 
 if __name__ == '__main__':
+    set_log_level('debug')
     unittest.main()
