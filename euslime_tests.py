@@ -19,7 +19,7 @@ import unittest
 
 from euslime.logger import get_logger, set_log_level
 from euslime.server import EuslimeServer
-from thread import start_new_thread
+from threading import Thread
 
 HEADER_LENGTH = 6
 SLEEP_TIME = 0.1
@@ -36,7 +36,7 @@ class eus(unittest.TestCase):
         self.maxDiff = None
         self.server = EuslimeServer(('0.0.0.0', 0), program=self.EUSLISP_PROGRAM)
         host, port = self.server.socket.getsockname()
-        start_new_thread(self.server.serve_forever, ())
+        Thread(target=self.server.serve_forever).start()
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # self.socket.settimeout(5)
         self.socket.connect((host, port))

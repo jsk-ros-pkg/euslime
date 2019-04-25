@@ -6,8 +6,7 @@ except ImportError:
 import socket
 import time
 import traceback
-from thread import start_new_thread
-from threading import Event
+from threading import Event, Thread
 
 from euslime.handler import EuslimeHandler
 from euslime.protocol import Protocol
@@ -67,7 +66,7 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
                 recv_data = self.request.recv(length)
                 log.debug('raw data: %s', recv_data)
                 recv_data = recv_data.decode(self.encoding)
-                start_new_thread(self._process_data, (recv_data,))
+                Thread(target=self._process_data, args=(recv_data,)).start()
             except socket.timeout:
                 log.error('Socket Timeout')
                 break
@@ -88,7 +87,7 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
         # to kill daemon
         def kill_server(s):
             s.shutdown()
-        start_new_thread(kill_server, (self.server,))
+        Thread(target=kill_server, args=(self.server,)).start()
 
 
 class EuslimeServer(S.TCPServer, object):
