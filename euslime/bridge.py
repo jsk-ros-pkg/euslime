@@ -9,9 +9,13 @@ import sys
 import time
 import traceback
 from threading import Lock, Thread
-from Queue import Queue, Empty
 from sexpdata import loads, Symbol
 from euslime.logger import get_logger
+
+try:
+    from Queue import Queue, Empty
+except ImportError:
+    from queue import Queue, Empty
 
 log = get_logger(__name__)
 IS_POSIX = 'posix' in sys.builtin_module_names

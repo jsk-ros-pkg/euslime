@@ -10,7 +10,7 @@ from euslime.server import serve
 
 try:
     _input = raw_input
-except:
+except ImportError:
     _input = input
 
 

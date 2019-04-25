@@ -9,8 +9,8 @@ import traceback
 from threading import Event, Thread
 
 from euslime.handler import EuslimeHandler
-from euslime.protocol import Protocol
 from euslime.logger import get_logger
+from euslime.protocol import Protocol
 
 ENCODINGS = {
     'iso-latin-1-unix': 'latin-1',
