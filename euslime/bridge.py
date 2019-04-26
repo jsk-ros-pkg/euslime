@@ -35,6 +35,10 @@ def no_color(msg):
     return REGEX_ANSI.sub(str(), msg)
 
 
+def gen_to_string(gen):
+    return ''.join(list(gen))
+
+
 class Process(object):
     def __init__(self, cmd,
                  on_output=None,
@@ -177,14 +181,6 @@ class EuslispProcess(Process):
             log.debug("output: %s" % msg)
             self.output.put(msg)
 
-    def clear_socket_stack(self):
-        try:
-            while True:
-                msg = self.euslime_connection.recv(1024, socket.MSG_DONTWAIT)
-                log.debug("Ignore msg: %s" % msg)
-        except socket.error:
-            return
-
     def recv_socket_length(self, hex_len):
         if hex_len == str():
             # recv() returns null string on EOF
@@ -197,53 +193,56 @@ class EuslispProcess(Process):
             yield msg
         return
 
-    def recv_socket_data(self):
-        log.debug('Waiting for socket data...')
-        while True:
-            try:
-                head_data = self.euslime_connection.recv(HEADER_LENGTH,
-                                                         socket.MSG_DONTWAIT)
-                break
-            except socket.error:
-                time.sleep(self.rate)
-                self.check_poll()
-                continue
-        return self.recv_socket_length(head_data)
+    def recv_socket_data(self, wait=True):
+        def recv_next(wait=True):
+            while True:
+                try:
+                    head_data = self.euslime_connection.recv(
+                        HEADER_LENGTH, socket.MSG_DONTWAIT)
+                    return self.recv_socket_length(head_data)
+                except socket.error:
+                    if not wait:
+                        return
+                    time.sleep(self.rate)
+                    self.check_poll()
+                    continue
+        command = recv_next(wait=wait)
+        if command is not None:
+            command = gen_to_string(command)
+            log.debug('Waiting for socket data...')
+            data = recv_next(wait=True)
+            return command, data
+        return None, None
 
     def get_socket_response(self, recursive=False):
-        def recv_next():
-            gen = self.recv_socket_data()
-            data = ''.join(list(gen))
-            return loads(data)
-        command = recv_next()
+        command, data = self.recv_socket_data()
         log.debug('Socket Request Type: %s' % command)
-        if command == Symbol('result'):
-            return self.recv_socket_data()
-        elif command == Symbol('error'):
+        if command == 'result':
+            return data
+        # Process generator to avoid pendant messages
+        data = gen_to_string(data)
+        if command == 'error':
             if recursive:
                 return
-            msg = recv_next()
+            msg = loads(data)
             stack = self.get_callstack()
             raise EuslispError(msg, stack)
-        elif command == Symbol('abort'):
+        if command == 'abort':
             return
         raise Exception("Unhandled Socket Request Type: %s" % command)
 
     def try_get_socket_result(self):
-        def gen_to_string(gen):
-            return ''.join(list(gen))
-        try:
-            head_data = self.euslime_connection.recv(HEADER_LENGTH,
-                                                     socket.MSG_DONTWAIT)
-            gen = self.recv_socket_length(head_data)
-            msg = gen_to_string(gen)
-            if msg == 'result':
-                gen = self.recv_socket_data()
-                return gen_to_string(gen)
-        except socket.error:
-            return
-        except ValueError:
-            return
+        command, data = self.recv_socket_data(wait=False)
+        if command == 'result':
+            return gen_to_string(data)
+
+    def clear_socket_stack(self):
+        while True:
+            command, data = self.recv_socket_data(wait=False)
+            if command is None:
+                return
+            msg = gen_to_string(data)
+            log.debug("Ignoring: [%s] %s" % (command, msg))
 
     def get_output(self, recursive=False):
         while True:
@@ -289,7 +288,7 @@ class EuslispProcess(Process):
         cmd_str = '(slime:print-callstack {})'.format(end + 4)
         self.euslime_connection.send(cmd_str + self.delim)
         stack = list(self.get_output(recursive=True))
-        stack = ''.join(stack)
+        stack = gen_to_string(stack)
         stack = [x.strip() for x in stack.split(self.delim)]
         # Remove 'Call Stack' and dummy error messages
         #  'Call Stack (max depth: 10):',
@@ -313,8 +312,11 @@ class EuslispProcess(Process):
         self.clear_socket_stack()
         log.info('exec_internal: %s' % cmd_str)
         self.euslime_connection.send(cmd_str + self.delim)
-        gen = self.get_socket_response()
-        res = ''.join(list(gen))
+        while True:
+            gen = self.get_socket_response()
+            if gen is not None:
+                break
+        res = gen_to_string(gen)
         res = loads(res)
         if res == Symbol("lisp:nil"):
             return []
@@ -330,8 +332,8 @@ class EuslispProcess(Process):
                 yield [Symbol(":write-string"), out]
             else:
                 yield out
-        # Previously pendant output is sometimes post processed,
-        # leading to virtually having more than one result per evaluation
+        # Pendant output is sometimes post processed, leading to
+        # virtually having more than one result per evaluation
         # e.g. (read) [RET] 10 [RET] [RET]
         # e.g. (lisp:none 10) [RET] [RET]
         second_result = self.try_get_socket_result()
