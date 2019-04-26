@@ -11,6 +11,7 @@ cache:
 matrix:
   include:
     - python: 2.7
+  allow_failures:
     - python: 3.5
 
 install:
