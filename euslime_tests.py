@@ -22,7 +22,6 @@ from euslime.server import EuslimeServer
 from threading import Thread
 
 HEADER_LENGTH = 6
-SLEEP_TIME = 0.1
 REGEX_ADDR = re.compile(r' #X[0-9a-f]*')
 
 log = get_logger(__name__)
@@ -48,7 +47,6 @@ class eus(unittest.TestCase):
         log.info("Tearing down...")
         self.socket.shutdown(socket.SHUT_RDWR)
         self.socket.close()
-        time.sleep(SLEEP_TIME)
         log.info("...DONE")
 
     def __del__(self):
@@ -88,7 +86,6 @@ class eus(unittest.TestCase):
         log.info('request: \n%s', req)
         # self.socket_clean()
         self.socket_send(req)
-        # time.sleep(SLEEP_TIME)
         return self.socket_recv(n)
 
     def assertSocket(self, req, *res):
@@ -111,7 +108,7 @@ class eus(unittest.TestCase):
     ### TESTS
 
     # CREATE-REPL
-    def test_001_repl_create_repl(self):
+    def test_001_create_repl(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:create-repl nil :coding-system "utf-8-unix") "COMMON-LISP-USER" t 4)',
             '(:return (:ok ("USER" "{}")) 4)'.format(self.EUSLISP_PROGRAM_NAME))
@@ -246,6 +243,28 @@ class eus(unittest.TestCase):
             '(:write-string "\\n" :repl-result)',
             '(:read-aborted 0 1)',
             '(:return (:ok nil) 63)')
+
+    def test_eval_10(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(reset)\n") "USER" :repl-thread 5)',
+            '(:read-string 0 1)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 5)')
+
+    def test_eval_11(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(assert nil)\n") "USER" :repl-thread 7)',
+            '(:read-string 0 1)',
+            '(:read-aborted 0 1)',
+            '(:new-package "USER" "ass")',
+            '(:return (:ok nil) 7)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(reset)\n") "USER" :repl-thread 8)',
+            '(:read-string 0 1)',
+            '(:read-aborted 0 1)',
+            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+            '(:return (:ok nil) 8)')
+
 
     # COMPILE REGION
     def test_compile_region_1(self):
@@ -503,7 +522,6 @@ class eus(unittest.TestCase):
             '(:read-string 0 1)',
             '(:read-aborted 0 1)',
             '(:debug 0 1 ("Integer expected in (1+ nil)" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(1+ nil)" (:restartable nil)) (1 "(slime:slimetop)" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "#<compiled-code #X6102f08>" (:restartable nil))) (nil))')
-        time.sleep(SLEEP_TIME)
         self.assertSocket(
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 8)',
             '(:debug-return 0 1 nil)',
@@ -516,7 +534,6 @@ class eus(unittest.TestCase):
             '(:read-string 0 1)',
             '(:read-aborted 0 1)',
             '(:debug 0 1 ("Test in (error \\"test\\")" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(error \\"test\\")" (:restartable nil)) (1 "(let ((a 1)) (error \\"test\\"))" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "(slime:slimetop)" (:restartable nil)) (4 "#<compiled-code #X6102f08>" (:restartable nil))) (nil))')
-        time.sleep(SLEEP_TIME)
         self.assertSocket(
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 1) "USER" 0 18)',
             '(:debug-return 0 1 nil)',
@@ -535,7 +552,6 @@ class eus(unittest.TestCase):
             '(:read-string 0 1)',
             '(:read-aborted 0 1)',
             '(:debug 0 1 ("Test in (error \\"test\\")" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(error \\"test\\")" (:restartable nil)) (1 "(let ((b 2)) (error \\"test\\"))" (:restartable nil)) (2 "slime:slime-error" (:restartable nil)) (3 "slime:slime-error" (:restartable nil)) (4 "(error \\"test\\")" (:restartable nil)) (5 "(let ((a 1)) (error \\"test\\"))" (:restartable nil)) (6 "(slime:slimetop)" (:restartable nil)) (7 "(slime:slimetop)" (:restartable nil)) (8 "#<compiled-code #X6102f08>" (:restartable nil))) (nil))')
-        time.sleep(SLEEP_TIME)
         self.assertSocket(
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 26)',
             '(:debug-return 0 1 nil)',
@@ -563,7 +579,6 @@ class eus(unittest.TestCase):
             '(:read-string 0 1)',
             '(:read-aborted 0 1)',
             '(:debug 0 1 ("Integer expected in (1+ nil)" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(1+ nil)" (:restartable nil)) (1 "(slime:slimetop)" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "#<compiled-code #X6102f08>" (:restartable nil))) (nil))')
-        time.sleep(SLEEP_TIME)
         self.assertSocket(
             '(:emacs-rex (swank:throw-to-toplevel) "USER" 0 32)',
             '(:debug-return 0 1 nil)',
@@ -576,12 +591,49 @@ class eus(unittest.TestCase):
             '(:read-string 0 1)',
             '(:read-aborted 0 1)',
             '(:debug 0 1 ("Integer expected in (1+ nil)" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(1+ nil)" (:restartable nil)) (1 "(slime:slimetop)" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "#<compiled-code #X6102f08>" (:restartable nil))) (nil))')
-        time.sleep(SLEEP_TIME)
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "\n") "USER" :repl-thread 34)',
             '(:debug-return 0 1 nil)',
             '(:return (:abort "NIL") 34)',
             '(:return (:abort "\'Integer expected\'") 33)')
+
+    def test_sldb_5(self):
+        self.assertSocketIgnoreAddress(
+            '(:emacs-rex (swank-repl:listener-eval "(list (list (list (list (list (list (list (1+ nil))))))))\n") "USER" :repl-thread 18)',
+            '(:read-string 0 1)',
+            '(:read-aborted 0 1)',
+            '(:debug 0 1 ("Integer expected in (1+ nil)" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(1+ nil)" (:restartable nil)) (1 "(list (1+ nil))" (:restartable nil)) (2 "(list (list (1+ nil)))" (:restartable nil)) (3 "(list (list (list (1+ nil))))" (:restartable nil)) (4 "(list (list (list (list (1+ nil)))))" (:restartable nil)) (5 "(list (list (list (list (list (1+ nil))))))" (:restartable nil)) (6 "(list (list (list (list (list (list (1+ nil)))))))" (:restartable nil)) (7 "(list (list (list (list (list (list (list (1+ nil))))))))" (:restartable nil)) (8 "(slime:slimetop)" (:restartable nil)) (9 "(slime:slimetop)" (:restartable nil)) (10 "#<compiled-code #X55874e8>" (:restartable nil))) (nil))')
+        self.assertSocket(
+            '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 1) "USER" 0 19)',
+            '(:debug-return 0 1 nil)',
+            '(:return (:abort "NIL") 19)',
+            '(:new-package "USER" "E1-{}")'.format(self.EUSLISP_PROGRAM_NAME),
+            '(:return (:abort "\'Integer expected\'") 18)')
+        self.assertSocketIgnoreAddress(
+            '(:emacs-rex (swank-repl:listener-eval "(list (list (list (list (list (list (list (1+ nil))))))))\n") "USER" :repl-thread 20)',
+            '(:read-string 0 1)',
+            '(:read-aborted 0 1)',
+            '(:debug 0 1 ("Integer expected in (1+ nil)" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(1+ nil)" (:restartable nil)) (1 "(list (1+ nil))" (:restartable nil)) (2 "(list (list (1+ nil)))" (:restartable nil)) (3 "(list (list (list (1+ nil))))" (:restartable nil)) (4 "(list (list (list (list (1+ nil)))))" (:restartable nil)) (5 "(list (list (list (list (list (1+ nil))))))" (:restartable nil)) (6 "(list (list (list (list (list (list (1+ nil)))))))" (:restartable nil)) (7 "(list (list (list (list (list (list (list (1+ nil))))))))" (:restartable nil)) (8 "slime:slime-error" (:restartable nil)) (9 "slime:slime-error" (:restartable nil)) (10 "(1+ nil)" (:restartable nil))) (nil))')
+        self.assertSocketIgnoreAddress(
+            '(:emacs-rex (swank:backtrace 11 51) "USER" 0 21)',
+            '(:return (:ok ((11 "(list (1+ nil))" (:restartable nil)) (12 "(list (list (1+ nil)))" (:restartable nil)) (13 "(list (list (list (1+ nil))))" (:restartable nil)) (14 "(list (list (list (list (1+ nil)))))" (:restartable nil)) (15 "(list (list (list (list (list (1+ nil))))))" (:restartable nil)) (16 "(list (list (list (list (list (list (1+ nil)))))))" (:restartable nil)) (17 "(list (list (list (list (list (list (list (1+ nil))))))))" (:restartable nil)) (18 "(slime:slimetop)" (:restartable nil)) (19 "(slime:slimetop)" (:restartable nil)) (20 "#<compiled-code #X55874e8>" (:restartable nil)))) 21)')
+        self.assertSocket(
+            '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 22)',
+            '(:debug-return 0 1 nil)',
+            '(:return (:abort "NIL") 22)',
+            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+            '(:return (:abort "\'Integer expected\'") 20)')
+
+    def test_sldb_6(self):
+        self.assertSocketIgnoreAddress(
+            '(:emacs-rex (swank:compile-string-for-emacs "(1+ nil)" "test.l" (quote ((:position 1) (:line 1 1))) "/tmp/test.l" (quote nil)) "USER" t 25)',
+            '(:debug 0 1 ("Integer expected in (1+ nil)" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(1+ nil)" (:restartable nil)) (1 "(progn (1+ nil))" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "(slime:slimetop)" (:restartable nil)) (4 "#<compiled-code #X55874e8>" (:restartable nil))) (nil))')
+        self.assertSocket(
+            '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 26)',
+            '(:debug-return 0 1 nil)',
+            '(:return (:abort "NIL") 26)',
+            '(:return (:abort "\'Integer expected\'") 25)')
+
 
     # EMACS INTERRUPT
     def test_emacs_interrupt(self):
@@ -642,6 +694,17 @@ class eus(unittest.TestCase):
         self.assertSocket(
             '(:emacs-rex (swank:swank-expand-1 "(foo (print 1) (print 2) (print 3))") "USER" :repl-thread 27)',
             '(:return (:ok "(progn (print 3) (print 2) (print 1))\\n") 27)')
+
+    # ENCODING
+    def test_encoding_1(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(print \\"\xe3\x81\x93\xe3\x82\x93\xe3\x81\xab\xe3\x81\xa1\xe3\x81\xaf\xe3\x80\x82\\")\n") "USER" :repl-thread 5)',
+            '(:read-string 0 1)',
+            '(:write-string "\\"\xe3\x81\x93\xe3\x82\x93\xe3\x81\xab\xe3\x81\xa1\xe3\x81\xaf\xe3\x80\x82\\"\\n")',
+            '(:write-string "\\"\xe3\x81\x93\xe3\x82\x93\xe3\x81\xab\xe3\x81\xa1\xe3\x81\xaf\xe3\x80\x82\\"" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 5)')
 
 
 class irteusgl(eus):
@@ -706,7 +769,60 @@ class roseus(irteusgl):
     EUSLISP_PROGRAM = 'roseus'
     EUSLISP_PROGRAM_NAME = 'irteusgl'
 
+    # TODO: regexp match to avoid comparing time stamp
+    # def test_rosout_1(self):
+    #     self.assertSocket(
+    #         '(:emacs-rex (swank-repl:listener-eval "(ros::ros-debug \\"HERE\\")\n") "USER" :repl-thread 13)',
+    #         '(:read-string 0 1)',
+    #         '(:write-string "t" :repl-result)',
+    #         '(:write-string "\\n" :repl-result)',
+    #         '(:read-aborted 0 1)',
+    #         '(:return (:ok nil) 13)')
+
+    # def test_rosout_2(self):
+    #     self.assertSocket(
+    #         '(:emacs-rex (swank-repl:listener-eval "(ros::ros-info \\"HERE\\")\n") "USER" :repl-thread 6)',
+    #         '(:read-string 0 1)',
+    #         '(:write-string "[ INFO] [1556256025.220748554]: HERE\\n")',
+    #         '(:write-string "t" :repl-result)',
+    #         '(:write-string "\\n" :repl-result)',
+    #         '(:read-aborted 0 1)',
+    #         '(:return (:ok nil) 6)')
+
+    # def test_rosout_3(self):
+    #     self.assertSocket(
+    #         '(:emacs-rex (swank-repl:listener-eval "(ros::ros-warn \\"HERE\\")\n") "USER" :repl-thread 9)',
+    #         '(:read-string 0 1)',
+    #         '(:write-string "[ WARN] [1556256034.693622389]: HERE\\n")',
+    #         '(:write-string "t" :repl-result)',
+    #         '(:write-string "\\n" :repl-result)',
+    #         '(:read-aborted 0 1)',
+    #         '(:return (:ok nil) 9)')
+
+    # def test_rosout_4(self):
+    #     self.assertSocket(
+    #         '(:emacs-rex (swank-repl:listener-eval "(ros::ros-error \\"HERE\\")\n") "USER" :repl-thread 12)',
+    #         '(:read-string 0 1)',
+    #         '(:write-string "[ERROR] [1556256041.151062928]: HERE\\n")',
+    #         '(:write-string "t" :repl-result)',
+    #         '(:write-string "\\n" :repl-result)',
+    #         '(:read-aborted 0 1)',
+    #         '(:return (:ok nil) 12)')
+
+    # def test_rosout_5(self):
+    #     self.assertSocket(
+    #         '(:emacs-rex (swank-repl:listener-eval "(ros::ros-fatal \\"THIS\\")\n") "USER" :repl-thread 6)',
+    #         '(:read-string 0 1)',
+    #         '(:write-string "[FATAL] [1556256284.796886986]: THIS\\n")',
+    #         '(:write-string "t" :repl-result)',
+    #         '(:write-string "\\n" :repl-result)',
+    #         '(:read-aborted 0 1)',
+    #         '(:return (:ok nil) 6)')
+
 
 if __name__ == '__main__':
     set_log_level('debug')
-    unittest.main()
+    try:
+        unittest.main()
+    except KeyboardInterrupt:
+        pass
