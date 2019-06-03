@@ -3,7 +3,7 @@ from __future__ import print_function
 import os
 import platform
 import traceback
-from sexpdata import dumps, loads, Symbol
+from sexpdata import dumps, loads, Symbol, Quoted
 from threading import Event
 
 from euslime.bridge import EuslispError
@@ -196,7 +196,12 @@ class EuslimeHandler(object):
  19)
         """
         try:
-            sexp = sexp[1]  # unquote
+            # unquote
+            if isinstance(sexp, Quoted):
+                # For instance in emacs 27
+                sexp = sexp.value()
+            else:
+                sexp = sexp[1]  # [Symbol('quote'), [ ... ]]
             scope, cursor = current_scope(sexp)
             log.debug("scope: %s, cursor: %s" % (scope, cursor))
             assert cursor > 0
