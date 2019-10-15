@@ -65,3 +65,26 @@ Affonso Guilherme de Campos <<affonso@jsk.imi.i.u-tokyo.ac.jp>>
     ```bash
     M-x euslime
     ```
+
+## Cheat sheet
+
+| On slime buffer | |
+| --- | --- |
+| [TAB] | completion |
+| C-c C-d d |  describe/ help |
+| C-c C-d a |  apropos |
+| C-c C-d p |  apropos package |
+| M-.  |  look for definition |
+| C-c [RET] |  macroexpansion |
+| ,quit  |  quit session |
+| ,restart-inferior-lisp  |  restart session |
+
+| On editing buffers | |
+| --- | --- |
+| C-c C-c | load expression |
+| C-c C-l | load-file |
+
+| On other slime buffers | |
+| --- | --- |
+| q | quit buffer |
+| [RET] | select option |
