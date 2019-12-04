@@ -130,7 +130,8 @@
       (when rosdir
         (euslime-maybe-generate-tag
          rostag "roseus"
-         (format "%s/euslisp" rosdir))))))
+         (format "%s" rosdir)
+         t "euslisp" "")))))
 
 (defun euslime-maybe-generate-tag (tag-file match-str src-dir &optional ctags ldir cdir)
   (when (string-match-p match-str inferior-euslisp-program)
@@ -142,8 +143,10 @@
                (expand-file-name (or ldir "") src-dir)
                ;; Include `pointer FUNCTIONS' in c files
                (if ctags
-                   (format "-l none -R --regex='/pointer [A-Z_0-9]+[ ]*(/' --no-globals %s/*.c "
-                           (expand-file-name (or cdir "") src-dir))
+                   ;; TODO: ignore .old.c files
+                   (let ((dir (expand-file-name (or cdir "") src-dir)))
+                     (format "-l none -R --regex='/pointer [A-Z_0-9]+[ ]*(/' --no-globals %s/*.c %s/*.cpp "
+                             dir dir))
                  "")
                tag-file)))
     (cl-pushnew tag-file tags-table-list)))
