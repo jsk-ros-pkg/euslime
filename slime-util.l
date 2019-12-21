@@ -254,7 +254,10 @@
 
 (defun method-lambda-list-from-form (form)
   ;; form: '("send" "obj" ":selector" ...)
-  (if (and (cddr form) (string-equal (car form) "send") (stringp (cadr form)))
+  (if (and (cddr form)
+           (string-equal (first form) "send")
+           (stringp (second form))
+           (stringp (third form)))
       (with-callable-symbol-value (value (cadr form))
         (method-lambda-list value (third form)))))
 
