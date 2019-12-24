@@ -67,10 +67,10 @@ class DebuggerHandler(object):
             self.stack = error.stack
         elif isinstance(error, Exception):
             self.message = '{}: {}'.format(type(error).__name__, error)
-            self.stack = None
+            self.stack = []
         else:
             self.message = error
-            self.stack = None
+            self.stack = []
 
 
 class EuslimeHandler(object):
