@@ -80,7 +80,7 @@ class Protocol(object):
             gen = getattr(self.handler, func)(*args)
             if not gen:
                 if comm_id:
-                    for r in self.make_response(comm_id, None):
+                    for r in self.make_response(self.handler.command_id.pop(), None):
                         yield r
                 return
             for resp in gen:
