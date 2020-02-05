@@ -5,4 +5,4 @@
 """Swank Server Proxy Process for Euslisp"""
 
 __version__ = '1.0.0'
-__author__ = 'Yuki Furuta <furushchev@jsk.imi.i.u-tokyo.ac.jp'
+__author__ = 'Yuki Furuta <furushchev@jsk.imi.i.u-tokyo.ac.jp>'
