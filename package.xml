@@ -6,7 +6,7 @@
 
   <maintainer email="affonso@jsk.imi.i.u-tokyo.ac.jp">Guilherme de Campos Affonso</maintainer>
   <author>Yuki Furuta</author>
-  <license></license>
+  <license>BSD</license>
   <url type="repository">https://github.com/Affonso-Gui/euslime</url>
 
   <buildtool_depend>catkin</buildtool_depend>
