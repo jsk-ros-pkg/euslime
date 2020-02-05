@@ -21,3 +21,22 @@ if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
         endif()
     endif()
 endif()
+
+install(FILES
+  README.md
+# EusLisp files
+  slime-toplevel.l
+  slime-util.l
+# Emacs Lisp files
+  euslime-config.el
+  slime-euslisp.el
+# Destination
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
+
+install(FILES
+  slime-repl-ansi-color/README.md
+  slime-repl-ansi-color/LICENSE
+  slime-repl-ansi-color/slime-repl-ansi-color.el
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/slime-repl-ansi-color
+)

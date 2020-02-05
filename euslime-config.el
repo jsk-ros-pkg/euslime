@@ -167,5 +167,5 @@
   (euslime-prepare-tags)
   (slime 'euslisp))
 
-(provide 'euslime)
+(provide 'euslime-config)
 ;;; euslime.el ends here

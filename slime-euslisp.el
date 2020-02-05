@@ -1,6 +1,8 @@
-(require 'slime)
+(add-to-list 'load-path "/opt/ros/melodic/share/emacs/site-lisp")
+(require 'rosemacs-config)
+(require 'slime-autoloads)
 (require 'slime-repl)
-(require 'ansi-color)
+(require 'slime-repl-ansi-color "slime-repl-ansi-color/slime-repl-ansi-color.el")
 
 ;; AUXILIARY FUNCTIONS
 (defun remove-asdf-system-shortcuts ()
