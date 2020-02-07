@@ -6,10 +6,8 @@ find_package(Git QUIET)
 
 catkin_package()
 
-include_directories()
-
+# Update submodules
 if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
-# Update submodules as needed
     option(GIT_SUBMODULE "Check submodules during build" ON)
     if(GIT_SUBMODULE)
         message(STATUS "Submodule update")
@@ -22,6 +20,13 @@ if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
     endif()
 endif()
 
+# Configure files
+configure_file(
+  ${PROJECT_SOURCE_DIR}/slime-euslisp.el.in
+  ${PROJECT_SOURCE_DIR}/slime-euslisp.el
+)
+
+# Install files
 install(FILES
   README.md
 # EusLisp files

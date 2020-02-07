@@ -1,8 +1,8 @@
 (add-to-list 'load-path "/opt/ros/melodic/share/emacs/site-lisp")
+(add-to-list 'load-path "${CMAKE_INSTALL_PREFIX}/${CATKIN_PACKAGE_SHARE_DESTINATION}/slime-repl-ansi-color")
 (require 'rosemacs-config)
 (require 'slime-autoloads)
 (require 'slime-repl)
-(require 'slime-repl-ansi-color "slime-repl-ansi-color/slime-repl-ansi-color.el")
 
 ;; AUXILIARY FUNCTIONS
 (defun remove-asdf-system-shortcuts ()

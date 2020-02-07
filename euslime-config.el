@@ -1,4 +1,4 @@
-;;; euslime.el ---                                 -*- lexical-binding: t; -*-
+;;; euslime-config.el ---                                 -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2018  furushchev
 
@@ -168,4 +168,4 @@
   (slime 'euslisp))
 
 (provide 'euslime-config)
-;;; euslime.el ends here
+;;; euslime-config.el ends here
