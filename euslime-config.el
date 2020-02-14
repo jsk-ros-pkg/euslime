@@ -22,7 +22,7 @@
 
 ;;; Code:
 
-(require 'slime-euslisp)
+(require 'euslime)
 
 (defvar euslime-executable "euslime"
   "The euslime executable for Euslisp SLIME.")

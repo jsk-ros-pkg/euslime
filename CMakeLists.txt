@@ -22,8 +22,8 @@ endif()
 
 # Configure files
 configure_file(
-  ${PROJECT_SOURCE_DIR}/slime-euslisp.el.in
-  ${PROJECT_SOURCE_DIR}/slime-euslisp.el
+  ${PROJECT_SOURCE_DIR}/euslime.el.in
+  ${PROJECT_SOURCE_DIR}/euslime.el
 )
 
 # Install files
@@ -34,7 +34,7 @@ install(FILES
   slime-util.l
 # Emacs Lisp files
   euslime-config.el
-  slime-euslisp.el
+  euslime.el
 # Destination
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
