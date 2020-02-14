@@ -45,3 +45,10 @@ install(FILES
   slime-repl-ansi-color/slime-repl-ansi-color.el
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/slime-repl-ansi-color
 )
+
+# Install Python
+catkin_python_setup()
+catkin_install_python(PROGRAMS
+  scripts/euslime
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
