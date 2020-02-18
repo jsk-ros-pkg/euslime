@@ -3,64 +3,42 @@ euslime
 
 Slime for Euslisp
 
-## Author
 
-Yuki Furuta <<furushchev@jsk.imi.i.u-tokyo.ac.jp>>
+## Quick Start
 
-Affonso Guilherme de Campos <<affonso@jsk.imi.i.u-tokyo.ac.jp>>
-
-## Setup
-
-1. Clone packages
+1. Setup
     ```bash
-    mkdir euslime_dir
-    cd euslime_dir/
+    mkdir ~/euslime_ws/src -p
+    cd euslime_ws/src
     git clone https://github.com/Affonso-Gui/euslime.git
-    git clone https://github.com/slime/slime.git
-    git clone https://github.com/deadtrickster/slime-repl-ansi-color.git
+    rosdep install -yr --from-paths . --ignore-src
     ```
 
-1. Install `euslime'
+1. Build
     ```bash
-    sudo pip install -U -e euslime
-    ```
+    cd ~/euslime_ws
+    catkin config --install
+    catkin build
 
-    This enable to run `euslime`.
-
-1. Setup documentation [PROVISORY]
-
-   Until https://github.com/euslisp/EusLisp/pull/359 gets merged. **Use absolute paths and ensure having a '/' in the end**.
-    ```bash
-    svn checkout https://github.com/Affonso-Gui/EusLisp/branches/update-docs/doc/latex
-    # Uncomment and complete the following line in `euslime/slime-util.l`:
-    `(setq help::*eus-tex-dir* "/path/to/latex/")`
-    ```
-
-1. Fix ROSINFO/ROSWARN bug on ros-kinetic [OPTIONAL]
-
-   ROSINFO and ROSWARN messages are not displayed in ROS Kinetic. To fix this bug, install roseus from source and run the following commands on the roseus workspace:
-    ```bash
-    git clone https://github.com/ros/rosconsole
-    catkin build rosconsole roseus
-    ```
-
-1. Add script to your emacs init file
+1. Configure your emacs init file
 
     ```lisp
     ;; ~/.emacs.el
-    (add-to-list 'load-path "/path/to/euslime_dir/slime")
-    (add-to-list 'load-path "/path/to/euslime_dir/euslime")
-    (add-to-list 'load-path "/path/to/euslime_dir/slime-repl-ansi-color")
-    (require 'slime-autoloads)
-    (require 'euslime)
-    (setq inferior-lisp-program "sbcl")
+    (add-to-list 'load-path "~/euslime_ws/install/share/euslime")
+    (require 'euslime-config)
     (setq inferior-euslisp-program "roseus")
-    (slime-setup '(slime-fancy slime-repl-ansi-color slime-banner))
+    (slime-setup '(slime-fancy slime-banner slime-repl-ansi-color))
     ```
 
-1. Launch emacs
+1. Run
 
-    Type the command:
+    Source the package
+
+    ```bash
+    source ~/euslime_ws/install/setup.bash
+    ```
+
+    Then open emacs and type the command:
 
     ```bash
     M-x euslime

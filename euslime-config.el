@@ -2,7 +2,9 @@
 
 ;; Copyright (C) 2018  furushchev
 
-;; Author: furushchev <furushchev@mochi>
+;; Authors:
+;;   Yuki Furuta <furushchev@jsk.imi.i.u-tokyo.ac.jp>
+;;   Guilherme de Campos Affonso <affonso@jsk.imi.i.u-tokyo.ac.jp>
 ;; Keywords: lisp
 
 ;; This program is free software; you can redistribute it and/or modify
