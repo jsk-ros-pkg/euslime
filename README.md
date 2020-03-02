@@ -10,7 +10,7 @@ Slime for Euslisp
     ```bash
     mkdir ~/euslime_ws/src -p
     cd euslime_ws/src
-    git clone https://github.com/Affonso-Gui/euslime.git
+    git clone https://github.com/jsk-ros-pkg/euslime.git
     rosdep install -yr --from-paths . --ignore-src
     ```
 
