@@ -1,8 +1,10 @@
-;;; euslime.el ---                                 -*- lexical-binding: t; -*-
+;;; euslime-config.el ---                                 -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2018  furushchev
 
-;; Author: furushchev <furushchev@mochi>
+;; Authors:
+;;   Yuki Furuta <furushchev@jsk.imi.i.u-tokyo.ac.jp>
+;;   Guilherme de Campos Affonso <affonso@jsk.imi.i.u-tokyo.ac.jp>
 ;; Keywords: lisp
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -22,7 +24,7 @@
 
 ;;; Code:
 
-(require 'slime-euslisp)
+(require 'euslime)
 
 (defvar euslime-executable "euslime"
   "The euslime executable for Euslisp SLIME.")
@@ -167,5 +169,5 @@
   (euslime-prepare-tags)
   (slime 'euslisp))
 
-(provide 'euslime)
-;;; euslime.el ends here
+(provide 'euslime-config)
+;;; euslime-config.el ends here

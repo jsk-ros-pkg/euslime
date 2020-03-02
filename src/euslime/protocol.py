@@ -39,7 +39,7 @@ class Protocol(object):
             len(self.handler.debugger),  # the depth of the condition
             [debug.message, str(), None],  # s-exp with a description
             debug.restarts,  # list of available restarts
-            debug.stack,  # stacktrace
+            debug.stack[:10],  # stacktrace
             [None],  # pending continuation
         ]
         yield self.dumps(res)
@@ -49,6 +49,7 @@ class Protocol(object):
             res = [Symbol(':return'), {'ok': sexp}, id]
             yield self.dumps(res)
         except Exception as e:
+            self.command_id.append(id)
             for r in self.make_error(id, e):
                 yield r
 
@@ -58,13 +59,13 @@ class Protocol(object):
         self.handler.euslisp.reset()
         yield self.dumps([Symbol(':return'),
                           {'abort': "'Keyboard Interrupt'"},
-                          self.handler.command_id])
+                          self.handler.command_id.pop()])
 
     def process(self, data):
         data = loads(data)
         if data[0] == Symbol(":emacs-rex"):
             cmd, form, pkg, thread, comm_id = data
-            self.handler.command_id = comm_id
+            self.handler.command_id.append(comm_id)
             self.handler.package = pkg
         else:
             form = data
@@ -79,17 +80,17 @@ class Protocol(object):
             gen = getattr(self.handler, func)(*args)
             if not gen:
                 if comm_id:
-                    for r in self.make_response(comm_id, None):
+                    for r in self.make_response(self.handler.command_id.pop(), None):
                         yield r
                 return
             for resp in gen:
                 if isinstance(resp, EuslispResult):
-                    for r in self.make_response(self.handler.command_id,
+                    for r in self.make_response(self.handler.command_id.pop(),
                                                 resp.value):
                         yield r
                 else:
                     yield self.dumps(resp)
         except Exception as e:
             log.error(traceback.format_exc())
-            for r in self.make_error(self.handler.command_id, e):
+            for r in self.make_error(self.handler.command_id[-1], e):
                 yield r

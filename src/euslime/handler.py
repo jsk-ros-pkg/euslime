@@ -67,10 +67,10 @@ class DebuggerHandler(object):
             self.stack = error.stack
         elif isinstance(error, Exception):
             self.message = '{}: {}'.format(type(error).__name__, error)
-            self.stack = None
+            self.stack = []
         else:
             self.message = error
-            self.stack = None
+            self.stack = []
 
 
 class EuslimeHandler(object):
@@ -78,8 +78,8 @@ class EuslimeHandler(object):
         self.euslisp = EuslispProcess(*args, **kwargs)
         self.close_request = Event()
         self.euslisp.start()
-        self.command_id = None
         self.package = None
+        self.command_id = []
         self.debugger = []
 
     def restart_euslisp_process(self):
@@ -297,7 +297,7 @@ class EuslimeHandler(object):
         msg = deb.message.split(self.euslisp.delim)[0]
         msg = repr(msg.rsplit(' in ', 1)[0])
         yield [Symbol(':debug-return'), 0, level, Symbol('nil')]
-        yield [Symbol(':return'), {'abort': 'NIL'}, self.command_id]
+        yield [Symbol(':return'), {'abort': 'NIL'}, self.command_id.pop()]
         for val in self.maybe_new_prompt():
             yield val
         yield [Symbol(':return'), {'abort': msg}, deb.id]
