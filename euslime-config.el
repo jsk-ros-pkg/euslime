@@ -26,9 +26,6 @@
 
 (require 'euslime)
 
-(defvar euslime-executable "euslime"
-  "The euslime executable for Euslisp SLIME.")
-
 (defvar euslime-path nil
   "Directory containing the Euslisp SLIME package.")
 (setq euslime-path (file-name-directory load-file-name))
@@ -47,7 +44,7 @@
         '((sbcl ("sbcl") :coding-system utf-8-unix))))
 
 (nconc slime-lisp-implementations
-       (list `(euslisp (,euslime-executable "--emacs-mode")
+       (list '(euslisp ("rosrun" "euslime" "euslime" "--emacs-mode")
                        :init euslime-init
                        :coding-system utf-8-unix)))
 
