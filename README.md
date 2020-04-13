@@ -8,9 +8,15 @@ Slime for Euslisp
 
 1. Setup
     ```bash
+    # Clone code
     mkdir ~/euslime_ws/src -p
     cd euslime_ws/src
     git clone https://github.com/jsk-ros-pkg/euslime.git
+    # Update submodules
+    cd euslime
+    git submodule init
+    git submodule update
+    # Install dependencies
     rosdep install -yr --from-paths . --ignore-src
     ```
 
