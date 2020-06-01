@@ -2,8 +2,8 @@
 Changelog for package euslime
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.2 (2020-06-01)
+------------------
 * Fix build by using catkin_virtualenv
 * Contributors: Guilherme Affonso
 
