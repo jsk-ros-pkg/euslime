@@ -1,10 +1,36 @@
 euslime
 =======
 
-Slime for Euslisp
+Slime for EusLisp
 
 
 ## Quick Start
+
+1. Install
+
+    ```bash
+    apt install ros-melodic-euslime
+    ```
+
+1. Configure your emacs init file
+
+    ```lisp
+    ;; ~/.emacs.el
+    (add-to-list 'load-path "/opt/ros/melodic/share/euslime")
+    (require 'euslime-config)
+    (setq inferior-euslisp-program "roseus")
+    (slime-setup '(slime-fancy slime-banner slime-repl-ansi-color))
+    ```
+
+1. Run
+
+    Open emacs and type the command:
+
+    ```bash
+    M-x euslime
+    ```
+
+## Build from Source
 
 1. Setup
     ```bash
