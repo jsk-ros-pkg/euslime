@@ -24,8 +24,10 @@
 
 ;;; Code:
 
+(add-to-list 'load-path "/opt/ros/melodic/share/emacs/site-lisp")
 (add-to-list 'load-path "/opt/ros/melodic/share/emacs/site-lisp/slime")
 (add-to-list 'load-path "${CMAKE_INSTALL_PREFIX}/${CATKIN_PACKAGE_SHARE_DESTINATION}/slime-repl-ansi-color")
+(require 'rosemacs)
 (require 'slime-autoloads)
 (require 'slime-repl "contrib/slime-repl.el")
 
@@ -131,12 +133,16 @@
    (when (save-excursion (re-search-backward "\"[^ \t\n]+\\="
                                             (max (point-min)
                                                  (- (point) 1000)) t))
-     ;; TODO complete ros packages "package://..."
-     ;; ROSEMACS (comint-dynamic-complete-ros-package)
-     (let ((comint-completion-addsuffix '("/" . "\"")))
-       ;; (comint-replace-by-expanded-filename)
-       (setq default-directory (slime-eval `(swank:default-directory)))
-       (comint-dynamic-complete-filename)
+     (let ((match (match-string 0))
+	   (pos1 (match-beginning 0))
+	   (pos2 (point)))
+       (if (string-match-p "\"package://" match)
+	   ;; complete as ROS file
+	   (completion-in-region (+ pos1 11) pos2 ros-package-completor)
+	 ;; complete as standard filename
+	 (progn
+	   (setq default-directory (slime-eval `(swank:default-directory)))
+	   (comint-dynamic-complete-filename)))
       t)))
 
 (defun slime-set-minibuffer-completion ()
