@@ -238,7 +238,8 @@
          (len (length arglist)))
     (when arglist
       (unless cursor (return-from function-autodoc arglist))
-      (dotimes (i (min len (1+ cursor)))
+      (do ((i 0 (1+ i)))
+          ((>= i (min len (1+ cursor))))  ;; evaluate every iteration
         (case (nth i arglist)
           (&rest
            (aif (position '&key arglist :start (1+ i))
