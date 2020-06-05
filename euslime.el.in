@@ -30,6 +30,7 @@
 (require 'rosemacs)
 (require 'slime-autoloads)
 (require 'slime-repl "contrib/slime-repl.el")
+(require 'slime-c-p-c "contrib/slime-c-p-c.el")
 
 ;; AUXILIARY FUNCTIONS
 (defun remove-asdf-system-shortcuts ()
@@ -127,6 +128,7 @@
           (lambda (name where) (if (or tags-file-name tags-table-list) (find-tag name where))))
 
 ;; COMPLETION FUNCTIONS
+;; Override to allow `package://' completion and avoid full paths
 (defun slime-maybe-complete-as-filename ()
    "If point is at a string starting with \", complete it as filename.
  Return nil if point is not at filename."
@@ -134,16 +136,22 @@
                                             (max (point-min)
                                                  (- (point) 1000)) t))
      (let ((match (match-string 0))
-	   (pos1 (match-beginning 0))
-	   (pos2 (point)))
-       (if (string-match-p "\"package://" match)
-	   ;; complete as ROS file
-	   (completion-in-region (+ pos1 11) pos2 ros-package-completor)
-	 ;; complete as standard filename
-	 (progn
-	   (setq default-directory (slime-eval `(swank:default-directory)))
-	   (comint-dynamic-complete-filename)))
-      t)))
+           (pos1 (match-beginning 0))
+           (pos2 (point)))
+       (if (and slime-euslisp-mode (string-match-p "\"package://" match))
+           ;; complete as ROS file
+           (completion-in-region (+ pos1 11) pos2 ros-package-completor)
+         ;; complete as standard filename
+         (let ((comint-completion-addsuffix '("/" . "\"")))
+           (if (and (boundp 'slime-when-complete-filename-expand)
+                    (not slime-when-complete-filename-expand))
+               ;; complete with local-path
+               (progn
+                 (setq default-directory (slime-eval `(swank:default-directory)))
+                 (comint-dynamic-complete-filename))
+             ;; complete with absolute path
+             (comint-replace-by-expanded-filename))))
+       t)))
 
 (defun slime-set-minibuffer-completion ()
   (let ((buf (other-buffer (current-buffer) t)))
