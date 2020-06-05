@@ -45,6 +45,15 @@
                        (if (string= pkg "") (slime-current-package) pkg))))
   (slime-apropos prefix t package))
 
+(defun slime-clear-screen ()
+  "Move current repl line to top of the buffer"
+  (interactive)
+  (if (< slime-repl-input-start-mark (point))
+      (save-excursion
+        (goto-char slime-repl-input-start-mark)
+        (recenter-top-bottom 0))
+    (recenter-top-bottom 0)))
+
 ;; Override to inherit the buffer-local `slime-repl-shortcut-table'
 (defun slime-list-repl-short-cuts ()
   (interactive)
@@ -126,6 +135,12 @@
 ;; Use find-tag when `tags-table-list' is set
 (add-hook 'slime-edit-definition-hooks
           (lambda (name where) (if (or tags-file-name tags-table-list) (find-tag name where))))
+
+;; Set custom recenter function
+(add-hook 'slime-repl-mode-hook
+          (lambda ()
+            (if slime-use-slime-clear-screen
+                (define-key slime-repl-mode-map "\C-l" 'slime-clear-screen))))
 
 ;; COMPLETION FUNCTIONS
 ;; Override to allow `package://' completion and avoid full paths

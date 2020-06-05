@@ -38,6 +38,11 @@
   "Backend program invoked by Euslisp SLIME."
   :type 'string)
 
+(defcustom slime-use-slime-clear-screen nil
+  "Clear screen instead of recentering on slime repl"
+  :group 'slime-mode
+  :type 'boolean)
+
 (defvar slime-lisp-implementations)
 (unless slime-lisp-implementations
   (setq slime-lisp-implementations
