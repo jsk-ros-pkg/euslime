@@ -392,13 +392,20 @@ class EuslimeHandler(object):
             qstr(key), dumps_lisp(package))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
+    def swank_repl_clear_repl_variables(self):
+        cmd = self.euslisp.exec_internal('(slime::clear-repl-variables)')
+        yield EuslispResult(cmd)
+
+    def swank_clear_repl_results(self):
+        return
+
     def swank_set_package(self, name):
         cmd = '(slime::set-package "{0}")'.format(qstr(name))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_default_directory(self):
-        res = self.euslisp.exec_internal('(lisp:pwd)')
-        yield EuslispResult(res)
+        cmd = self.euslisp.exec_internal('(lisp:pwd)')
+        yield EuslispResult(cmd)
 
     def swank_set_default_directory(self, dir):
         cmd = '(lisp:progn (lisp:cd "{0}") (lisp:pwd))'.format(qstr(dir))

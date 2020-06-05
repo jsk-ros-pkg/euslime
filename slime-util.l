@@ -377,3 +377,10 @@
   (when (find-package name)
     (in-package name)
     (slime-prompt)))
+
+
+;; SWANK-CLEAR-REPL-VARIABLES
+(defun clear-repl-variables ()
+  (let ((variables '(*** ** * +++ ++ +)))
+    (dolist (variable variables)
+      (setf (symbol-value variable) nil))))
