@@ -38,7 +38,7 @@
   "Backend program invoked by Euslisp SLIME."
   :type 'string)
 
-(defcustom slime-use-slime-clear-screen nil
+(defcustom slime-use-slime-clear-screen t
   "Clear screen instead of recentering on slime repl"
   :group 'slime-mode
   :type 'boolean)

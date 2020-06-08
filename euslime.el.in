@@ -140,8 +140,21 @@
 ;; Set custom recenter function
 (add-hook 'slime-repl-mode-hook
           (lambda ()
-            (if slime-use-slime-clear-screen
-                (define-key slime-repl-mode-map "\C-l" 'slime-clear-screen))))
+            (when slime-use-slime-clear-screen
+              (define-key slime-repl-mode-map "\C-l" 'slime-clear-screen)
+
+              ;; Override to avoid recentering when the output doesn't reach end of buffer
+              (defun slime-repl-show-maximum-output ()
+                "Put the end of the buffer at the bottom of the window when necessary."
+                (when (eobp)
+                  (let ((win (if (eq (window-buffer) (current-buffer))
+                                 (selected-window)
+                               (get-buffer-window (current-buffer) t))))
+                    (when win
+                      (with-selected-window win
+                        (set-window-point win (point-max))
+                        ;; (recenter -1)
+                        ))))))))
 
 ;; COMPLETION FUNCTIONS
 ;; Override to allow `package://' completion and avoid full paths
