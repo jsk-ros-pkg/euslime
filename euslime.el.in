@@ -48,11 +48,12 @@
 (defun slime-clear-screen ()
   "Move current repl line to top of the buffer"
   (interactive)
-  (if (< slime-repl-input-start-mark (point))
+  (if (<= slime-repl-input-start-mark (point))
       (save-excursion
-        (goto-char slime-repl-input-start-mark)
-        (recenter-top-bottom 0))
-    (recenter-top-bottom 0)))
+        (let ((recenter-positions '(top bottom)))
+          (goto-char slime-repl-input-start-mark)
+          (recenter-top-bottom)))
+    (recenter-top-bottom)))
 
 ;; Override to inherit the buffer-local `slime-repl-shortcut-table'
 (defun slime-list-repl-short-cuts ()
