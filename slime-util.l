@@ -219,7 +219,7 @@
   (let ((last (car (last form))))
     (cond
       ((not (stringp last))
-       (function-autodoc name cursor form))
+       (function-autodoc name (1- cursor) form))
       ((string= last "")
        (function-autodoc name (1- cursor) (butlast form)))
       ((and (> cursor 1)
