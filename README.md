@@ -104,6 +104,7 @@ Slime for EusLisp
 
 Euslime is composed by several layers of software, ultimately connecting the emacs interface to the EusLisp interpreter.
 
+![euslime-communications](https://user-images.githubusercontent.com/20625381/89138044-2cef6d80-d575-11ea-9923-5eac3dd9c8cc.jpg)
 
 **EMACS** acts as the front-end interface, accepting user input and displaying output correspondingly. It also provides a series of modes, commands and key bindings for improved user experience, which are introduced at both [euslime.el](https://github.com/jsk-ros-pkg/euslime/blob/master/euslime.el.in), [euslime-config.el](https://github.com/jsk-ros-pkg/euslime/blob/master/euslime-config.el), and at the original slime framework.
 
