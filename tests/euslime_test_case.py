@@ -42,7 +42,7 @@ class EuslimeTestCase(unittest.TestCase):
             raise Exception('REPL Initialization Failed')
 
         log.info('Initialization Complete.')
-        log.info('Starting testing...')
+        log.info('Start testing...\n')
 
     @classmethod
     def tearDownClass(self):
