@@ -51,6 +51,9 @@ class EuslimeTestCase(unittest.TestCase):
         self.socket.close()
         log.info("...DONE")
 
+    def setUp(self):
+        log.info('Testing %s', self)
+
     def __del__(self):
         try:
             self.socket.send('')
