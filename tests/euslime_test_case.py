@@ -31,6 +31,18 @@ class EuslimeTestCase(unittest.TestCase):
         self.socket.connect((host, port))
         # Wait for process to fully start
         time.sleep(1)
+        # Create REPL
+        log.info('Creating REPL...')
+        req = '(:emacs-rex (swank-repl:create-repl nil :coding-system "utf-8-unix") "COMMON-LISP-USER" t 4)'
+        res = ('(:return (:ok ("USER" "{}")) 4)'.format(self.EUSLISP_PROGRAM_NAME),)
+        response = self.socket_get_response(req, 1)
+        log.debug('expected response: \n%s', pprint.pformat(res, width=5))
+        log.debug('received response: \n%s', pprint.pformat(response, width=5))
+        if res != response:
+            raise Exception('REPL Initialization Failed')
+
+        log.info('Initialization Complete.')
+        log.info('Starting testing...')
 
     @classmethod
     def tearDownClass(self):
@@ -47,6 +59,7 @@ class EuslimeTestCase(unittest.TestCase):
         except Exception:
             pass
 
+    @classmethod
     def socket_recv_one(self, *options):
         try:
             len = self.socket.recv(HEADER_LENGTH, *options)
@@ -55,6 +68,7 @@ class EuslimeTestCase(unittest.TestCase):
         except socket.error:
             return
 
+    @classmethod
     def socket_recv(self, times):
         result = []
         for i in range(times):
@@ -64,14 +78,17 @@ class EuslimeTestCase(unittest.TestCase):
             result.append(res)
         return tuple(result) or None
 
+    @classmethod
     def socket_clean(self):
         while self.socket_recv_one(socket.MSG_DONTWAIT):
             pass
 
+    @classmethod
     def socket_send(self, req):
         header = '{0:06x}'.format(len(req))
         self.socket.send(header + req)
 
+    @classmethod
     def socket_get_response(self, req, n):
         log.info('request: \n%s', req)
         # self.socket_clean()

@@ -10,6 +10,10 @@
 # ./euslime_tests.py irteusgl
 # ./euslime_tests.py roseus
 
+## RUN A SINGLE TEST
+# ./euslime_tests.py eus.test_eval_1
+
+
 from euslime.logger import set_log_level
 import unittest
 

@@ -4,12 +4,6 @@ class eus(EuslimeTestCase):
     EUSLISP_PROGRAM = 'eus'
     EUSLISP_PROGRAM_NAME = 'eus'
 
-    # CREATE-REPL
-    def test_001_create_repl(self):
-        self.assertSocket(
-            '(:emacs-rex (swank-repl:create-repl nil :coding-system "utf-8-unix") "COMMON-LISP-USER" t 4)',
-            '(:return (:ok ("USER" "{}")) 4)'.format(self.EUSLISP_PROGRAM_NAME))
-
     # LISTENER-EVAL
     def test_eval_1(self):
         self.assertSocket(
