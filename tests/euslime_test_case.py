@@ -74,6 +74,7 @@ class EuslimeTestCase(unittest.TestCase):
 
     @classmethod
     def socket_send(self, req):
+        log.info('request: \n%s', pprint.pformat(req, width=5))
         header = '{0:06x}'.format(len(req))
         self.socket.send(header + req)
 
@@ -82,7 +83,6 @@ class EuslimeTestCase(unittest.TestCase):
         self.validation_num += 1
         val_num = self.validation_num
         req = '(:euslime-test {} {})'.format(val_num, req)
-        log.info('request: \n%s', pprint.pformat(req, width=5))
         result = []
         self.socket_send(req)
         while True:
@@ -91,12 +91,31 @@ class EuslimeTestCase(unittest.TestCase):
                 return tuple(result) or None
             result.append(res)
 
+    def socket_get_response_no_wait(self, rate, *commands):
+        result = []
+        for c in commands:
+            self.socket_send(c)
+            time.sleep(rate)
+            res = self.socket_recv_one(socket.MSG_DONTWAIT)
+            while res:
+                result.append(res)
+                time.sleep(0.01)
+                res = self.socket_recv_one(socket.MSG_DONTWAIT)
+        return tuple(result) or None
+
     def socket_clean(self):
         while self.socket_recv_one(socket.MSG_DONTWAIT):
             pass
 
     def assertSocket(self, req, *res):
         response = self.socket_get_response(req)
+        log.info('expected response: \n%s', pprint.pformat(res, width=5))
+        log.info('received response: \n%s', pprint.pformat(response, width=5))
+        self.assertEqual(res, response)
+
+    def assertSocketNoWait(self, req_list, res_list, rate=0.05):
+        res = tuple(res_list)
+        response = self.socket_get_response_no_wait(rate, *req_list)
         log.info('expected response: \n%s', pprint.pformat(res, width=5))
         log.info('received response: \n%s', pprint.pformat(response, width=5))
         self.assertEqual(res, response)
