@@ -322,6 +322,19 @@ class EuslispProcess(Process):
             return []
         return res
 
+    def eval_no_result(self, cmd_str):
+        # do not yield the result
+        # used in the `compile-string-for-emacs' method (C-c C-c)
+        self.output = Queue()
+        self.clear_socket_stack()
+        log.info('eval: %s' % cmd_str)
+        self.input(cmd_str)
+        for out in self.get_output():
+            if isinstance(out, str):
+                yield [Symbol(":write-string"), out]
+            else:
+                pass
+
     def eval(self, cmd_str):
         self.output = Queue()
         self.clear_socket_stack()
