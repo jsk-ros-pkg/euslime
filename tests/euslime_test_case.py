@@ -82,11 +82,6 @@ class EuslimeTestCase(unittest.TestCase):
         return tuple(result) or None
 
     @classmethod
-    def socket_clean(self):
-        while self.socket_recv_one(socket.MSG_DONTWAIT):
-            pass
-
-    @classmethod
     def socket_send(self, req):
         header = '{0:06x}'.format(len(req))
         self.socket.send(header + req)
@@ -97,6 +92,10 @@ class EuslimeTestCase(unittest.TestCase):
         # self.socket_clean()
         self.socket_send(req)
         return self.socket_recv(n)
+
+    def socket_clean(self):
+        while self.socket_recv_one(socket.MSG_DONTWAIT):
+            pass
 
     def assertSocket(self, req, *res):
         response = self.socket_get_response(req, len(res))
