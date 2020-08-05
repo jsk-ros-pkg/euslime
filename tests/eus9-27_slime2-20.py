@@ -160,6 +160,8 @@ class eus(EuslimeTestCase):
     def test_compile_region_1(self):
         self.assertSocket(
             '(:emacs-rex (swank:compile-string-for-emacs "(defun foo (a) (1+ a))" "test.l" (quote ((:position 1) (:line 1 1))) "/tmp/test.l" (quote nil)) "USER" t 24)',
+            '(:read-string 0 1)',
+            '(:read-aborted 0 1)',
             '(:write-string "; Loaded (defun foo ...)\\n")',
             '(:return (:ok (:compilation-result () t 0.01 nil nil)) 24)')
         self.assertSocket(
@@ -170,6 +172,8 @@ class eus(EuslimeTestCase):
             '(:return (:ok ("(foo ===> a <===)" t)) 26)')
         self.assertSocket(
             '(:emacs-rex (swank:compile-string-for-emacs "(setq c (foo 1))" "test.l" (quote ((:position 25) (:line 3 1))) "/tmp/test.l" (quote nil)) "USER" t 29)',
+            '(:read-string 0 1)',
+            '(:read-aborted 0 1)',
             '(:write-string "; Loaded (setq c ...)\\n")',
             '(:return (:ok (:compilation-result () t 0.01 nil nil)) 29)')
         self.assertSocket(
@@ -189,10 +193,11 @@ class eus(EuslimeTestCase):
 
     def test_compile_region_2(self):
         self.assertSocket(
-            '(:emacs-rex (swank:compile-string-for-emacs "(print 1)\n(print 2)\n(print 3)\n(setq c (list 1 2 3))\n" "test.l" (quote ((:position 1) (:line 1 1))) "/tmp/test.l" (quote nil)) "USER" t 14)',
+            '(:emacs-rex (swank:compile-string-for-emacs "(print 1)\n(setq c (list 1 2 3))\n" "test.l" (quote ((:position 1) (:line 1 1))) "/tmp/test.l" (quote nil)) "USER" t 14)',
+            '(:read-string 0 1)',
+            '(:write-string "1\\n")',
+            '(:read-aborted 0 1)',
             '(:write-string "; Loaded (print 1)\\n")',
-            '(:write-string "; Loaded (print 2)\\n")',
-            '(:write-string "; Loaded (print 3)\\n")',
             '(:write-string "; Loaded (setq c ...)\\n")',
             '(:return (:ok (:compilation-result () t 0.01 nil nil)) 14)')
         self.assertSocket(
@@ -517,6 +522,8 @@ class eus(EuslimeTestCase):
     def test_sldb_6(self):
         self.assertSocketIgnoreAddress(
             '(:emacs-rex (swank:compile-string-for-emacs "(1+ nil)" "test.l" (quote ((:position 1) (:line 1 1))) "/tmp/test.l" (quote nil)) "USER" t 25)',
+            '(:read-string 0 1)',
+            '(:read-aborted 0 1)',
             '(:debug 0 1 ("Integer expected in (1+ nil)" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(1+ nil)" (:restartable nil)) (1 "(progn (1+ nil))" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "(slime:slimetop)" (:restartable nil)) (4 "#<compiled-code #X55874e8>" (:restartable nil))) (nil))')
         self.assertSocket(
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 26)',
