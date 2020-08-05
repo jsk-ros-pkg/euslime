@@ -70,17 +70,16 @@ class eus(EuslimeTestCase):
             '(:return (:ok nil) 41)')
 
     def test_eval_7(self):
-        self.assertSocket(
-            '(:emacs-rex (swank-repl:listener-eval "(y-or-n-p)\n") "USER" :repl-thread 21)',
-            '(:read-string 0 1)',
-            '(:write-string "(Y or N): ")')
-        self.assertSocket(
-            '(:emacs-return-string 0 1 "y\n")',
-            '(:read-string 0 1)',
-            '(:write-string "t" :repl-result)',
-            '(:write-string "\\n" :repl-result)',
-            '(:read-aborted 0 1)',
-            '(:return (:ok nil) 21)')
+        self.assertSocketNoWait(
+            ['(:emacs-rex (swank-repl:listener-eval "(y-or-n-p)\n") "USER" :repl-thread 21)',
+             '(:emacs-return-string 0 1 "y\n")'],
+            ['(:read-string 0 1)',
+             '(:write-string "(Y or N): ")',
+             '(:read-string 0 1)',
+             '(:write-string "t" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:read-aborted 0 1)',
+             '(:return (:ok nil) 21)'])
 
     def test_eval_8(self):
         self.assertSocket(
@@ -528,12 +527,12 @@ class eus(EuslimeTestCase):
 
     # EMACS INTERRUPT
     def test_emacs_interrupt(self):
-        self.assertSocket(
-            '(:emacs-rex (swank-repl:listener-eval "(loop)\n") "USER" :repl-thread 5)',
-            '(:read-string 0 1)')
-        self.assertSocket('(:emacs-interrupt 0)',
-                          '(:read-aborted 0 1)',
-                          '(:return (:abort "\'Keyboard Interrupt\'") 5)')
+        self.assertSocketNoWait(
+            ['(:emacs-rex (swank-repl:listener-eval "(loop)\n") "USER" :repl-thread 5)',
+             '(:emacs-interrupt 0)'],
+            ['(:read-string 0 1)',
+             '(:read-aborted 0 1)',
+             '(:return (:abort "\'Keyboard Interrupt\'") 5)'])
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "10\n") "USER" :repl-thread 6)',
             '(:read-string 0 1)',
