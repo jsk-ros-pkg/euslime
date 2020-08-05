@@ -334,6 +334,10 @@ class EuslispProcess(Process):
                 yield [Symbol(":write-string"), out]
             else:
                 pass
+        second_result = self.try_get_socket_result()
+        if second_result:
+            log.warn("Second result: %s", second_result)
+            yield [Symbol(":write-string"), second_result]
 
     def eval(self, cmd_str):
         self.output = Queue()

@@ -320,8 +320,14 @@ class EuslimeHandler(object):
                 messages.append(dumps(exp[:2] + [None], none_as='...'))
             else:
                 messages.append(dumps(exp))
-        for out in self.euslisp.eval_no_result(cmd_str):
-            yield out
+        yield [Symbol(":read-string"), 0, 1]
+        try:
+            for out in self.euslisp.eval_no_result(cmd_str):
+                yield out
+            yield [Symbol(":read-aborted"), 0, 1]
+        except Exception as e:
+            yield [Symbol(":read-aborted"), 0, 1]
+            raise e
         for msg in messages:
             yield [Symbol(":write-string"), "; Loaded {}\n".format(msg)]
         errors = []
