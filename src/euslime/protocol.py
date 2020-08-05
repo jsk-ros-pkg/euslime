@@ -67,6 +67,14 @@ class Protocol(object):
             cmd, form, pkg, thread, comm_id = data
             self.handler.command_id.append(comm_id)
             self.handler.package = pkg
+        elif data[0] == Symbol(":euslime-test"):
+            # Euslime Test Suite
+            # process the form and return a handshake in the end
+            cmd, comm_id, form = data
+            for r in self.process(dumps(form)):
+                yield r
+            yield self.dumps([Symbol(":euslime-test"), comm_id])
+            return
         else:
             form = data
             comm_id = None

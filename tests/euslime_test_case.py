@@ -22,6 +22,7 @@ class EuslimeTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         self.maxDiff = None
+        self.validation_num = 0
         self.server = EuslimeServer(('0.0.0.0', 0),
                                     program=self.EUSLISP_PROGRAM)
         host, port = self.server.socket.getsockname()
@@ -35,7 +36,7 @@ class EuslimeTestCase(unittest.TestCase):
         log.info('Creating REPL...')
         req = '(:emacs-rex (swank-repl:create-repl nil :coding-system "utf-8-unix") "COMMON-LISP-USER" t 4)'
         res = ('(:return (:ok ("USER" "{}")) 4)'.format(self.EUSLISP_PROGRAM_NAME),)
-        response = self.socket_get_response(req, 1)
+        response = self.socket_get_response(req)
         log.debug('expected response: \n%s', pprint.pformat(res, width=5))
         log.debug('received response: \n%s', pprint.pformat(response, width=5))
         if res != response:
@@ -72,33 +73,30 @@ class EuslimeTestCase(unittest.TestCase):
             return
 
     @classmethod
-    def socket_recv(self, times):
-        result = []
-        for i in range(times):
-            res = self.socket_recv_one()
-            if res is None:
-                break
-            result.append(res)
-        return tuple(result) or None
-
-    @classmethod
     def socket_send(self, req):
         header = '{0:06x}'.format(len(req))
         self.socket.send(header + req)
 
     @classmethod
-    def socket_get_response(self, req, n):
-        log.info('request: \n%s', req)
-        # self.socket_clean()
+    def socket_get_response(self, req):
+        self.validation_num += 1
+        val_num = self.validation_num
+        req = '(:euslime-test {} {})'.format(val_num, req)
+        log.info('request: \n%s', pprint.pformat(req, width=5))
+        result = []
         self.socket_send(req)
-        return self.socket_recv(n)
+        while True:
+            res = self.socket_recv_one()
+            if res is None or res == '(:euslime-test {})'.format(val_num):
+                return tuple(result) or None
+            result.append(res)
 
     def socket_clean(self):
         while self.socket_recv_one(socket.MSG_DONTWAIT):
             pass
 
     def assertSocket(self, req, *res):
-        response = self.socket_get_response(req, len(res))
+        response = self.socket_get_response(req)
         log.info('expected response: \n%s', pprint.pformat(res, width=5))
         log.info('received response: \n%s', pprint.pformat(response, width=5))
         self.assertEqual(res, response)
@@ -107,7 +105,7 @@ class EuslimeTestCase(unittest.TestCase):
         def substitute_address(lst):
             return [REGEX_ADDR.sub(str(), msg) for msg in lst]
         res = substitute_address(res)
-        response = self.socket_get_response(req, len(res))
+        response = self.socket_get_response(req)
         response = substitute_address(response)
         log.info('expected response: \n%s', pprint.pformat(res, width=5))
         log.info('received response: \n%s', pprint.pformat(response, width=5))
