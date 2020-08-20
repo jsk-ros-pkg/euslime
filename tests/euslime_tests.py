@@ -19,8 +19,11 @@ import unittest
 
 # Import tests
 from eus import eus
+from eus_color import eus_color
 from irteusgl import irteusgl
+from irteusgl_color import irteusgl_color
 from roseus import roseus
+from roseus_color import roseus_color
 
 if __name__ == '__main__':
     set_log_level('debug')

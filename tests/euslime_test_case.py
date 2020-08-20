@@ -18,13 +18,15 @@ class EuslimeTestCase(unittest.TestCase):
     # values are defined in the child classes
     EUSLISP_PROGRAM = ''
     EUSLISP_PROGRAM_NAME = ''
+    USE_COLOR = False
 
     @classmethod
     def setUpClass(self):
         self.maxDiff = None
         self.validation_num = 0
         self.server = EuslimeServer(('0.0.0.0', 0),
-                                    program=self.EUSLISP_PROGRAM)
+                                    program=self.EUSLISP_PROGRAM,
+                                    color=self.USE_COLOR)
         host, port = self.server.socket.getsockname()
         Thread(target=self.server.serve_forever).start()
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
