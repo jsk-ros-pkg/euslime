@@ -7,6 +7,8 @@ import unittest
 
 from euslime.logger import get_logger
 from euslime.server import EuslimeServer
+from sexpdata import dumps
+from sexpdata import loads
 from threading import Thread
 
 HEADER_LENGTH = 6
@@ -113,6 +115,50 @@ class EuslimeTestCase(unittest.TestCase):
 
     def assertSocket(self, req, *res):
         response = self.socket_get_response(req)
+        log.info('expected response: \n%s', pprint.pformat(res, width=5))
+        log.info('received response: \n%s', pprint.pformat(response, width=5))
+        self.assertEqual(res, response)
+
+    def assertSocketWriteString(self, req, *res):
+        def join_write_string(first, *more):
+            """Merge the string part of several :write-string lines into one statement"""
+            if not more:
+                return first
+            first[1] = first[1] + ''.join([x[1] for x in more])
+            return first
+
+        def get_buffer_type(loaded_form):
+            if len(loaded_form) < 3:
+                return None
+            else:
+                return loaded_form[2]
+
+        def with_join_write_string(lst):
+            output = []
+            buffer = []
+            buffer_type = None
+            for a in lst:
+                is_write_string = a[1:14] == ':write-string'
+                if is_write_string:
+                    ld_a = loads(a)
+                    bt = get_buffer_type(ld_a)
+                    if buffer and not buffer_type == bt:
+                        out = dumps(join_write_string(*buffer))
+                        output.append(out)
+                        buffer = []
+                    buffer_type = bt
+                    buffer.append(ld_a)
+                else:
+                    if buffer:
+                        out = dumps(join_write_string(*buffer))
+                        output.append(out.encode('utf-8'))
+                        buffer = []
+                    output.append(a)
+            return output
+
+        response = self.socket_get_response(req)
+        res = with_join_write_string(res)
+        response = with_join_write_string(response)
         log.info('expected response: \n%s', pprint.pformat(res, width=5))
         log.info('received response: \n%s', pprint.pformat(response, width=5))
         self.assertEqual(res, response)
