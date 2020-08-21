@@ -1,3 +1,4 @@
+import os
 import pprint
 import re
 import socket
@@ -24,6 +25,7 @@ class EuslimeTestCase(unittest.TestCase):
     def setUpClass(self):
         self.maxDiff = None
         self.validation_num = 0
+        os.environ.update({'ROSCONSOLE_FORMAT':'[${severity}]: ${message}'})  # for rosout tests
         self.server = EuslimeServer(('0.0.0.0', 0),
                                     program=self.EUSLISP_PROGRAM,
                                     color=self.USE_COLOR)
