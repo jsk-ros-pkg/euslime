@@ -410,6 +410,25 @@ class eus(EuslimeTestCase):
             '(:emacs-rex (swank:completions-for-character "") "USER" :repl-thread 20)',
             '(:return (:ok (("Space" "Newline" "Linefeed" "Backspace" "Delete" "Rubout" "Return" "Page" "Formfeed" "Esc" "Escape" "Tab" "Left-Paren" "Right-Paren" "Lparen" "Rparen" "Bell" "Null" "SOH" "STX" "ETX") "")) 20)')
 
+
+    # OUTPUT
+    def test_output_1(self):
+        self.assertSocketWriteString(
+            '(:emacs-rex (swank-repl:listener-eval "(dotimes (i 10) (print i) (unix:usleep 1000))\n") "USER" :repl-thread 17)',
+            '(:read-string 0 1)',
+            '(:write-string "0\\n")',
+            '(:write-string "1\\n2\\n3\\n4\\n")',
+            '(:write-string "5\\n6\\n7\\n8\\n9\\n")',
+            '(:write-string "nil" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 17)')
+
+    def test_output_2(self):
+        with open('test_output_2.txt') as f:
+            lines = [x.rstrip('\n') for x in f.readlines()]
+        self.assertSocketWriteString(*lines)
+
     # DEBUGGER
     def test_sldb_1(self):
         self.assertSocketIgnoreAddress(
