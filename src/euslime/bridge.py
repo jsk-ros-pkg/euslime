@@ -143,11 +143,13 @@ class EuslispProcess(Process):
         self.init_file = init_file
 
         self.socket = self._start_socket()
-        host, port = self.socket.getsockname()
-        self.token = '{}euslime-token-{}'.format(chr(29), port)
+        self.internal_socket = self._start_socket()
+        host1, port1 = self.socket.getsockname()
+        host2, port2 = self.internal_socket.getsockname()
+        self.token = '{}euslime-token-{}'.format(chr(29), port1)
 
         super(EuslispProcess, self).__init__(
-            cmd=[self.program, self.init_file, "--port={}".format(port)],
+            cmd=[self.program, self.init_file, "--port1={}".format(port1), "--port2={}".format(port2)],
             on_output=self.on_output,
         )
 
@@ -158,7 +160,8 @@ class EuslispProcess(Process):
 
     def start(self):
         super(EuslispProcess, self).start()
-        self.euslime_connection = self._socket_connect()
+        self.euslime_connection = self._socket_connect(self.socket)
+        self.euslime_internal_connection = self._socket_connect(self.internal_socket)
         self.input('(slime:slimetop)')
 
     def _start_socket(self):
@@ -167,10 +170,10 @@ class EuslispProcess(Process):
         s.listen(5)
         return s
 
-    def _socket_connect(self):
-        host, port = self.socket.getsockname()
+    def _socket_connect(self, sock):
+        host, port = sock.getsockname()
         log.info("Connecting to euslime socket on %s:%s..." % (host, port))
-        conn, _ = self.socket.accept()
+        conn, _ = sock.accept()
         log.info("...Connected to euslime socket!")
         return conn
 
@@ -181,25 +184,25 @@ class EuslispProcess(Process):
             log.debug("output: %s" % msg)
             self.output.put(msg)
 
-    def recv_socket_length(self, hex_len):
+    def recv_socket_length(self, connection, hex_len):
         if hex_len == str():
             # recv() returns null string on EOF
             raise EuslispError('Socket connection closed', fatal=True)
         length = int(hex_len, 16)
         while length > 0:
-            msg = self.euslime_connection.recv(length)
+            msg = connection.recv(length)
             log.debug("Socket Response: %s" % msg)
             length -= len(msg)
             yield msg
         return
 
-    def recv_socket_data(self, wait=True):
+    def recv_socket_data(self, connection, wait=True):
         def recv_next(wait=True):
             while True:
                 try:
-                    head_data = self.euslime_connection.recv(
+                    head_data = connection.recv(
                         HEADER_LENGTH, socket.MSG_DONTWAIT)
-                    return self.recv_socket_length(head_data)
+                    return self.recv_socket_length(connection, head_data)
                 except socket.error:
                     if not wait:
                         return
@@ -214,8 +217,8 @@ class EuslispProcess(Process):
             return command, data
         return None, None
 
-    def get_socket_response(self, recursive=False):
-        command, data = self.recv_socket_data()
+    def get_socket_response(self, connection, recursive=False):
+        command, data = self.recv_socket_data(connection)
         log.debug('Socket Request Type: %s' % command)
         if command == 'result':
             return data
@@ -225,20 +228,21 @@ class EuslispProcess(Process):
             if recursive:
                 return
             msg = loads(data)
-            stack = self.get_callstack()
+            # stack = self.get_callstack()
+            stack = []
             raise EuslispError(msg, stack)
         if command == 'abort':
             return
         raise Exception("Unhandled Socket Request Type: %s" % command)
 
-    def try_get_socket_result(self):
-        command, data = self.recv_socket_data(wait=False)
+    def try_get_socket_result(self, connection):
+        command, data = self.recv_socket_data(connection, wait=False)
         if command == 'result':
             return gen_to_string(data)
 
-    def clear_socket_stack(self):
+    def clear_socket_stack(self, connection):
         while True:
-            command, data = self.recv_socket_data(wait=False)
+            command, data = self.recv_socket_data(connection, wait=False)
             if command is None:
                 return
             msg = gen_to_string(data)
@@ -260,7 +264,7 @@ class EuslispProcess(Process):
                         self.input('(lisp:reset lisp:*replevel*)')
                         self.ping()
                     # Check for Errors
-                    gen = self.get_socket_response(recursive=recursive)
+                    gen = self.get_socket_response(self.euslime_connection, recursive=recursive)
                     # Print Results
                     # Do not use :repl-result presentation
                     # to enable copy-paste of previous results,
@@ -284,7 +288,7 @@ class EuslispProcess(Process):
 
     def get_callstack(self, end=10):
         self.output = Queue()
-        self.clear_socket_stack()
+        self.clear_socket_stack(self.euslime_connection)
         cmd_str = '(slime:print-callstack {})'.format(end + 4)
         self.euslime_connection.send(cmd_str + self.delim)
         stack = list(self.get_output(recursive=True))
@@ -309,11 +313,11 @@ class EuslispProcess(Process):
         return strace
 
     def exec_internal(self, cmd_str):
-        self.clear_socket_stack()
+        self.clear_socket_stack(self.euslime_internal_connection)
         log.info('exec_internal: %s' % cmd_str)
-        self.euslime_connection.send(cmd_str + self.delim)
+        self.euslime_internal_connection.send(cmd_str + self.delim)
         while True:
-            gen = self.get_socket_response()
+            gen = self.get_socket_response(self.euslime_internal_connection)
             if gen is not None:
                 break
         res = gen_to_string(gen)
@@ -326,7 +330,7 @@ class EuslispProcess(Process):
         # do not yield the result
         # used in the `compile-string-for-emacs' method (C-c C-c)
         self.output = Queue()
-        self.clear_socket_stack()
+        self.clear_socket_stack(self.euslime_connection)
         log.info('eval: %s' % cmd_str)
         self.input(cmd_str)
         for out in self.get_output():
@@ -334,14 +338,14 @@ class EuslispProcess(Process):
                 yield [Symbol(":write-string"), out]
             else:
                 pass
-        second_result = self.try_get_socket_result()
+        second_result = self.try_get_socket_result(self.euslime_connection)
         if second_result:
             log.warn("Second result: %s", second_result)
             yield [Symbol(":write-string"), second_result]
 
     def eval(self, cmd_str):
         self.output = Queue()
-        self.clear_socket_stack()
+        self.clear_socket_stack(self.euslime_connection)
         log.info('eval: %s' % cmd_str)
         self.input(cmd_str)
         for out in self.get_output():
@@ -353,7 +357,7 @@ class EuslispProcess(Process):
         # virtually having more than one result per evaluation
         # e.g. (read) [RET] 10 [RET] [RET]
         # e.g. (lisp:none 10) [RET] [RET]
-        second_result = self.try_get_socket_result()
+        second_result = self.try_get_socket_result(self.euslime_connection)
         if second_result:
             log.warn("Second result: %s", second_result)
             yield [Symbol(":write-string"), second_result]

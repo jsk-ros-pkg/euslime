@@ -12,10 +12,11 @@
 
 (eval-when (load eval)
 
-(export '(*slime-stream* slime-connect-socket socket-eval socket-request
+(export '(*slime-stream* *slime-internal-stream* slime-connect-socket socket-eval socket-request
           slime-error slime-finish-output slimetop print-callstack))
 
 (defvar *slime-stream*)
+(defvar *slime-internal-stream*)
 
 (defun slime-connect-socket (port)
   (flet ((try-connect (&optional (timeout 5))
@@ -26,35 +27,35 @@
             timeout)))
     (do ((strm (try-connect) (try-connect)))
         ((streamp strm)
-         (defconstant *slime-stream* strm)
          (unix:usleep 100000)
          strm))))
 
-(defun socket-request (command value)
-  (assert (streamp *slime-stream*) "Cannot connect to *slime-stream*!")
+(defun socket-request (strm command value)
+  (assert (streamp strm) "Cannot connect to socket stream!")
   (flet ((send-request (str)
            (ensure-print
             (let ((len (substitute #\0 #\space (format nil "~6,x" (length str)))))
-              (princ len *slime-stream*)
-              (princ str *slime-stream*)
-              (finish-output *slime-stream*)))))
+              (princ len strm)
+              (princ str strm)
+              (finish-output strm)))))
     (send-request command)
     (send-request (prin1-to-string value))))
 
 (defun socket-eval (strm)
   (ensure-print
-   (socket-request "result" (evaluate-stream strm))))
+   (socket-request strm "result" (evaluate-stream strm))))
 
 ;; Slime Toplevel
 
 (defun clean-eustop ()
-  (setq lisp::*eustop-argument*
-        (delete-if #'(lambda (val) (string= val "--port=" :end1 7))
-                   lisp::*eustop-argument* :count 1)))
+  (dolist (num (list 1 2))
+    (setq lisp::*eustop-argument*
+          (delete-if #'(lambda (val) (string= val (format nil "--port~A=" num) :end1 8))
+                     lisp::*eustop-argument* :count 1))))
 
 (defun slime-error (code msg1 form &optional (msg2))
   (if (and msg2 (zerop (length msg1))) (setq msg1 msg2 msg2 nil))
-  (socket-request "error"
+  (socket-request *slime-stream* "error"
    (with-output-to-string (s)
      (format s "~a" msg1)
      (if msg2 (format s " ~a" msg2))
@@ -75,6 +76,8 @@
   (clean-eustop)
   (lisp::install-error-handler 'slime::slime-error)
   (setq lisp::*max-callstack-depth* 0)
+  (sys::make-thread 1)
+  (sys::thread 'eval `(while t (slime::socket-eval slime::*slime-internal-stream*)))
   (catch :eusexit
     (while t
       (catch 0
@@ -114,13 +117,12 @@
          (result (rep1 repstream eof local-bindings ttyp)))
     (if (eql result eof) (throw :reploop-select nil))
     (slime::slime-finish-output out)
-    (slime::socket-request "result" result)))
+    (slime::socket-request slime::*slime-stream* "result" result)))
 
 (defun reploop (prompt &optional (repstream *terminal-io*) (ttyp (unix:isatty repstream)))
   (let ((*prompt* prompt))
     (slime::slime-finish-output repstream)
-    (slime::socket-request "abort" nil)
-    (send *top-selector* :add-port slime::*slime-stream* #'slime::socket-eval slime::*slime-stream*)
+    (slime::socket-request slime::*slime-stream* "abort" nil)
     (reploop-select repstream ttyp)))
 )
 
@@ -138,9 +140,13 @@
       (new-history *history-max*)))
 
   ;; Connect to socket
-  (let ((port (find "--port=" *eustop-argument* :test #'(lambda (a b) (string= a b :end2 7)))))
-    (when port
-      (setq port (read-from-string (subseq port 7)))
-      (assert (numberp port))
-      (slime::slime-connect-socket port)))
+  (flet ((make-slime-socket (num)
+           (let ((port (find (format nil "--port~A=" num) *eustop-argument*
+                             :test #'(lambda (a b) (string= a b :end2 8)))))
+             (when port
+               (setq port (read-from-string (subseq port 8)))
+               (assert (numberp port))
+               (slime::slime-connect-socket port)))))
+    (defconstant slime::*slime-stream* (make-slime-socket 1))
+    (defconstant slime::*slime-internal-stream* (make-slime-socket 2)))
 )
