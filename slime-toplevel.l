@@ -123,6 +123,7 @@
   (let ((*prompt* prompt))
     (slime::slime-finish-output repstream)
     (slime::socket-request slime::*slime-stream* "abort" nil)
+    (send *top-selector* :add-port slime::*slime-stream* #'slime::socket-eval slime::*slime-stream*)
     (reploop-select repstream ttyp)))
 )
 

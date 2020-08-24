@@ -91,7 +91,7 @@ class EuslimeHandler(object):
         self.euslisp.start()
 
     def maybe_new_prompt(self):
-        new_prompt = self.euslisp.exec_internal('(slime::slime-prompt)')
+        new_prompt = self.euslisp.exec_internal('(slime::slime-prompt)', force_repl_socket=True)
         if new_prompt:
             yield [Symbol(":new-package")] + new_prompt
 

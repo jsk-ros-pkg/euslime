@@ -228,8 +228,7 @@ class EuslispProcess(Process):
             if recursive:
                 return
             msg = loads(data)
-            # stack = self.get_callstack()
-            stack = []
+            stack = self.get_callstack()
             raise EuslispError(msg, stack)
         if command == 'abort':
             return
@@ -312,12 +311,19 @@ class EuslispProcess(Process):
             '(lisp:reset lisp:*replevel*)' + self.delim)
         return strace
 
-    def exec_internal(self, cmd_str):
-        self.clear_socket_stack(self.euslime_internal_connection)
-        log.info('exec_internal: %s' % cmd_str)
-        self.euslime_internal_connection.send(cmd_str + self.delim)
+    def exec_internal(self, cmd_str, force_repl_socket=False):
+        if force_repl_socket:
+            # When the command must be evaluated in the main thread due to
+            # e.g. Thread Special variables
+            connection = self.euslime_connection
+            log.info('exec_internal(repl): %s' % cmd_str)
+        else:
+            connection = self.euslime_internal_connection
+            log.info('exec_internal: %s' % cmd_str)
+        self.clear_socket_stack(connection)
+        connection.send(cmd_str + self.delim)
         while True:
-            gen = self.get_socket_response(self.euslime_internal_connection)
+            gen = self.get_socket_response(connection)
             if gen is not None:
                 break
         res = gen_to_string(gen)
