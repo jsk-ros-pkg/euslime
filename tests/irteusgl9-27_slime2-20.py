@@ -4,7 +4,7 @@ class irteusgl(eus):
     EUSLISP_PROGRAM = 'irteusgl'
     EUSLISP_PROGRAM_NAME = 'irteusgl'
 
-    def test_completions_15(self):
+    def test_completions_irt_1(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(progn (setq c (make-coords :name \\"test\\")) (send c :name))\n") "USER" :repl-thread 31)',
             '(:read-string 0 1)',
@@ -29,7 +29,7 @@ class irteusgl(eus):
             '(:read-aborted 0 1)',
             '(:return (:ok nil) 45)')
 
-    def test_autodoc_17(self):
+    def test_autodoc_irt_1(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(progn (make-irtviewer) (send *irtviewer* :name))\n") "USER" :repl-thread 78)',
             '(:read-string 0 1)',

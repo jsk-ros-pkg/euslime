@@ -552,7 +552,7 @@ class eus(EuslimeTestCase):
 
 
     # EMACS INTERRUPT
-    def test_emacs_interrupt(self):
+    def test_emacs_interrupt_1(self):
         self.assertSocketNoWait(
             ['(:emacs-rex (swank-repl:listener-eval "(loop)\n") "USER" :repl-thread 5)',
              '(:emacs-interrupt 0)'],
@@ -568,7 +568,7 @@ class eus(EuslimeTestCase):
             '(:return (:ok nil) 6)')
 
     # SET PACKAGE
-    def test_set_package(self):
+    def test_set_package_1(self):
         self.assertSocket(
             '(:emacs-rex (swank:set-package "LISP") "USER" :repl-thread 33)',
             '(:return (:ok ("LISP" "LISP:{}")) 33)'.format(self.EUSLISP_PROGRAM_NAME))
@@ -599,7 +599,7 @@ class eus(EuslimeTestCase):
             '(:return (:ok "NAME\\n     *prompt-string*\\nTYPE\\n     variable\\nDESCRIPTION\\n     prompt string used by \x1b[1meustop\x1b[m. \\n\\nPROPERTIES\\n\\nplist=nil\\nvalue=\\"{}\\"\\nvtype=2\\nfunction=*unbound*\\npname=\\"*PROMPT-STRING*\\"\\nhomepkg=#<package #X5f12ae8 LISP>\\n") 16)'.format(self.EUSLISP_PROGRAM_NAME))
 
     # MACRO EXPAND
-    def test_macro_expand(self):
+    def test_macro_expand_1(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(defmacro foo (&rest body) `(progn ,@(reverse body)))\n") "USER" :repl-thread 16)',
             '(:read-string 0 1)',
