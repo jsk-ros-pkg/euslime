@@ -1,4 +1,6 @@
 from euslime_test_case import EuslimeTestCase
+import time
+from threading import Thread
 
 class eus(EuslimeTestCase):
     EUSLISP_PROGRAM = 'eus'
@@ -154,6 +156,24 @@ class eus(EuslimeTestCase):
             '(:read-aborted 0 1)',
             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:ok nil) 8)')
+
+    def test_eval_12(self):
+        def send_req():
+            time.sleep(0.1)
+            self.socket_send(
+                '(:emacs-rex (swank:apropos-list-for-emacs ":none" t nil (quote nil)) "USER" :repl-thread 18)')
+
+        thread = Thread(target=send_req)
+        thread.start()
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(unix:usleep 200000)\n") "USER" :repl-thread 17)',
+            '(:read-string 0 1)',
+            '(:return (:ok ()) 18)',
+            '(:write-string "t" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 17)')
+        thread.join()
 
 
     # COMPILE REGION
@@ -549,6 +569,32 @@ class eus(EuslimeTestCase):
             '(:debug-return 0 1 nil)',
             '(:return (:abort "NIL") 26)',
             '(:return (:abort "\'Integer expected\'") 25)')
+
+    def test_sldb_7(self):
+        self.assertSocketIgnoreAddress(
+            '(:emacs-rex (swank-repl:listener-eval "(let ((a 1)) (error \\"THIS\\"))\n") "USER" :repl-thread 5)',
+            '(:read-string 0 1)',
+            '(:read-aborted 0 1)',
+            '(:debug 0 1 ("THIS in (error \\"THIS\\")" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(error \\"THIS\\")" (:restartable nil)) (1 "(let ((a 1)) (error \\"THIS\\"))" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "(slime:slimetop)" (:restartable nil)) (4 "#<compiled-code #X49e4290>" (:restartable nil))) (nil))')
+        self.assertSocket(
+            '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 1) "USER" 0 6)',
+            '(:debug-return 0 1 nil)',
+            '(:return (:abort "NIL") 6)',
+            '(:new-package "USER" "E1-{}")'.format(self.EUSLISP_PROGRAM_NAME),
+            '(:return (:abort "\'THIS\'") 5)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(eval-dynamic \'a)\n") "USER" :repl-thread 7)',
+            '(:read-string 0 1)',
+            '(:write-string "1" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 7)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "reset\n") "USER" :repl-thread 8)',
+            '(:read-string 0 1)',
+            '(:read-aborted 0 1)',
+            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+            '(:return (:ok nil) 8)')
 
 
     # EMACS INTERRUPT
