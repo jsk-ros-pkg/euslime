@@ -101,7 +101,7 @@ class EuslimeHandler(object):
             return None
         cmd = '(slime::autodoc "{0}" {1} (lisp:quote {2}))'.format(
             qstr(func), dumps_lisp(cursor), dumps_lisp(form))
-        result = self.euslisp.exec_internal(cmd)
+        result = self.euslisp.exec_internal(cmd, force_repl_socket=True)
         if isinstance(result, str):
             return [result, False]
         elif result:
