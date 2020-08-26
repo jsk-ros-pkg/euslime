@@ -117,8 +117,7 @@ class EuslimeHandler(object):
 
     def swank_connection_info(self):
         version = self.euslisp.exec_internal('(slime::implementation-version)')
-        name = self.euslisp.exec_internal(
-            '(lisp:pathname-name lisp:*program-name*)')
+        name = self.euslisp.exec_internal('(lisp:pathname-name lisp:*program-name*)')
         res = {
             'pid': os.getpid(),
             'style': False,
@@ -350,8 +349,8 @@ class EuslimeHandler(object):
 
     def swank_load_file(self, filename):
         yield [Symbol(":write-string"), "Loading file: %s ...\n" % filename]
-        res = self.euslisp.exec_internal('(lisp:load "{0}")'.format(
-            qstr(filename)))
+        res = self.euslisp.exec_internal('(lisp:load "{0}")'.format(qstr(filename)),
+                                         force_repl_socket=True)
         yield [Symbol(":write-string"), "Loaded.\n"]
         yield EuslispResult(res)
 
@@ -400,7 +399,8 @@ class EuslimeHandler(object):
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_repl_clear_repl_variables(self):
-        cmd = self.euslisp.exec_internal('(slime::clear-repl-variables)')
+        cmd = self.euslisp.exec_internal('(slime::clear-repl-variables)',
+                                         force_repl_socket=True)
         yield EuslispResult(cmd)
 
     def swank_clear_repl_results(self):
@@ -408,7 +408,8 @@ class EuslimeHandler(object):
 
     def swank_set_package(self, name):
         cmd = '(slime::set-package "{0}")'.format(qstr(name))
-        yield EuslispResult(self.euslisp.exec_internal(cmd))
+        res = self.euslisp.exec_internal(cmd, force_repl_socket=True)
+        yield EuslispResult(res)
 
     def swank_default_directory(self):
         cmd = self.euslisp.exec_internal('(lisp:pwd)')
