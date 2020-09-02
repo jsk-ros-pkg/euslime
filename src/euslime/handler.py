@@ -144,6 +144,8 @@ class EuslimeHandler(object):
 
     def swank_create_repl(self, sexp):
         res = self.euslisp.exec_internal('(slime::slime-prompt)')
+        for t in self.euslisp.threads:
+            t.start()
         yield EuslispResult(res)
 
     def swank_repl_create_repl(self, *sexp):

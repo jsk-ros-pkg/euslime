@@ -24,7 +24,8 @@ log = get_logger(__name__)
 
 class EuslimeRequestHandler(S.BaseRequestHandler, object):
     def __init__(self, request, client_address, server):
-        self.swank = Protocol(EuslimeHandler, server.program, server.loader)
+        self.swank = Protocol(EuslimeHandler, server.program, server.loader,
+                              on_output=self._process_output)
         self.swank.handler.euslisp.color = server.color
         self.encoding = ENCODINGS.get(server.encoding, 'utf-8')
         self.interrupt_request = Event()
@@ -46,16 +47,14 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
             for msg in self.swank.interrupt():
                 self.request.send(msg)
 
-    def _process_output(self):
-        while not self.swank.handler.close_request.is_set() and not self.swank.handler.euslisp.accumulate_output.is_set():
-            for out in self.swank.handler.euslisp.get_output():
-                log.debug('output: %s', out)
-                response = [Symbol(":write-string"), out]
-                send_data = self.swank.dumps(response)
-                send_data = send_data.encode(self.encoding)
-                self.request.send(send_data)
-
-        log.warn("Output handling loop is shutting down")
+    def _process_output(self, out=None):
+        if out is None:
+            return
+        log.debug('output: %s', out)
+        response = [Symbol(":write-string"), out]
+        send_data = self.swank.dumps(response)
+        send_data = send_data.encode(self.encoding)
+        self.request.send(send_data)
 
     def handle(self):
         """This method handles packets from swank client.

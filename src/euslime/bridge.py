@@ -41,14 +41,18 @@ def gen_to_string(gen):
 
 class Process(object):
     def __init__(self, cmd,
+                 color=False,
                  on_output=None,
                  bufsize=None,
                  delim=None,):
         self.cmd = cmd
+        self.color = color  # Requires slime-repl-ansi-color
         self.on_output = on_output or self.default_print_callback
         self.bufsize = bufsize or BUFSIZE
         self.delim = delim or DELIM
         self.lock = Lock()
+        self.output = Queue()
+        self.accumulate_output = Event()
         self.process = None
         self.threads = None
 
@@ -77,7 +81,7 @@ class Process(object):
         ]
         for t in self.threads:
             t.daemon = True
-            t.start()
+            # t.start()  # Start threads at swank_create_repl
 
     def stop(self):
         if self.process.poll() is None:
@@ -99,7 +103,12 @@ class Process(object):
         while self.process.poll() is None:
             try:
                 buf = os.read(stream.fileno(), self.buflen)
-                callback(buf)
+                if not self.color:
+                    buf = no_color(buf)
+                if self.accumulate_output.is_set():
+                    self.output.put(buf)
+                else:
+                    callback(buf)
                 if len(buf) < self.buflen * 0.8:
                     time.sleep(self.rate)
             except Exception:
@@ -138,7 +147,7 @@ class EuslispResult(object):
 
 class EuslispProcess(Process):
     def __init__(self, program=None, init_file=None, exec_rate=None,
-                 buflen=None, color=False):
+                 buflen=None, on_output=None, color=False):
         self.program = program
         self.init_file = init_file
 
@@ -149,12 +158,10 @@ class EuslispProcess(Process):
 
         super(EuslispProcess, self).__init__(
             cmd=[self.program, self.init_file, "--port1={}".format(port1), "--port2={}".format(port2)],
-            on_output=self.on_output,
+            color=color,
+            on_output=on_output,
         )
 
-        self.color = color  # Requires slime-repl-ansi-color
-        self.output = Queue()
-        self.accumulate_output = Event()  # Used to extract the callstack w/o printing it
         self.rate = exec_rate or EXEC_RATE
         self.buflen = buflen or BUFLENGTH
 
@@ -176,13 +183,6 @@ class EuslispProcess(Process):
         conn, _ = sock.accept()
         log.info("...Connected to euslime socket!")
         return conn
-
-    def on_output(self, msg):
-        if not self.color:
-            msg = no_color(msg)
-        if msg:
-            log.debug("output: %s" % msg)
-            self.output.put(msg)
 
     def recv_socket_length(self, connection, hex_len):
         if hex_len == str():
@@ -253,20 +253,14 @@ class EuslispProcess(Process):
             msg = gen_to_string(data)
             log.debug("Ignoring: [%s] %s" % (command, msg))
 
-    def get_output(self):
-        while not self.output.empty():
-            yield self.output.get(timeout=self.rate)
-        return
-
     def get_callstack(self, end=10):
-        self.accumulate_output.set()
         self.output = Queue()
+        self.accumulate_output.set()
         self.clear_socket_stack(self.euslime_connection)
         cmd_str = '(slime:print-callstack {})'.format(end + 4)
         self.euslime_connection.send(cmd_str + self.delim)
         self.get_socket_response(self.euslime_connection, recursive=True)
         stack = list(self.output.queue)
-        self.output = Queue()
         self.accumulate_output.clear()
         stack = gen_to_string(stack)
         stack = [x.strip() for x in stack.split(self.delim)]
@@ -309,7 +303,6 @@ class EuslispProcess(Process):
     def eval_no_result(self, cmd_str):
         # do not yield the result
         # used in the `compile-string-for-emacs' method (C-c C-c)
-        self.output = Queue()
         self.clear_socket_stack(self.euslime_connection)
         log.info('eval: %s' % cmd_str)
         self.input(cmd_str)
@@ -320,7 +313,6 @@ class EuslispProcess(Process):
             yield [Symbol(":write-string"), second_result]
 
     def eval(self, cmd_str):
-        self.output = Queue()
         self.clear_socket_stack(self.euslime_connection)
         log.info('eval: %s' % cmd_str)
         self.input(cmd_str)
