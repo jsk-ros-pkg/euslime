@@ -85,10 +85,12 @@ class EuslimeHandler(object):
     def restart_euslisp_process(self):
         program = self.euslisp.program
         init_file = self.euslisp.init_file
+        on_output = self.euslisp.on_output
         color = self.euslisp.color
         self.euslisp.stop()
-        self.euslisp = EuslispProcess(program, init_file, color=color)
+        self.euslisp = EuslispProcess(program, init_file, on_output=on_output, color=color)
         self.euslisp.start()
+        self.euslisp.accumulate_output.clear()
 
     def maybe_new_prompt(self):
         new_prompt = self.euslisp.exec_internal('(slime::slime-prompt)', force_repl_socket=True)
@@ -144,8 +146,7 @@ class EuslimeHandler(object):
 
     def swank_create_repl(self, sexp):
         res = self.euslisp.exec_internal('(slime::slime-prompt)')
-        for t in self.euslisp.threads:
-            t.start()
+        self.euslisp.accumulate_output.clear()
         yield EuslispResult(res)
 
     def swank_repl_create_repl(self, *sexp):

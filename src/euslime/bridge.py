@@ -62,6 +62,7 @@ class Process(object):
         # as explained in section 8 of http://wiki.ros.org/rosconsole
         slime_env['ROSCONSOLE_STDOUT_LINE_BUFFERED'] = '1'
 
+        self.accumulate_output.set()  # ignore init messages
         log.debug("Starting process with command %s" % self.cmd)
         self.process = subprocess.Popen(
             self.cmd,
@@ -81,7 +82,7 @@ class Process(object):
         ]
         for t in self.threads:
             t.daemon = True
-            # t.start()  # Start threads at swank_create_repl
+            t.start()
 
     def stop(self):
         if self.process.poll() is None:
@@ -115,6 +116,9 @@ class Process(object):
                 log.error(traceback.format_exc())
         else:
             log.debug("Thread %s is dead" % name)
+
+    def default_print_callback(self, msg):
+        log.warn('default_print_callback: %s', msg)
 
     def check_poll(self):
         if self.process.poll() is not None:
@@ -308,6 +312,7 @@ class EuslispProcess(Process):
         self.input(cmd_str)
         # wait for it to finish
         list(self.get_socket_result(self.euslime_connection))
+        second_result = self.try_get_socket_result(self.euslime_connection)
         if second_result:
             log.warn("Second result: %s", second_result)
             yield [Symbol(":write-string"), second_result]

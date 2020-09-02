@@ -48,7 +48,7 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
                 self.request.send(msg)
 
     def _process_output(self, out=None):
-        if out is None:
+        if not out:
             return
         log.debug('output: %s', out)
         response = [Symbol(":write-string"), out]
