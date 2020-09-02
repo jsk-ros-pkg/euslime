@@ -11,6 +11,7 @@ from threading import Event, Thread
 from euslime.handler import EuslimeHandler
 from euslime.logger import get_logger
 from euslime.protocol import Protocol
+from sexpdata import Symbol
 
 ENCODINGS = {
     'iso-latin-1-unix': 'latin-1',
@@ -45,6 +46,17 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
             for msg in self.swank.interrupt():
                 self.request.send(msg)
 
+    def _process_output(self):
+        while not self.swank.handler.close_request.is_set() and not self.swank.handler.euslisp.accumulate_output.is_set():
+            for out in self.swank.handler.euslisp.get_output():
+                log.debug('output: %s', out)
+                response = [Symbol(":write-string"), out]
+                send_data = self.swank.dumps(response)
+                send_data = send_data.encode(self.encoding)
+                self.request.send(send_data)
+
+        log.warn("Output handling loop is shutting down")
+
     def handle(self):
         """This method handles packets from swank client.
         The basic Slime packet consists of a 6 char hex-string
@@ -52,6 +64,9 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
 
         e.g.) 000016(:return (:ok nil) 1)\n
         """
+
+        log.debug("Starting output handling loop...")
+        Thread(target=self._process_output).start()
         log.debug("Entering handle loop...")
         while not self.swank.handler.close_request.is_set():
             try:

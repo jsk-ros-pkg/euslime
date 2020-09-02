@@ -8,7 +8,7 @@ import subprocess
 import sys
 import time
 import traceback
-from threading import Lock, Thread
+from threading import Event, Lock, Thread
 from sexpdata import loads, Symbol
 from euslime.logger import get_logger
 
@@ -146,7 +146,6 @@ class EuslispProcess(Process):
         self.internal_socket = self._start_socket()
         host1, port1 = self.socket.getsockname()
         host2, port2 = self.internal_socket.getsockname()
-        self.token = '{}euslime-token-{}'.format(chr(29), port1)
 
         super(EuslispProcess, self).__init__(
             cmd=[self.program, self.init_file, "--port1={}".format(port1), "--port2={}".format(port2)],
@@ -155,6 +154,7 @@ class EuslispProcess(Process):
 
         self.color = color  # Requires slime-repl-ansi-color
         self.output = Queue()
+        self.accumulate_output = Event()  # Used to extract the callstack w/o printing it
         self.rate = exec_rate or EXEC_RATE
         self.buflen = buflen or BUFLENGTH
 
@@ -234,6 +234,12 @@ class EuslispProcess(Process):
             return
         raise Exception("Unhandled Socket Request Type: %s" % command)
 
+    def get_socket_result(self, connection):
+        while True:
+            gen = self.get_socket_response(connection)
+            if gen is not None:
+                return gen
+
     def try_get_socket_result(self, connection):
         command, data = self.recv_socket_data(connection, wait=False)
         if command == 'result':
@@ -247,50 +253,21 @@ class EuslispProcess(Process):
             msg = gen_to_string(data)
             log.debug("Ignoring: [%s] %s" % (command, msg))
 
-    def get_output(self, recursive=False):
-        while True:
-            try:
-                out = self.output.get(timeout=self.rate)
-                has_token = out.rsplit(self.token, 1)
-                if has_token[0]:
-                    yield has_token[0]
-                if len(has_token) >= 2 or not has_token[0]:
-                    if has_token[1]:
-                        # when both error and segmentation fault occurs
-                        # e.g. error from ros::subscribe callback
-                        yield has_token[1]
-                        # reset sigint reploop to process socket request
-                        self.input('(lisp:reset lisp:*replevel*)')
-                        self.ping()
-                    # Check for Errors
-                    gen = self.get_socket_response(self.euslime_connection, recursive=recursive)
-                    # Print Results
-                    # Do not use :repl-result presentation
-                    # to enable copy-paste of previous results,
-                    # which are signilized as swank objects otherwise
-                    # e.g. #.(swank:lookup-presented-object-or-lose 0.)
-                    if gen:
-                        # yield [Symbol(":presentation-start"), 0,
-                        #        Symbol(":repl-result")]
-                        for r in gen:
-                            # Colors are not allowed in :repl-result formatting
-                            yield [Symbol(":write-string"), no_color(r),
-                                   Symbol(":repl-result")]
-                        # yield [Symbol(":presentation-end"), 0,
-                        #        Symbol(":repl-result")]
-                        yield [Symbol(":write-string"), '\n',
-                               Symbol(":repl-result")]
-                    return
-            except Empty:
-                self.check_poll()
-                continue
+    def get_output(self):
+        while not self.output.empty():
+            yield self.output.get(timeout=self.rate)
+        return
 
     def get_callstack(self, end=10):
+        self.accumulate_output.set()
         self.output = Queue()
         self.clear_socket_stack(self.euslime_connection)
         cmd_str = '(slime:print-callstack {})'.format(end + 4)
         self.euslime_connection.send(cmd_str + self.delim)
-        stack = list(self.get_output(recursive=True))
+        self.get_socket_response(self.euslime_connection, recursive=True)
+        stack = list(self.output.queue)
+        self.output = Queue()
+        self.accumulate_output.clear()
         stack = gen_to_string(stack)
         stack = [x.strip() for x in stack.split(self.delim)]
         # Remove 'Call Stack' and dummy error messages
@@ -322,10 +299,7 @@ class EuslispProcess(Process):
             log.info('exec_internal: %s' % cmd_str)
         self.clear_socket_stack(connection)
         connection.send(cmd_str + self.delim)
-        while True:
-            gen = self.get_socket_response(connection)
-            if gen is not None:
-                break
+        gen = self.get_socket_result(connection)
         res = gen_to_string(gen)
         res = loads(res)
         if res == Symbol("lisp:nil"):
@@ -339,12 +313,8 @@ class EuslispProcess(Process):
         self.clear_socket_stack(self.euslime_connection)
         log.info('eval: %s' % cmd_str)
         self.input(cmd_str)
-        for out in self.get_output():
-            if isinstance(out, str):
-                yield [Symbol(":write-string"), out]
-            else:
-                pass
-        second_result = self.try_get_socket_result(self.euslime_connection)
+        # wait for it to finish
+        list(self.get_socket_result(self.euslime_connection))
         if second_result:
             log.warn("Second result: %s", second_result)
             yield [Symbol(":write-string"), second_result]
@@ -354,11 +324,16 @@ class EuslispProcess(Process):
         self.clear_socket_stack(self.euslime_connection)
         log.info('eval: %s' % cmd_str)
         self.input(cmd_str)
-        for out in self.get_output():
-            if isinstance(out, str):
-                yield [Symbol(":write-string"), out]
-            else:
-                yield out
+        # Print Results
+        # Do not use :repl-result presentation to enable copy-paste of
+        # previous results, which are signilized as swank objects otherwise
+        # e.g. #.(swank:lookup-presented-object-or-lose 0.)
+        for r in self.get_socket_result(self.euslime_connection):
+            # Colors are not allowed in :repl-result formatting
+            yield [Symbol(":write-string"), no_color(r),
+                   Symbol(":repl-result")]
+        yield [Symbol(":write-string"), '\n', Symbol(":repl-result")]
+
         # Pendant output is sometimes post processed, leading to
         # virtually having more than one result per evaluation
         # e.g. (read) [RET] 10 [RET] [RET]
