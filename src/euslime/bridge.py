@@ -102,11 +102,6 @@ class Process(object):
         except AbortEvaluation:
             pass
 
-    def ping(self):
-        log.debug("Ping...")
-        self.input(self.delim)
-        log.debug("...Pong")
-
     def _get_stream_thread(self, name, stream, callback):
         while self.process.poll() is None:
             try:
