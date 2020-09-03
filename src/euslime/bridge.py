@@ -97,7 +97,10 @@ class Process(object):
                 log.warn("failed to terminate: %s" % e)
 
     def reset(self):
-        self.euslime_connection.send("(lisp:reset)" + self.delim)
+        try:
+            self.exec_internal("(lisp:reset)" + self.delim, force_repl_socket=True)
+        except AbortEvaluation:
+            pass
 
     def ping(self):
         log.debug("Ping...")
@@ -241,6 +244,8 @@ class EuslispProcess(Process):
             raise EuslispError(msg, stack)
         if command == 'abort':
             msg = loads(data)
+            if msg:
+                msg = "'{}'".format(msg)  # Better formatting
             raise AbortEvaluation(msg)
         raise Exception("Unhandled Socket Request Type: %s" % command)
 

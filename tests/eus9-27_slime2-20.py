@@ -604,6 +604,7 @@ class eus(EuslimeTestCase):
              '(:emacs-interrupt 0)'],
             ['(:read-string 0 1)',
              '(:read-aborted 0 1)',
+             '(:new-package "USER" "B1-{}")'.format(self.EUSLISP_PROGRAM_NAME),
              '(:return (:abort "\'Keyboard Interrupt\'") 5)'])
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "10\n") "USER" :repl-thread 6)',
@@ -612,6 +613,12 @@ class eus(EuslimeTestCase):
             '(:write-string "\\n" :repl-result)',
             '(:read-aborted 0 1)',
             '(:return (:ok nil) 6)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(reset)\n") "USER" :repl-thread 7)',
+            '(:read-string 0 1)',
+            '(:read-aborted 0 1)',
+            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+            '(:return (:ok nil) 7)')
 
     # SET PACKAGE
     def test_set_package_1(self):
