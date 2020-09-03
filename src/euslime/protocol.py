@@ -28,8 +28,8 @@ class Protocol(object):
                     else x for x in sexp]
             return with_header(sexp)
 
-    def make_error(self, id, err):
-        debug = DebuggerHandler(id, err)
+    def make_error(self, err):
+        debug = DebuggerHandler(self.handler.thread_local.comm_id, err)
         self.handler.debugger.append(debug)
 
         res = [
@@ -43,20 +43,18 @@ class Protocol(object):
         ]
         yield self.dumps(res)
 
-    def make_response(self, id, result_type, sexp):
+    def make_response(self, result_type, sexp):
         try:
-            res = [Symbol(':return'), {result_type: sexp}, id]
+            res = [Symbol(':return'), {result_type: sexp}, self.handler.thread_local.comm_id]
             yield self.dumps(res)
         except Exception as e:
-            self.command_id.append(id)
-            for r in self.make_error(id, e):
+            for r in self.make_error(e):
                 yield r
 
     def process(self, data):
         data = loads(data)
         if data[0] == Symbol(":emacs-rex"):
             cmd, form, pkg, thread, comm_id = data
-            self.handler.command_id.append(comm_id)
             self.handler.package = pkg
         elif data[0] == Symbol(":euslime-test"):
             # Euslime Test Suite
@@ -71,8 +69,10 @@ class Protocol(object):
             comm_id = None
         func = form[0].value().replace(':', '_').replace('-', '_')
         args = form[1:]
+        if comm_id:
+            self.handler.thread_local.comm_id = comm_id
+            log.debug("Processing id: %s ..." % comm_id)
 
-        log.debug("Processing id: %s ..." % comm_id)
         log.info("func: %s" % func)
         log.info("args: %s" % args)
 
@@ -80,20 +80,20 @@ class Protocol(object):
             gen = getattr(self.handler, func)(*args)
             if not gen:
                 if comm_id:
-                    for r in self.make_response(self.handler.command_id.pop(), 'ok', None):
+                    for r in self.make_response('ok', None):
                         yield r
                 return
             for resp in gen:
                 if isinstance(resp, EuslispResult):
-                    for r in self.make_response(self.handler.command_id.pop(),
-                                                resp.response_type,
+                    for r in self.make_response(resp.response_type,
                                                 resp.value):
                         yield r
                 else:
                     yield self.dumps(resp)
         except Exception as e:
             log.error(traceback.format_exc())
-            for r in self.make_error(self.handler.command_id[-1], e):
+            for r in self.make_error(e):
                 yield r
 
-        log.debug("... Finished processing id: %s" % comm_id)
+        if comm_id:
+            log.debug("... Finished processing id: %s" % comm_id)
