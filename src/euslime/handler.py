@@ -160,12 +160,13 @@ class EuslimeHandler(object):
     def swank_eval(self, sexp):
         yield [Symbol(":read-string"), 0, 1]
         try:
-            for out in self.euslisp.eval(sexp):
-                if isinstance(out, EuslispResult):
-                    yield [Symbol(":read-aborted"), 0, 1]
-                    for val in self.maybe_new_prompt():
-                        yield val
-                yield out
+            gen = list(self.euslisp.eval(sexp))
+            yield [Symbol(":read-aborted"), 0, 1]
+            for val in gen:
+                yield val
+            for val in self.maybe_new_prompt():
+                yield val
+            yield EuslispResult(None)
         except AbortEvaluation as e:
             log.info('Aborting evaluation...')
             yield [Symbol(":read-aborted"), 0, 1]
@@ -335,8 +336,7 @@ class EuslimeHandler(object):
                 messages.append(dumps(exp))
         yield [Symbol(":read-string"), 0, 1]
         try:
-            for out in self.euslisp.eval_no_result(cmd_str):
-                yield out
+            list(self.euslisp.eval(cmd_str))
             yield [Symbol(":read-aborted"), 0, 1]
         except Exception as e:
             yield [Symbol(":read-aborted"), 0, 1]

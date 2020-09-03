@@ -250,11 +250,6 @@ class EuslispProcess(Process):
             if gen is not None:
                 return gen
 
-    def try_get_socket_result(self, connection):
-        command, data = self.recv_socket_data(connection, wait=False)
-        if command == 'result':
-            return gen_to_string(data)
-
     def clear_socket_stack(self, connection):
         while True:
             command, data = self.recv_socket_data(connection, wait=False)
@@ -310,19 +305,6 @@ class EuslispProcess(Process):
             return []
         return res
 
-    def eval_no_result(self, cmd_str):
-        # do not yield the result
-        # used in the `compile-string-for-emacs' method (C-c C-c)
-        self.clear_socket_stack(self.euslime_connection)
-        log.info('eval: %s' % cmd_str)
-        self.input(cmd_str)
-        # wait for it to finish
-        list(self.get_socket_result(self.euslime_connection))
-        second_result = self.try_get_socket_result(self.euslime_connection)
-        if second_result:
-            log.warn("Second result: %s", second_result)
-            yield [Symbol(":write-string"), second_result]
-
     def eval(self, cmd_str):
         self.clear_socket_stack(self.euslime_connection)
         log.info('eval: %s' % cmd_str)
@@ -336,13 +318,3 @@ class EuslispProcess(Process):
             yield [Symbol(":write-string"), no_color(r),
                    Symbol(":repl-result")]
         yield [Symbol(":write-string"), '\n', Symbol(":repl-result")]
-
-        # Pendant output is sometimes post processed, leading to
-        # virtually having more than one result per evaluation
-        # e.g. (read) [RET] 10 [RET] [RET]
-        # e.g. (lisp:none 10) [RET] [RET]
-        second_result = self.try_get_socket_result(self.euslime_connection)
-        if second_result:
-            log.warn("Second result: %s", second_result)
-            yield [Symbol(":write-string"), second_result]
-        yield EuslispResult(None)
