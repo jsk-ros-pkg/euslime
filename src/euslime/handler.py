@@ -2,10 +2,12 @@ from __future__ import print_function
 
 import os
 import platform
+import signal
 import traceback
 from sexpdata import dumps, loads, Symbol, Quoted
 from threading import Event
 
+from euslime.bridge import AbortEvaluation
 from euslime.bridge import EuslispError
 from euslime.bridge import EuslispProcess
 from euslime.bridge import EuslispResult
@@ -115,7 +117,7 @@ class EuslimeHandler(object):
         yield [Symbol(":read-string"), 0, 1]
 
     def _emacs_interrupt(self, process):
-        raise KeyboardInterrupt
+        self.euslisp.process.send_signal(signal.SIGINT)
 
     def swank_connection_info(self):
         version = self.euslisp.exec_internal('(slime::implementation-version)')
@@ -164,6 +166,15 @@ class EuslimeHandler(object):
                     for val in self.maybe_new_prompt():
                         yield val
                 yield out
+        except AbortEvaluation as e:
+            log.info('Aborting evaluation...')
+            yield [Symbol(":read-aborted"), 0, 1]
+            for val in self.maybe_new_prompt():
+                yield val
+            if e.message:
+                yield EuslispResult(e.message, response_type='abort')
+            else:
+                yield EuslispResult(None)
         except Exception as e:
             yield [Symbol(":read-aborted"), 0, 1]
             raise e

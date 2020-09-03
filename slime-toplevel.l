@@ -13,7 +13,7 @@
 (eval-when (load eval)
 
 (export '(*slime-stream* *slime-internal-stream* slime-connect-socket socket-eval socket-request
-          slime-error slimetop print-callstack))
+          slime-sigint-handler slime-error slimetop print-callstack))
 
 (defvar *slime-stream*)
 (defvar *slime-internal-stream*)
@@ -52,6 +52,15 @@
     (setq lisp::*eustop-argument*
           (delete-if #'(lambda (val) (string= val (format nil "--port~A=" num) :end1 8))
                      lisp::*eustop-argument* :count 1))))
+
+(defun slime-sigint-handler (sig code)
+  (if (fboundp 'unix:ualarm)
+      (unix:ualarm 0 0)
+      (unix:alarm 0))
+  (slime::socket-request slime::*slime-stream* "abort" "Keyboard Interrupt")
+  (let* ((*replevel* (1+ *replevel*))
+         (*reptype* "B"))
+    (catch *replevel* (reploop #'toplevel-prompt))))
 
 (defun slime-error (code msg1 form &optional (msg2))
   (if (and msg2 (zerop (length msg1))) (setq msg1 msg2 msg2 nil))
@@ -128,7 +137,7 @@
 
   ;; Set signal-handler and *history* for non-tty streams
   (unless (unix:isatty *standard-input*)
-    (unix:signal unix::sigint 'sigint-handler 2)
+    (unix:signal unix::sigint 'slime::slime-sigint-handler 2)
     (when (fboundp 'unix:tcgets)
       (setq *tc* (unix:tcgets *standard-input*))
       (new-history *history-max*)))

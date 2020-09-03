@@ -1,5 +1,4 @@
 from sexpdata import dumps, loads, Symbol
-import signal
 import traceback
 
 from euslime.bridge import EuslispResult
@@ -44,22 +43,14 @@ class Protocol(object):
         ]
         yield self.dumps(res)
 
-    def make_response(self, id, sexp):
+    def make_response(self, id, result_type, sexp):
         try:
-            res = [Symbol(':return'), {'ok': sexp}, id]
+            res = [Symbol(':return'), {result_type: sexp}, id]
             yield self.dumps(res)
         except Exception as e:
             self.command_id.append(id)
             for r in self.make_error(id, e):
                 yield r
-
-    def interrupt(self):
-        yield self.dumps([Symbol(":read-aborted"), 0, 1])
-        self.handler.euslisp.process.send_signal(signal.SIGINT)
-        self.handler.euslisp.reset()
-        yield self.dumps([Symbol(':return'),
-                          {'abort': "'Keyboard Interrupt'"},
-                          self.handler.command_id.pop()])
 
     def process(self, data):
         data = loads(data)
@@ -81,6 +72,7 @@ class Protocol(object):
         func = form[0].value().replace(':', '_').replace('-', '_')
         args = form[1:]
 
+        log.debug("Processing id: %s ..." % comm_id)
         log.info("func: %s" % func)
         log.info("args: %s" % args)
 
@@ -88,12 +80,13 @@ class Protocol(object):
             gen = getattr(self.handler, func)(*args)
             if not gen:
                 if comm_id:
-                    for r in self.make_response(self.handler.command_id.pop(), None):
+                    for r in self.make_response(self.handler.command_id.pop(), 'ok', None):
                         yield r
                 return
             for resp in gen:
                 if isinstance(resp, EuslispResult):
                     for r in self.make_response(self.handler.command_id.pop(),
+                                                resp.response_type,
                                                 resp.value):
                         yield r
                 else:
@@ -102,3 +95,5 @@ class Protocol(object):
             log.error(traceback.format_exc())
             for r in self.make_error(self.handler.command_id[-1], e):
                 yield r
+
+        log.debug("... Finished processing id: %s" % comm_id)

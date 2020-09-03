@@ -13,9 +13,9 @@ from sexpdata import loads, Symbol
 from euslime.logger import get_logger
 
 try:
-    from Queue import Queue, Empty
+    from Queue import Queue
 except ImportError:
-    from queue import Queue, Empty
+    from queue import Queue
 
 log = get_logger(__name__)
 IS_POSIX = 'posix' in sys.builtin_module_names
@@ -37,6 +37,10 @@ def no_color(msg):
 
 def gen_to_string(gen):
     return ''.join(list(gen))
+
+
+class AbortEvaluation(Exception):
+    pass
 
 
 class Process(object):
@@ -145,7 +149,8 @@ class EuslispError(Exception):
 
 
 class EuslispResult(object):
-    def __init__(self, value):
+    def __init__(self, value, response_type='ok'):
+        self.response_type = response_type
         self.value = value
 
 
@@ -235,7 +240,8 @@ class EuslispProcess(Process):
             stack = self.get_callstack()
             raise EuslispError(msg, stack)
         if command == 'abort':
-            return
+            msg = loads(data)
+            raise AbortEvaluation(msg)
         raise Exception("Unhandled Socket Request Type: %s" % command)
 
     def get_socket_result(self, connection):

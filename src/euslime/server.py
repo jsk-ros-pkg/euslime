@@ -6,7 +6,7 @@ except ImportError:
 import socket
 import time
 import traceback
-from threading import Event, Thread
+from threading import Thread
 
 from euslime.handler import EuslimeHandler
 from euslime.logger import get_logger
@@ -28,24 +28,14 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
                               on_output=self._process_output)
         self.swank.handler.euslisp.color = server.color
         self.encoding = ENCODINGS.get(server.encoding, 'utf-8')
-        self.interrupt_request = Event()
         super(EuslimeRequestHandler, self).__init__(
             request, client_address, server)
 
     def _process_data(self, recv_data):
-        try:
-            for send_data in self.swank.process(recv_data):
-                if self.interrupt_request.is_set():
-                    self.interrupt_request.clear()
-                    return
-                log.debug('response: %s', send_data)
-                send_data = send_data.encode(self.encoding)
-                self.request.send(send_data)
-        except KeyboardInterrupt:
-            log.warn("Keyboard Interrupt!")
-            self.interrupt_request.set()
-            for msg in self.swank.interrupt():
-                self.request.send(msg)
+        for send_data in self.swank.process(recv_data):
+            log.debug('response: %s', send_data)
+            send_data = send_data.encode(self.encoding)
+            self.request.send(send_data)
 
     def _process_output(self, out=None):
         if not out:
