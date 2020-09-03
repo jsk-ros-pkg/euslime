@@ -158,6 +158,9 @@ class EuslimeHandler(object):
         yield EuslispResult(False)
 
     def swank_eval(self, sexp):
+        lock = self.euslisp.euslime_connection_lock
+        log.debug('Acquiring lock: %s' % lock)
+        lock.acquire()
         yield [Symbol(":read-string"), 0, 1]
         try:
             gen = list(self.euslisp.eval(sexp))
@@ -167,7 +170,10 @@ class EuslimeHandler(object):
             for val in self.maybe_new_prompt():
                 yield val
             yield EuslispResult(None)
+            lock.release()
         except AbortEvaluation as e:
+            if lock.locked():
+                lock.release()
             log.info('Aborting evaluation...')
             yield [Symbol(":read-aborted"), 0, 1]
             for val in self.maybe_new_prompt():
@@ -177,6 +183,8 @@ class EuslimeHandler(object):
             else:
                 yield EuslispResult(None)
         except Exception as e:
+            if lock.locked():
+                lock.release()
             yield [Symbol(":read-aborted"), 0, 1]
             raise e
 
@@ -334,19 +342,27 @@ class EuslimeHandler(object):
                 messages.append(dumps(exp[:2] + [None], none_as='...'))
             else:
                 messages.append(dumps(exp))
+        lock = self.euslisp.euslime_connection_lock
+        log.debug('Acquiring lock: %s' % lock)
+        lock.acquire()
         yield [Symbol(":read-string"), 0, 1]
         try:
             list(self.euslisp.eval(cmd_str))
             yield [Symbol(":read-aborted"), 0, 1]
+            for msg in messages:
+                yield [Symbol(":write-string"), "; Loaded {}\n".format(msg)]
+
+            errors = []
+            seconds = 0.01
+            yield EuslispResult([Symbol(":compilation-result"), errors, True,
+                                 seconds, None, None])
+            lock.release()
+
         except Exception as e:
+            if lock.locked():
+                lock.release()
             yield [Symbol(":read-aborted"), 0, 1]
             raise e
-        for msg in messages:
-            yield [Symbol(":write-string"), "; Loaded {}\n".format(msg)]
-        errors = []
-        seconds = 0.01
-        yield EuslispResult([Symbol(":compilation-result"), errors, True,
-                             seconds, None, None])
 
     def swank_compile_notes_for_emacs(self, *args):
         return self.swank_compile_string_for_emacs(*args)
@@ -362,11 +378,20 @@ class EuslimeHandler(object):
                              seconds, loadp, filename])
 
     def swank_load_file(self, filename):
+        lock = self.euslisp.euslime_connection_lock
+        log.debug('Acquiring lock: %s' % lock)
+        lock.acquire()
         yield [Symbol(":write-string"), "Loading file: %s ...\n" % filename]
-        res = self.euslisp.exec_internal('(lisp:load "{0}")'.format(qstr(filename)),
-                                         force_repl_socket=True)
-        yield [Symbol(":write-string"), "Loaded.\n"]
-        yield EuslispResult(res)
+        try:
+            res = self.euslisp.exec_internal('(lisp:load "{0}")'.format(qstr(filename)),
+                                             force_repl_socket=True)
+            yield [Symbol(":write-string"), "Loaded.\n"]
+            yield EuslispResult(res)
+            lock.release()
+        except Exception as e:
+            if lock.locked():
+                lock.release()
+            raise e
 
     def swank_inspect_current_condition(self):
         # (swank:inspect-current-condition)

@@ -54,7 +54,6 @@ class Process(object):
         self.on_output = on_output or self.default_print_callback
         self.bufsize = bufsize or BUFSIZE
         self.delim = delim or DELIM
-        self.lock = Lock()
         self.output = Queue()
         self.accumulate_output = Event()
         self.process = None
@@ -176,6 +175,8 @@ class EuslispProcess(Process):
         super(EuslispProcess, self).start()
         self.euslime_connection = self._socket_connect(self.socket)
         self.euslime_internal_connection = self._socket_connect(self.internal_socket)
+        self.euslime_connection_lock = Lock()
+        self.euslime_internal_connection_lock = Lock()
         self.input('(slime:slimetop)')
 
     def _start_socket(self):
@@ -291,29 +292,41 @@ class EuslispProcess(Process):
         if force_repl_socket:
             # When the command must be evaluated in the main thread due to
             # e.g. Thread Special variables
+            # Locks are performed from outside to yield results before releasing
             connection = self.euslime_connection
             log.info('exec_internal(repl): %s' % cmd_str)
         else:
             connection = self.euslime_internal_connection
             log.info('exec_internal: %s' % cmd_str)
-        self.clear_socket_stack(connection)
-        connection.send(cmd_str + self.delim)
-        gen = self.get_socket_result(connection)
-        res = gen_to_string(gen)
-        res = loads(res)
-        if res == Symbol("lisp:nil"):
-            return []
-        return res
+            lock = self.euslime_internal_connection_lock
+            log.debug('Acquiring lock: %s' % lock)
+            lock.acquire()
+        try:
+            self.clear_socket_stack(connection)
+            connection.send(cmd_str + self.delim)
+            gen = self.get_socket_result(connection)
+            res = gen_to_string(gen)
+            if not force_repl_socket:
+                lock.release()
+            res = loads(res)
+            if res == Symbol("lisp:nil"):
+                return []
+            return res
+        except Exception as e:
+            if not force_repl_socket and lock.locked():
+                lock.release()
+            raise e
 
     def eval(self, cmd_str):
-        self.clear_socket_stack(self.euslime_connection)
+        connection = self.euslime_connection
+        self.clear_socket_stack(connection)
         log.info('eval: %s' % cmd_str)
         self.input(cmd_str)
         # Print Results
         # Do not use :repl-result presentation to enable copy-paste of
         # previous results, which are signilized as swank objects otherwise
         # e.g. #.(swank:lookup-presented-object-or-lose 0.)
-        for r in self.get_socket_result(self.euslime_connection):
+        for r in self.get_socket_result(connection):
             # Colors are not allowed in :repl-result formatting
             yield [Symbol(":write-string"), no_color(r),
                    Symbol(":repl-result")]
