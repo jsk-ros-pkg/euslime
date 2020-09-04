@@ -118,6 +118,18 @@ class EuslimeHandler(object):
 
     def _emacs_interrupt(self, process):
         self.euslisp.process.send_signal(signal.SIGINT)
+        if process == Symbol(':repl-thread'):
+            # Interrupted from the top level
+            lock = self.euslisp.euslime_connection_lock
+            log.debug('Acquiring lock: %s' % lock)
+            lock.acquire()
+            try:
+                for val in self.maybe_new_prompt():
+                    yield val
+                lock.release()
+            except Exception as e:
+                if lock.locked():
+                    lock.release()
 
     def swank_connection_info(self):
         version = self.euslisp.exec_internal('(slime::implementation-version)')
@@ -357,7 +369,15 @@ class EuslimeHandler(object):
             yield EuslispResult([Symbol(":compilation-result"), errors, True,
                                  seconds, None, None])
             lock.release()
-
+        except AbortEvaluation as e:
+            if lock.locked():
+                lock.release()
+            log.info('Aborting evaluation...')
+            yield [Symbol(":read-aborted"), 0, 1]
+            if e.message:
+                yield EuslispResult(e.message, response_type='abort')
+            else:
+                yield EuslispResult(None)
         except Exception as e:
             if lock.locked():
                 lock.release()
@@ -388,6 +408,16 @@ class EuslimeHandler(object):
             yield [Symbol(":write-string"), "Loaded.\n"]
             yield EuslispResult(res)
             lock.release()
+        except AbortEvaluation as e:
+            if lock.locked():
+                lock.release()
+            log.info('Aborting evaluation...')
+            # Force print the message, which is by default only displayed on the minibuffer
+            if e.message:
+                yield [Symbol(":write-string"),
+                       "; Evaluation aborted on {}\n".format(e.message),
+                       Symbol(":repl-result")]
+            yield EuslispResult(None)
         except Exception as e:
             if lock.locked():
                 lock.release()
