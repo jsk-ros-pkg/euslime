@@ -36,7 +36,7 @@ def no_color(msg):
 
 
 def gen_to_string(gen):
-    return ''.join(list(gen))
+    return ''.join([x for x in list(gen) if isinstance(x,str)])
 
 
 class AbortEvaluation(Exception):
@@ -232,6 +232,8 @@ class EuslispProcess(Process):
             return data
         # Process generator to avoid pendant messages
         data = gen_to_string(data)
+        if command == 'read':
+            return [Symbol(":read-string"), 0, 1]
         if command == 'error':
             if recursive:
                 return
@@ -248,8 +250,13 @@ class EuslispProcess(Process):
     def get_socket_result(self, connection):
         while True:
             gen = self.get_socket_response(connection)
-            if gen is not None:
-                return gen
+            if isinstance(gen,list):
+                # read-string
+                yield gen
+            elif gen is not None:
+                for val in gen:
+                    yield val
+                return
 
     def clear_socket_stack(self, connection):
         while True:
@@ -327,7 +334,4 @@ class EuslispProcess(Process):
         # previous results, which are signilized as swank objects otherwise
         # e.g. #.(swank:lookup-presented-object-or-lose 0.)
         for r in self.get_socket_result(connection):
-            # Colors are not allowed in :repl-result formatting
-            yield [Symbol(":write-string"), no_color(r),
-                   Symbol(":repl-result")]
-        yield [Symbol(":write-string"), '\n', Symbol(":repl-result")]
+            yield r

@@ -11,6 +11,7 @@ from euslime.bridge import AbortEvaluation
 from euslime.bridge import EuslispError
 from euslime.bridge import EuslispProcess
 from euslime.bridge import EuslispResult
+from euslime.bridge import no_color
 from euslime.logger import get_logger
 
 log = get_logger(__name__)
@@ -114,7 +115,6 @@ class EuslimeHandler(object):
 
     def _emacs_return_string(self, process, count, msg):
         self.euslisp.input(msg)
-        yield [Symbol(":read-string"), 0, 1]
 
     def _emacs_interrupt(self, process):
         self.euslisp.process.send_signal(signal.SIGINT)
@@ -173,12 +173,14 @@ class EuslimeHandler(object):
         lock = self.euslisp.euslime_connection_lock
         log.debug('Acquiring lock: %s' % lock)
         lock.acquire()
-        yield [Symbol(":read-string"), 0, 1]
         try:
-            gen = list(self.euslisp.eval(sexp))
-            yield [Symbol(":read-aborted"), 0, 1]
-            for val in gen:
-                yield val
+            for val in self.euslisp.eval(sexp):
+                if isinstance(val,str):
+                    # Colors are not allowed in :repl-result formatting
+                    yield [Symbol(":write-string"), no_color(val), Symbol(":repl-result")]
+                else:
+                    yield val
+            yield [Symbol(":write-string"), '\n', Symbol(":repl-result")]
             for val in self.maybe_new_prompt():
                 yield val
             yield EuslispResult(None)
@@ -187,7 +189,6 @@ class EuslimeHandler(object):
             if lock.locked():
                 lock.release()
             log.info('Aborting evaluation...')
-            yield [Symbol(":read-aborted"), 0, 1]
             for val in self.maybe_new_prompt():
                 yield val
             if e.message:
@@ -197,7 +198,6 @@ class EuslimeHandler(object):
         except Exception as e:
             if lock.locked():
                 lock.release()
-            yield [Symbol(":read-aborted"), 0, 1]
             raise e
 
     def swank_interactive_eval(self, sexp):
@@ -357,10 +357,10 @@ class EuslimeHandler(object):
         lock = self.euslisp.euslime_connection_lock
         log.debug('Acquiring lock: %s' % lock)
         lock.acquire()
-        yield [Symbol(":read-string"), 0, 1]
         try:
-            list(self.euslisp.eval(cmd_str))
-            yield [Symbol(":read-aborted"), 0, 1]
+            for res in self.euslisp.eval(cmd_str):
+                if isinstance(res,lst):
+                    yield res
             for msg in messages:
                 yield [Symbol(":write-string"), "; Loaded {}\n".format(msg)]
 
@@ -373,7 +373,6 @@ class EuslimeHandler(object):
             if lock.locked():
                 lock.release()
             log.info('Aborting evaluation...')
-            yield [Symbol(":read-aborted"), 0, 1]
             if e.message:
                 yield EuslispResult(e.message, response_type='abort')
             else:
@@ -381,7 +380,6 @@ class EuslimeHandler(object):
         except Exception as e:
             if lock.locked():
                 lock.release()
-            yield [Symbol(":read-aborted"), 0, 1]
             raise e
 
     def swank_compile_notes_for_emacs(self, *args):
@@ -403,10 +401,14 @@ class EuslimeHandler(object):
         lock.acquire()
         yield [Symbol(":write-string"), "Loading file: %s ...\n" % filename]
         try:
-            res = self.euslisp.exec_internal('(lisp:load "{0}")'.format(qstr(filename)),
-                                             force_repl_socket=True)
+            res = ""
+            for r in self.euslisp.eval('(lisp:load "{0}")'.format(qstr(filename))):
+                if isinstance(r,str):
+                    res += r
+                else:
+                    yield r
             yield [Symbol(":write-string"), "Loaded.\n"]
-            yield EuslispResult(res)
+            yield EuslispResult(loads(res))
             lock.release()
         except AbortEvaluation as e:
             if lock.locked():

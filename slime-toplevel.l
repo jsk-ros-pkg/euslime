@@ -10,13 +10,16 @@
          *print-length* *print-level*)
      ,@body))
 
+(defclass slime-input-stream :super stream :slots (fd))
+
 (eval-when (load eval)
 
-(export '(*slime-stream* *slime-internal-stream* slime-connect-socket socket-eval socket-request
-          slime-sigint-handler slime-error slimetop print-callstack))
+(export '(*slime-stream* *slime-internal-stream* slime-connect-socket socket-request socket-eval
+          slime-input-stream slime-sigint-handler slime-error slimetop print-callstack))
 
 (defvar *slime-stream*)
 (defvar *slime-internal-stream*)
+(defvar *old-terminal-io* *terminal-io*)
 
 (defun slime-connect-socket (port)
   (flet ((try-connect (&optional (timeout 5))
@@ -44,6 +47,31 @@
 (defun socket-eval (strm)
   (ensure-print
    (socket-request strm "result" (evaluate-stream strm))))
+
+
+;; Slime Input Stream
+
+;; creates a substitute for `*standard-input*' that notifies slime at every read
+(defmethod slime-input-stream
+  (:init (&optional (size 128))
+    (send-super :init :input size)
+    (setq fd 0)
+    (setq tail 0)
+    self)
+  (:fill ()
+    (slime::socket-request slime::*slime-stream* "read" nil)
+    (let ((uread-length (unix:uread 0 buffer)))
+      (setq tail (max uread-length 0))
+      ;; return nil for EOF
+      (plusp uread-length)))
+  ;; methods to resemble file-stream interface
+  (:fd () fd)
+  (:instream () self)
+  (:outstream () nil)
+  (:infd () fd)
+  (:outfd () nil)
+  (:fname () nil)
+  (:flag () (unix:fcntl fd F_GETFL 0)))
 
 ;; Slime Toplevel
 
@@ -81,12 +109,16 @@
   (sys::make-thread 1)
   (sys::thread 'eval `(while t (slime::socket-eval slime::*slime-internal-stream*)))
   (catch :eusexit
-    (while t
-      (catch 0
-        (let ((*replevel* 0) (*reptype* ""))
-          (reploop #'toplevel-prompt))
-        (throw :eusexit nil))
-      ))
+    (let* ((*standard-input* (instance slime::slime-input-stream :init))
+           (*terminal-io* (make-two-way-stream
+                           *standard-input*
+                           *standard-output*)))
+      (while t
+        (catch 0
+          (let ((*replevel* 0) (*reptype* ""))
+            (reploop #'toplevel-prompt))
+          (throw :eusexit nil))
+        )))
   (throw :eusexit nil))
 
 (defun print-callstack (n)
@@ -121,7 +153,7 @@
     (finish-output out)
     (slime::socket-request slime::*slime-stream* "result" result)))
 
-(defun reploop (prompt &optional (repstream *terminal-io*) (ttyp (unix:isatty repstream)))
+(defun reploop (prompt &optional (repstream slime::*old-terminal-io*) (ttyp nil))
   (let ((*prompt* prompt))
     (finish-output repstream)
     (slime::socket-request slime::*slime-stream* "abort" nil)
