@@ -10,7 +10,7 @@
          *print-length* *print-level*)
      ,@body))
 
-(defclass slime-input-stream :super stream :slots (fd))
+(defclass slime-input-stream :super stream :slots (fd read-flag))
 
 (eval-when (load eval)
 
@@ -19,6 +19,7 @@
 
 (defvar *slime-stream*)
 (defvar *slime-internal-stream*)
+(defvar *slime-input-stream*)
 (defvar *old-terminal-io* *terminal-io*)
 
 (defun slime-connect-socket (port)
@@ -53,17 +54,25 @@
 
 ;; creates a substitute for `*standard-input*' that notifies slime at every read
 (defmethod slime-input-stream
-  (:init (&optional (size 128))
-    (send-super :init :input size)
+  (:init ()
+    (send-super :init :input 128)
     (setq fd 0)
     (setq tail 0)
     self)
   (:fill ()
-    (slime::socket-request slime::*slime-stream* "read" nil)
+    (when read-flag
+      ;; `read-flag' is set by the slime process when the message ends exactly at the buffer end
+      ;; in such cases, we reset tail to ensure that a new request is send
+      (setq tail 0)
+      (setq read-flag nil))
+    (unless (= tail (length buffer))
+      ;; only send the request once when reading a message longer than the buffer
+      (slime::socket-request slime::*slime-stream* "read" nil))
     (let ((uread-length (unix:uread 0 buffer)))
       (setq tail (max uread-length 0))
       ;; return nil for EOF
       (plusp uread-length)))
+  (:set-flag () (setq read-flag t))
   ;; methods to resemble file-stream interface
   (:fd () fd)
   (:instream () self)
@@ -109,7 +118,8 @@
   (sys::make-thread 1)
   (sys::thread 'eval `(while t (slime::socket-eval slime::*slime-internal-stream*)))
   (catch :eusexit
-    (let* ((*standard-input* (instance slime::slime-input-stream :init))
+    (let* ((*standard-input* (setq slime::*slime-input-stream*
+                                   (instance slime::slime-input-stream :init)))
            (*terminal-io* (make-two-way-stream
                            *standard-input*
                            *standard-output*)))

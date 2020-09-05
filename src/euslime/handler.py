@@ -115,6 +115,9 @@ class EuslimeHandler(object):
 
     def _emacs_return_string(self, process, count, msg):
         self.euslisp.input(msg)
+        if len(msg) % 128 == 0:
+            # communicate when the message ends exactly at buffer end
+            self.euslisp.exec_internal('(send slime::*slime-input-stream* :set-flag)')
 
     def _emacs_interrupt(self, process):
         self.euslisp.process.send_signal(signal.SIGINT)
