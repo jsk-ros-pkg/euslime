@@ -121,19 +121,8 @@ class EuslimeHandler(object):
 
     def _emacs_interrupt(self, process):
         self.euslisp.process.send_signal(signal.SIGINT)
-        if process == Symbol(':repl-thread'):
-            # Interrupted from the top level
-            lock = self.euslisp.euslime_connection_lock
-            log.debug('Acquiring lock: %s' % lock)
-            lock.acquire()
-            try:
-                for val in self.maybe_new_prompt():
-                    yield val
-                lock.release()
-            except Exception as e:
-                if lock.locked():
-                    lock.release()
-                raise e
+        if isinstance(process,int):
+            yield [Symbol(":read-aborted"), process, 1]
 
     def swank_connection_info(self):
         version = self.euslisp.exec_internal('(slime::implementation-version)')
@@ -190,11 +179,11 @@ class EuslimeHandler(object):
             yield EuslispResult(None)
             lock.release()
         except AbortEvaluation as e:
-            if lock.locked():
-                lock.release()
             log.info('Aborting evaluation...')
             for val in self.maybe_new_prompt():
                 yield val
+            if lock.locked():
+                lock.release()
             if e.message:
                 yield EuslispResult(e.message, response_type='abort')
             else:

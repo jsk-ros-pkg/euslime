@@ -374,9 +374,14 @@
 
 ;; SWANK-SET-PACKAGE
 (defun set-package (name)
-  (when (find-package name)
-    (in-package name)
-    (slime-prompt)))
+  (cond
+    ((null-string-p name))
+    ((find-package name)
+     (in-package name))
+    (t
+     (error "No such package: ~S" name)))
+  (or (slime-prompt)
+      (list (package-name *package*) last-prompt)))
 
 
 ;; SWANK-CLEAR-REPL-VARIABLES

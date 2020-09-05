@@ -55,15 +55,13 @@
           (recenter-top-bottom)))
     (recenter-top-bottom)))
 
-;; Ovewrite to always dispatch and insert new prompt
+;; Ovewrite to always dispatch and insert new prompt when needed
 (defun slime-interrupt ()
   "Interrupt Lisp."
   (interactive)
   (slime-dispatch-event `(:emacs-interrupt ,slime-current-thread))
-  ;; Wait for the prompt to be updated
-  ;; TODO: think of a better way (listenning to the connection?)
-  (sleep-for 0 100)
-  (slime-repl-insert-prompt))
+  (sleep-for 0.1)
+  (slime-repl-set-package ""))
 
 ;; Ovewrite to inherit the buffer-local `slime-repl-shortcut-table'
 (defun slime-list-repl-short-cuts ()
