@@ -366,10 +366,12 @@ class EuslimeHandler(object):
             if lock.locked():
                 lock.release()
             log.info('Aborting evaluation...')
+            # Force print the message, which is by default only displayed on the minibuffer
             if e.message:
-                yield EuslispResult(e.message, response_type='abort')
-            else:
-                yield EuslispResult(None)
+                yield [Symbol(":write-string"),
+                       "; Evaluation aborted on {}\n".format(e.message),
+                       Symbol(":repl-result")]
+            yield EuslispResult(None)
         except Exception as e:
             if lock.locked():
                 lock.release()
