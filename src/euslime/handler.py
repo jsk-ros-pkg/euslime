@@ -133,6 +133,7 @@ class EuslimeHandler(object):
             except Exception as e:
                 if lock.locked():
                     lock.release()
+                raise e
 
     def swank_connection_info(self):
         version = self.euslisp.exec_internal('(slime::implementation-version)')
@@ -473,17 +474,35 @@ class EuslimeHandler(object):
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_repl_clear_repl_variables(self):
-        cmd = self.euslisp.exec_internal('(slime::clear-repl-variables)',
-                                         force_repl_socket=True)
-        yield EuslispResult(cmd)
+        lock = self.euslisp.euslime_connection_lock
+        log.debug('Acquiring lock: %s' % lock)
+        lock.acquire()
+        try:
+            cmd = '(slime::clear-repl-variables)'
+            res = self.euslisp.exec_internal(cmd, force_repl_socket=True)
+            yield EuslispResult(res)
+            lock.release()
+        except Exception as e:
+            if lock.locked():
+                lock.release()
+            raise e
 
     def swank_clear_repl_results(self):
         return
 
     def swank_set_package(self, name):
-        cmd = '(slime::set-package "{0}")'.format(qstr(name))
-        res = self.euslisp.exec_internal(cmd, force_repl_socket=True)
-        yield EuslispResult(res)
+        lock = self.euslisp.euslime_connection_lock
+        log.debug('Acquiring lock: %s' % lock)
+        lock.acquire()
+        try:
+            cmd = '(slime::set-package "{0}")'.format(qstr(name))
+            res = self.euslisp.exec_internal(cmd, force_repl_socket=True)
+            yield EuslispResult(res)
+            lock.release()
+        except Exception as e:
+            if lock.locked():
+                lock.release()
+            raise e
 
     def swank_default_directory(self):
         cmd = self.euslisp.exec_internal('(lisp:pwd)')
