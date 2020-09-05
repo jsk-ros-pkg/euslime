@@ -315,8 +315,10 @@ class EuslispProcess(Process):
             res = gen_to_string(gen)
             if not force_repl_socket:
                 lock.release()
-            res = loads(res)
-            if res == Symbol("lisp:nil"):
+            # Keep nil as a symbol to be dump-reversible
+            res = loads(res, nil=None)
+            # But return python-false objects if the response is solely 'nil'
+            if res == Symbol("lisp:nil") or res == Symbol("nil"):
                 return []
             return res
         except Exception as e:
