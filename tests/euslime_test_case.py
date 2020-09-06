@@ -102,11 +102,12 @@ class EuslimeTestCase(unittest.TestCase):
         for c in commands:
             self.socket_send(c)
             time.sleep(rate_send)
+        time.sleep(0.1)
+        res = self.socket_recv_one(socket.MSG_DONTWAIT)
+        while res:
+            result.append(res)
+            time.sleep(rate_recv)
             res = self.socket_recv_one(socket.MSG_DONTWAIT)
-            while res:
-                result.append(res)
-                time.sleep(rate_recv)
-                res = self.socket_recv_one(socket.MSG_DONTWAIT)
         return tuple(result) or None
 
     def socket_clean(self):
@@ -163,7 +164,7 @@ class EuslimeTestCase(unittest.TestCase):
         log.info('received response: \n%s', pprint.pformat(response, width=5))
         self.assertEqual(res, response)
 
-    def assertSocketNoWait(self, req_list, res_list, rate_send=0.05, rate_recv=0.01):
+    def assertSocketNoWait(self, req_list, res_list, rate_send=0.05, rate_recv=0.05):
         res = tuple(res_list)
         response = self.socket_get_response_no_wait(rate_send, rate_recv, *req_list)
         log.info('expected response: \n%s', pprint.pformat(res, width=5))

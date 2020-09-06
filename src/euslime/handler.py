@@ -351,7 +351,7 @@ class EuslimeHandler(object):
         lock.acquire()
         try:
             for res in self.euslisp.eval(cmd_str):
-                if isinstance(res,lst):
+                if isinstance(res,list):
                     yield res
             for msg in messages:
                 yield [Symbol(":write-string"), "; Loaded {}\n".format(msg)]

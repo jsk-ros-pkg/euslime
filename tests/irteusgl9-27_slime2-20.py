@@ -7,10 +7,7 @@ class irteusgl(eus):
     def test_completions_irt_1(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(progn (setq c (make-coords :name \\"test\\")) (send c :name))\n") "USER" :repl-thread 31)',
-            '(:read-string 0 1)',
             '(:write-string "\\"test\\"" :repl-result)',
-            '(:write-string "\\n" :repl-result)',
-            '(:read-aborted 0 1)',
             '(:return (:ok nil) 31)')
         self.assertSocket(
             '(:emacs-rex (swank:completions-for-keyword ":pos" (quote ("send" "c" "" swank::%cursor-marker%))) "USER" :repl-thread 35)',
@@ -23,19 +20,13 @@ class irteusgl(eus):
             '(:return (:ok ((":worldrot" ":worldpos" ":worldcoords") ":world")) 39)')
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(makunbound \'c)\n") "USER" :repl-thread 45)',
-            '(:read-string 0 1)',
             '(:write-string "t" :repl-result)',
-            '(:write-string "\\n" :repl-result)',
-            '(:read-aborted 0 1)',
             '(:return (:ok nil) 45)')
 
     def test_autodoc_irt_1(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(progn (make-irtviewer) (send *irtviewer* :name))\n") "USER" :repl-thread 78)',
-            '(:read-string 0 1)',
             '(:write-string "\\"IRT viewer\\"" :repl-result)',
-            '(:write-string "\\n" :repl-result)',
-            '(:read-aborted 0 1)',
             '(:return (:ok nil) 78)')
         self.assertSocket(
             '(:emacs-rex (swank:autodoc (quote ("send" "*irtviewer*" ":view" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 85)',
@@ -51,8 +42,5 @@ class irteusgl(eus):
             '(:return (:ok ("(:quit &rest ===> args <===)" t)) 94)')
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(send *irtviewer* :quit )\n") "USER" :repl-thread 95)',
-            '(:read-string 0 1)',
             '(:write-string ":destroyed" :repl-result)',
-            '(:write-string "\\n" :repl-result)',
-            '(:read-aborted 0 1)',
             '(:return (:ok nil) 95)')
