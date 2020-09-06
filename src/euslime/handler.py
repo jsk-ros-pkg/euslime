@@ -173,7 +173,6 @@ class EuslimeHandler(object):
                     yield [Symbol(":write-string"), no_color(val), Symbol(":repl-result")]
                 else:
                     yield val
-            yield [Symbol(":write-string"), '\n', Symbol(":repl-result")]
             for val in self.maybe_new_prompt():
                 yield val
             yield EuslispResult(None)
