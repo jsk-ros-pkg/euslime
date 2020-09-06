@@ -51,13 +51,10 @@ class eus(EuslimeTestCase):
             '(:return (:ok nil) 41)')
 
     def test_eval_7(self):
-        self.assertSocketNoWait(
-            ['(:emacs-rex (swank-repl:listener-eval "(y-or-n-p)\n") "USER" :repl-thread 21)',
-             '(:emacs-return-string 0 1 "y\n")'],
-            ['(:write-string "(Y or N): ")',
-             '(:read-string 0 1)',
-             '(:write-string "t" :repl-result)',
-             '(:return (:ok nil) 21)'])
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "#f(1 2 3)\n") "USER" :repl-thread 11)',
+            '(:write-string "#f(1.0 2.0 3.0)" :repl-result)',
+            '(:return (:ok nil) 11)')
 
     def test_eval_8(self):
         self.assertSocket(
@@ -120,6 +117,100 @@ class eus(EuslimeTestCase):
             '(:write-string "t" :repl-result)',
             '(:return (:ok nil) 17)')
         thread.join()
+
+
+    # READ
+    def test_read_1(self):
+        # Both with and without slime-input-stream the behavior of toplevel read is ustable
+        self.assertSocketNoWait(
+            ['(:emacs-rex (swank-repl:listener-eval "(read)\n") "USER" :repl-thread 5)',
+             '(:emacs-return-string 0 1 "hello\n")'],
+            ['(:read-string 0 1)',
+             '(:write-string "hello" :repl-result)',
+             '(:return (:ok nil) 5)'])
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "10\n") "USER" :repl-thread 6)',
+            '(:write-string "10" :repl-result)',
+            '(:return (:ok nil) 6)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(read-char)\n") "USER" :repl-thread 45)',
+            '(:write-string "10" :repl-result)',
+            '(:return (:ok nil) 45)')
+
+    def test_read_2(self):
+        self.assertSocketNoWait(
+            ['(:emacs-rex (swank-repl:listener-eval "(y-or-n-p)\n") "USER" :repl-thread 21)',
+             '(:emacs-return-string 0 1 "a\n")',
+             '(:emacs-return-string 0 1 "y\n")'],
+            ['(:write-string "(Y or N): ")',
+             '(:read-string 0 1)',
+             '(:write-string "(Y or N): ")',
+             '(:read-string 0 1)',
+             '(:write-string "t" :repl-result)',
+             '(:return (:ok nil) 21)'],
+            rate_send=0.1)
+
+    def test_read_3(self):
+        self.assertSocketNoWait(
+            ['(:emacs-rex (swank-repl:listener-eval "(read-char)\n") "USER" :repl-thread 44)',
+             '(:emacs-return-string 0 1 "a\n")'],
+            ['(:read-string 0 1)',
+             '(:write-string "97" :repl-result)',
+             '(:return (:ok nil) 44)'])
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(read-char)\n") "USER" :repl-thread 45)',
+            '(:write-string "10" :repl-result)',
+            '(:return (:ok nil) 45)')
+
+    def test_read_4(self):
+        self.assertSocketNoWait(
+            ['(:emacs-rex (swank-repl:listener-eval "(read-line)\n") "USER" :repl-thread 47)',
+             '(:emacs-return-string 0 1 "hello world\n")'],
+            ['(:read-string 0 1)',
+             '(:write-string "\\\"hello world\\\"" :repl-result)',
+             '(:return (:ok nil) 47)'])
+
+    def test_read_5(self):
+        self.assertSocketNoWait(
+            ['(:emacs-rex (swank-repl:listener-eval "(read-line t)\n") "USER" :repl-thread 47)',
+             '(:emacs-return-string 0 1 "hello world\n")'],
+            ['(:read-string 0 1)',
+             '(:write-string "\\\"hello world\\\"" :repl-result)',
+             '(:return (:ok nil) 47)'])
+
+    def test_read_6(self):
+        self.assertSocketNoWait(
+            ['(:emacs-rex (swank-repl:listener-eval "(read-line *standard-input*)\n") "USER" :repl-thread 47)',
+             '(:emacs-return-string 0 1 "hello world\n")'],
+            ['(:read-string 0 1)',
+             '(:write-string "\\\"hello world\\\"" :repl-result)',
+             '(:return (:ok nil) 47)'])
+
+    def test_read_7(self):
+        # test for input which ends exactly at buffer end
+        test_string = 'a'*127
+        self.assertSocketNoWait(
+            ['(:emacs-rex (swank-repl:listener-eval "(read-line)\n") "USER" :repl-thread 47)',
+             '(:emacs-return-string 0 1 "{}")'.format(test_string + '\n')],
+            ['(:read-string 0 1)',
+             '(:write-string "\\\"{}\\\"" :repl-result)'.format(test_string),
+             '(:return (:ok nil) 47)'])
+        self.assertSocketNoWait(
+            ['(:emacs-rex (swank-repl:listener-eval "(read-line)\n") "USER" :repl-thread 47)',
+             '(:emacs-return-string 0 1 "hello world\n")'],
+            ['(:read-string 0 1)',
+             '(:write-string "\\\"hello world\\\"" :repl-result)',
+             '(:return (:ok nil) 47)'])
+
+    def test_read_8(self):
+        # test for input which exceeds buffer length
+        test_string = 'a'*500
+        self.assertSocketNoWait(
+            ['(:emacs-rex (swank-repl:listener-eval "(read-line)\n") "USER" :repl-thread 47)',
+             '(:emacs-return-string 0 1 "{}")'.format(test_string + '\n')],
+            ['(:read-string 0 1)',
+             '(:write-string "\\\"{}\\\"" :repl-result)'.format(test_string),
+             '(:return (:ok nil) 47)'])
 
 
     # COMPILE REGION
