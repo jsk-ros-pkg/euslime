@@ -56,6 +56,7 @@ class Process(object):
         self.delim = delim or DELIM
         self.output = Queue()
         self.accumulate_output = Event()
+        self.finished_output = Event()
         self.process = None
         self.threads = None
 
@@ -107,10 +108,17 @@ class Process(object):
                 buf = os.read(stream.fileno(), self.buflen)
                 if not self.color:
                     buf = no_color(buf)
-                if self.accumulate_output.is_set():
-                    self.output.put(buf)
-                else:
-                    callback(buf)
+                has_token = buf.split(self.token)
+                if len(has_token) >= 3:
+                    log.error('More than one token detected on output!')
+                for out in [x for x in has_token if x]:
+                    if self.accumulate_output.is_set():
+                        self.output.put(out)
+                    else:
+                        callback(out)
+                if len(has_token) >= 2:
+                    log.debug('repl output finished')
+                    self.finished_output.set()
                 if len(buf) < self.buflen * 0.8:
                     time.sleep(self.rate)
             except Exception:
@@ -161,6 +169,7 @@ class EuslispProcess(Process):
         self.internal_socket = self._start_socket()
         host1, port1 = self.socket.getsockname()
         host2, port2 = self.internal_socket.getsockname()
+        self.token = '{}euslime-token-{}'.format(chr(29), port1)
 
         super(EuslispProcess, self).__init__(
             cmd=[self.program, self.init_file, "--port1={}".format(port1), "--port2={}".format(port2)],
@@ -247,13 +256,17 @@ class EuslispProcess(Process):
             raise AbortEvaluation(msg)
         raise Exception("Unhandled Socket Request Type: %s" % command)
 
-    def get_socket_result(self, connection):
+    def get_socket_result(self, connection, wait=False):
         while True:
             gen = self.get_socket_response(connection)
             if isinstance(gen,list):
                 # read-string
                 yield gen
             elif gen is not None:
+                # Wait until output is finished
+                if wait:
+                    log.debug('Waiting for repl output...')
+                    self.finished_output.wait()
                 for val in gen:
                     yield val
                 return
@@ -329,11 +342,12 @@ class EuslispProcess(Process):
     def eval(self, cmd_str):
         connection = self.euslime_connection
         self.clear_socket_stack(connection)
+        self.finished_output.clear()
         log.info('eval: %s' % cmd_str)
         self.input(cmd_str)
         # Print Results
         # Do not use :repl-result presentation to enable copy-paste of
         # previous results, which are signilized as swank objects otherwise
         # e.g. #.(swank:lookup-presented-object-or-lose 0.)
-        for r in self.get_socket_result(connection):
+        for r in self.get_socket_result(connection, wait=True):
             yield r

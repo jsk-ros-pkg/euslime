@@ -111,6 +111,13 @@
     (while (catch *replevel* (reploop #'toplevel-prompt))))
   (throw *replevel* t))
 
+(defun slime-finish-output (strm)
+  (when (derivedp *slime-stream* socket-stream)
+    (ensure-print
+     (format strm "~Ceuslime-token-~A" 29 ;; group separator
+             (send (lisp::socket-stream-address *slime-stream*) :port))
+     (finish-output strm))))
+
 (defun slimetop ()
   (clean-eustop)
   (lisp::install-error-handler 'slime::slime-error)
@@ -160,12 +167,12 @@
                      (make-string-output-stream)))
          (result (rep1 repstream eof local-bindings ttyp)))
     (if (eql result eof) (throw :reploop-select nil))
-    (finish-output out)
+    (slime::slime-finish-output out)
     (slime::socket-request slime::*slime-stream* "result" result)))
 
 (defun reploop (prompt &optional (repstream slime::*old-terminal-io*) (ttyp nil))
   (let ((*prompt* prompt))
-    (finish-output repstream)
+    (slime::slime-finish-output repstream)
     (slime::socket-request slime::*slime-stream* "abort" nil)
     (send *top-selector* :add-port slime::*slime-stream* #'slime::socket-eval slime::*slime-stream*)
     (reploop-select repstream ttyp)))
