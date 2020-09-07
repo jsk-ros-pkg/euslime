@@ -105,7 +105,7 @@ class eus(EuslimeTestCase):
     # READ
     def test_read_1(self):
         # Both with and without slime-input-stream the behavior of toplevel read is ustable
-        self.assertSocketNoWait(
+        self.assertAsyncRequest(
             ['(:emacs-rex (swank-repl:listener-eval "(read)\n") "USER" :repl-thread 5)',
              '(:emacs-return-string 0 1 "hello\n")'],
             ['(:read-string 0 1)',
@@ -121,7 +121,7 @@ class eus(EuslimeTestCase):
             '(:return (:ok nil) 45)')
 
     def test_read_2(self):
-        self.assertSocketNoWait(
+        self.assertAsyncRequest(
             ['(:emacs-rex (swank-repl:listener-eval "(y-or-n-p)\n") "USER" :repl-thread 21)',
              '(:emacs-return-string 0 1 "a\n")',
              '(:emacs-return-string 0 1 "y\n")'],
@@ -134,7 +134,7 @@ class eus(EuslimeTestCase):
             rate_send=0.1)
 
     def test_read_3(self):
-        self.assertSocketNoWait(
+        self.assertAsyncRequest(
             ['(:emacs-rex (swank-repl:listener-eval "(read-char)\n") "USER" :repl-thread 44)',
              '(:emacs-return-string 0 1 "a\n")'],
             ['(:read-string 0 1)',
@@ -146,7 +146,7 @@ class eus(EuslimeTestCase):
             '(:return (:ok nil) 45)')
 
     def test_read_4(self):
-        self.assertSocketNoWait(
+        self.assertAsyncRequest(
             ['(:emacs-rex (swank-repl:listener-eval "(read-line)\n") "USER" :repl-thread 47)',
              '(:emacs-return-string 0 1 "hello world\n")'],
             ['(:read-string 0 1)',
@@ -154,7 +154,7 @@ class eus(EuslimeTestCase):
              '(:return (:ok nil) 47)'])
 
     def test_read_5(self):
-        self.assertSocketNoWait(
+        self.assertAsyncRequest(
             ['(:emacs-rex (swank-repl:listener-eval "(read-line t)\n") "USER" :repl-thread 47)',
              '(:emacs-return-string 0 1 "hello world\n")'],
             ['(:read-string 0 1)',
@@ -162,7 +162,7 @@ class eus(EuslimeTestCase):
              '(:return (:ok nil) 47)'])
 
     def test_read_6(self):
-        self.assertSocketNoWait(
+        self.assertAsyncRequest(
             ['(:emacs-rex (swank-repl:listener-eval "(read-line *standard-input*)\n") "USER" :repl-thread 47)',
              '(:emacs-return-string 0 1 "hello world\n")'],
             ['(:read-string 0 1)',
@@ -172,13 +172,13 @@ class eus(EuslimeTestCase):
     def test_read_7(self):
         # test for input which ends exactly at buffer end
         test_string = 'a'*127
-        self.assertSocketNoWait(
+        self.assertAsyncRequest(
             ['(:emacs-rex (swank-repl:listener-eval "(read-line)\n") "USER" :repl-thread 47)',
              '(:emacs-return-string 0 1 "{}")'.format(test_string + '\n')],
             ['(:read-string 0 1)',
              '(:write-string "\\\"{}\\\"" :repl-result)'.format(test_string),
              '(:return (:ok nil) 47)'])
-        self.assertSocketNoWait(
+        self.assertAsyncRequest(
             ['(:emacs-rex (swank-repl:listener-eval "(read-line)\n") "USER" :repl-thread 47)',
              '(:emacs-return-string 0 1 "hello world\n")'],
             ['(:read-string 0 1)',
@@ -188,7 +188,7 @@ class eus(EuslimeTestCase):
     def test_read_8(self):
         # test for input which exceeds buffer length
         test_string = 'a'*500
-        self.assertSocketNoWait(
+        self.assertAsyncRequest(
             ['(:emacs-rex (swank-repl:listener-eval "(read-line)\n") "USER" :repl-thread 47)',
              '(:emacs-return-string 0 1 "{}")'.format(test_string + '\n')],
             ['(:read-string 0 1)',
@@ -472,7 +472,6 @@ class eus(EuslimeTestCase):
             '(:emacs-rex (swank:completions-for-character "") "USER" :repl-thread 20)',
             '(:return (:ok (("Space" "Newline" "Linefeed" "Backspace" "Delete" "Rubout" "Return" "Page" "Formfeed" "Esc" "Escape" "Tab" "Left-Paren" "Right-Paren" "Lparen" "Rparen" "Bell" "Null" "SOH" "STX" "ETX") "")) 20)')
 
-
     # OUTPUT
     def test_output_1(self):
         self.assertSocketWriteString(
@@ -603,10 +602,9 @@ class eus(EuslimeTestCase):
             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:ok nil) 8)')
 
-
     # EMACS INTERRUPT
     def test_emacs_interrupt_1(self):
-        self.assertSocketNoWait(
+        self.assertAsyncRequest(
             ['(:emacs-rex (swank-repl:listener-eval "(loop)\n") "USER" :repl-thread 5)',
              '(:emacs-interrupt :repl-thread)'],
             ['(:new-package "USER" "B1-{}")'.format(self.EUSLISP_PROGRAM_NAME),
@@ -621,7 +619,7 @@ class eus(EuslimeTestCase):
             '(:return (:ok nil) 7)')
 
     def test_emacs_interrupt_2(self):
-        self.assertSocketNoWait(
+        self.assertAsyncRequest(
             ['(:emacs-rex (swank-repl:listener-eval "(read)\n") "USER" :repl-thread 24)',
              '(:emacs-interrupt 0)'],
             ['(:read-string 0 1)',
@@ -634,7 +632,7 @@ class eus(EuslimeTestCase):
             '(:return (:ok nil) 6)')
 
     def test_emacs_interrupt_3(self):
-        self.assertSocketNoWait(
+        self.assertAsyncRequest(
             ['(:emacs-interrupt :repl-thread)',
              '(:emacs-rex (swank:set-package "") "USER" :repl-thread 5)'],
             ['(:return (:ok ("USER" "B1-{}")) 5)'.format(self.EUSLISP_PROGRAM_NAME)])
@@ -644,7 +642,7 @@ class eus(EuslimeTestCase):
             '(:return (:ok nil) 6)')
 
     def test_emacs_interrupt_4(self):
-        self.assertSocketNoWait(
+        self.assertAsyncRequest(
             ['(:emacs-rex (swank:compile-string-for-emacs "(progn\n  (print \'start)\n  (unix:sleep 5)\n  (print \'end))\n" "test.l" \'((:position 1) (:line 1 1)) "/tmp/test.l" \'nil) "USER" t 18)',
              '(:emacs-interrupt :repl-thread)',
              '(:emacs-rex (swank:set-package "") "USER" :repl-thread 19)'],
@@ -658,7 +656,7 @@ class eus(EuslimeTestCase):
             '(:return (:ok nil) 6)')
 
     def test_emacs_interrupt_5(self):
-        self.assertSocketNoWait(
+        self.assertAsyncRequest(
             ['(:emacs-rex (swank:load-file "{}/test_emacs_interrupt_5.l") "USER" :repl-thread 5)'.format(os.getcwd()),
              '(:emacs-interrupt :repl-thread)',
              '(:emacs-rex (swank:set-package "") "USER" :repl-thread 6)',],
@@ -673,7 +671,7 @@ class eus(EuslimeTestCase):
             '(:return (:ok nil) 6)')
 
     def test_emacs_interrupt_6(self):
-        self.assertSocketNoWait(
+        self.assertAsyncRequest(
             ['(:emacs-rex (swank-repl:listener-eval "(let ((bak (unix:signal unix::sigint #\'(lambda (&rest args) (print \\\"TEST\\\"))))) (unwind-protect (unix:sleep 5) (unix:signal unix::sigint bak)))") "USER" :repl-thread 35)',
              '(:emacs-interrupt :repl-thread)',
              '(:emacs-rex (swank:set-package "") "USER" :repl-thread 36)'],
@@ -681,7 +679,7 @@ class eus(EuslimeTestCase):
              '(:write-string "nil" :repl-result)',
              '(:return (:ok nil) 35)',
              '(:return (:ok ("USER" "{}")) 36)'.format(self.EUSLISP_PROGRAM_NAME)])
-        self.assertSocketNoWait(
+        self.assertAsyncRequest(
             ['(:emacs-interrupt :repl-thread)',
              '(:emacs-rex (swank:set-package "") "USER" :repl-thread 37)'],
             ['(:return (:ok ("USER" "B1-{}")) 37)'.format(self.EUSLISP_PROGRAM_NAME)])
