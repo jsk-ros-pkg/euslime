@@ -395,14 +395,11 @@ class EuslimeHandler(object):
         lock.acquire()
         yield [Symbol(":write-string"), "Loading file: %s ...\n" % filename]
         try:
-            res = ""
             for r in self.euslisp.eval('(lisp:load "{0}")'.format(qstr(filename))):
-                if isinstance(r,str):
-                    res += r
-                else:
+                if isinstance(r,list):
                     yield r
             yield [Symbol(":write-string"), "Loaded.\n"]
-            yield EuslispResult(loads(res))
+            yield EuslispResult(True)
             lock.release()
         except AbortEvaluation as e:
             if lock.locked():
