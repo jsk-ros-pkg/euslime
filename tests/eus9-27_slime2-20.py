@@ -1,7 +1,5 @@
 from euslime_test_case import EuslimeTestCase
 import os
-import time
-from threading import Thread
 
 class eus(EuslimeTestCase):
     EUSLISP_PROGRAM = 'eus'
@@ -104,22 +102,6 @@ class eus(EuslimeTestCase):
             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:ok nil) 8)')
 
-    def test_eval_12(self):
-        def send_req():
-            time.sleep(0.1)
-            self.socket_send(
-                '(:emacs-rex (swank:apropos-list-for-emacs ":none" t nil (quote nil)) "USER" :repl-thread 18)')
-
-        thread = Thread(target=send_req)
-        thread.start()
-        self.assertSocket(
-            '(:emacs-rex (swank-repl:listener-eval "(unix:usleep 200000)\n") "USER" :repl-thread 17)',
-            '(:return (:ok ()) 18)',
-            '(:write-string "t" :repl-result)',
-            '(:return (:ok nil) 17)')
-        thread.join()
-
-
     # READ
     def test_read_1(self):
         # Both with and without slime-input-stream the behavior of toplevel read is ustable
@@ -213,6 +195,58 @@ class eus(EuslimeTestCase):
              '(:write-string "\\\"{}\\\"" :repl-result)'.format(test_string),
              '(:return (:ok nil) 47)'])
 
+    # SIMULTANEOUS REQUESTS
+    def test_async_1(self):
+        self.assertAsyncRequest(
+            ['(:emacs-rex (swank-repl:listener-eval "(unix:usleep 200000)\n") "USER" :repl-thread 17)',
+             '(:emacs-rex (swank:apropos-list-for-emacs ":none" t nil (quote nil)) "USER" :repl-thread 18)'],
+            ['(:return (:ok ()) 18)',
+             '(:write-string "t" :repl-result)',
+             '(:return (:ok nil) 17)'])
+
+    def test_async_2(self):
+        self.assertAsyncRequest(
+            ['(:emacs-rex (swank-repl:listener-eval "(unix:usleep 200000)\\n") "USER" :repl-thread 14)',
+             '(:emacs-rex (swank:compile-string-for-emacs "(print \\\"hello\\\")" "test.l" \'((:position 1) (:line 1 1)) "/tmp/test.l" \'nil) "USER" t 15)'],
+            ['(:write-string "t" :repl-result)',
+             '(:return (:ok nil) 14)',
+             '(:write-string "\"hello\"\n")',
+             '(:write-string "; Loaded (print \"hello\")\n")',
+             '(:return (:ok (:compilation-result nil t 0.01 nil nil)) 15)'])
+
+    def test_async_3(self):
+        self.assertAsyncRequest(
+            ['(:emacs-rex (swank-repl:listener-eval "(unix:usleep 200000)\\n") "USER" :repl-thread 8)',
+             '(:emacs-rex (swank:load-file "{}/test_async_4.l") "USER" :repl-thread 9)'.format(os.getcwd())],
+            ['(:write-string "t" :repl-result)',
+             '(:return (:ok nil) 8)',
+             '(:write-string "Loading file: {}/test_async_4.l ...\\n")'.format(os.getcwd()),
+             '(:write-string "start\\nend\\n")',
+             '(:write-string "Loaded.\\n")',
+             '(:return (:ok t) 9)'])
+
+    def test_async_4(self):
+        self.assertAsyncRequest(
+            ['(:emacs-rex (swank-repl:listener-eval "(unix:usleep 200000)\n") "USER" :repl-thread 7)',
+             '(:emacs-rex (swank:set-package "LISP") "USER" :repl-thread 9)'],
+            ['(:write-string "t" :repl-result)',
+             '(:return (:ok nil) 7)',
+             '(:return (:ok ("LISP" "LISP:{}")) 9)'.format(self.EUSLISP_PROGRAM_NAME)])
+        self.assertSocket(
+            '(:emacs-rex (swank:set-package "USER") "LISP" :repl-thread 11)',
+            '(:return (:ok ("USER" "{}")) 11)'.format(self.EUSLISP_PROGRAM_NAME))
+
+    def test_async_5(self):
+        self.assertAsyncRequest(
+            ['(:emacs-rex (swank-repl:listener-eval "(unix:usleep 200000)\\n") "USER" :repl-thread 5)',
+             '(:emacs-rex (swank-repl:clear-repl-variables) "USER" :repl-thread 6)'],
+            ['(:write-string "t" :repl-result)',
+             '(:return (:ok nil) 5)',
+             '(:return (:ok nil) 6)'])
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(list * ** ***)\\n") "USER" :repl-thread 10)',
+            '(:write-string "(nil nil nil)" :repl-result)',
+            '(:return (:ok nil) 10)')
 
     # COMPILE REGION
     def test_compile_region_1(self):
