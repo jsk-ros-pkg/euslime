@@ -187,10 +187,10 @@ class EuslimeHandler(object):
                 yield EuslispResult(e.message, response_type='abort')
             else:
                 yield EuslispResult(None)
-        except Exception as e:
+        except Exception:
             if lock.locked():
                 lock.release()
-            raise e
+            raise
 
     def swank_interactive_eval(self, sexp):
         return self.swank_eval(sexp)
@@ -371,10 +371,10 @@ class EuslimeHandler(object):
                        "; Evaluation aborted on {}\n".format(e.message),
                        Symbol(":repl-result")]
             yield EuslispResult(None)
-        except Exception as e:
+        except Exception:
             if lock.locked():
                 lock.release()
-            raise e
+            raise
 
     def swank_compile_notes_for_emacs(self, *args):
         return self.swank_compile_string_for_emacs(*args)
@@ -414,10 +414,10 @@ class EuslimeHandler(object):
                        "; Evaluation aborted on {}\n".format(e.message),
                        Symbol(":repl-result")]
             yield EuslispResult(None)
-        except Exception as e:
+        except Exception:
             if lock.locked():
                 lock.release()
-            raise e
+            raise
 
     def swank_inspect_current_condition(self):
         # (swank:inspect-current-condition)
@@ -472,10 +472,10 @@ class EuslimeHandler(object):
             res = self.euslisp.exec_internal(cmd, force_repl_socket=True)
             yield EuslispResult(res)
             lock.release()
-        except Exception as e:
+        except Exception:
             if lock.locked():
                 lock.release()
-            raise e
+            raise
 
     def swank_clear_repl_results(self):
         return
@@ -489,10 +489,10 @@ class EuslimeHandler(object):
             res = self.euslisp.exec_internal(cmd, force_repl_socket=True)
             yield EuslispResult(res)
             lock.release()
-        except Exception as e:
+        except Exception:
             if lock.locked():
                 lock.release()
-            raise e
+            raise
 
     def swank_default_directory(self):
         cmd = self.euslisp.exec_internal('(lisp:pwd)')

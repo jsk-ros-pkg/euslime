@@ -334,10 +334,10 @@ class EuslispProcess(Process):
             if res == Symbol("lisp:nil") or res == Symbol("nil"):
                 return []
             return res
-        except Exception as e:
+        except Exception:
             if not force_repl_socket and lock.locked():
                 lock.release()
-            raise e
+            raise
 
     def eval(self, cmd_str):
         connection = self.euslime_connection
