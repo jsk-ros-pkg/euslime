@@ -1,4 +1,5 @@
 from euslime_test_case import EuslimeTestCase
+import os
 import time
 from threading import Thread
 
@@ -584,6 +585,76 @@ class eus(EuslimeTestCase):
             '(:emacs-rex (swank-repl:listener-eval "(reset)\n") "USER" :repl-thread 7)',
             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:ok nil) 7)')
+
+    def test_emacs_interrupt_2(self):
+        self.assertSocketNoWait(
+            ['(:emacs-rex (swank-repl:listener-eval "(read)\n") "USER" :repl-thread 24)',
+             '(:emacs-interrupt 0)'],
+            ['(:read-string 0 1)',
+             '(:read-aborted 0 1)',
+             '(:new-package "USER" "B1-{}")'.format(self.EUSLISP_PROGRAM_NAME),
+             '(:return (:abort "\'Keyboard Interrupt\'") 24)'])
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(reset)\n") "USER" :repl-thread 6)',
+            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+            '(:return (:ok nil) 6)')
+
+    def test_emacs_interrupt_3(self):
+        self.assertSocketNoWait(
+            ['(:emacs-interrupt :repl-thread)',
+             '(:emacs-rex (swank:set-package "") "USER" :repl-thread 5)'],
+            ['(:return (:ok ("USER" "B1-{}")) 5)'.format(self.EUSLISP_PROGRAM_NAME)])
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(reset)\n") "USER" :repl-thread 6)',
+            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+            '(:return (:ok nil) 6)')
+
+    def test_emacs_interrupt_4(self):
+        self.assertSocketNoWait(
+            ['(:emacs-rex (swank:compile-string-for-emacs "(progn\n  (print \'start)\n  (unix:sleep 5)\n  (print \'end))\n" "test.l" \'((:position 1) (:line 1 1)) "/tmp/test.l" \'nil) "USER" t 18)',
+             '(:emacs-interrupt :repl-thread)',
+             '(:emacs-rex (swank:set-package "") "USER" :repl-thread 19)'],
+            ['(:write-string "start\\n")',
+             '(:write-string "; Evaluation aborted on \'Keyboard Interrupt\'\\n" :repl-result)',
+             '(:return (:ok nil) 18)',
+             '(:return (:ok ("USER" "B1-{}")) 19)'.format(self.EUSLISP_PROGRAM_NAME)])
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(reset)\n") "USER" :repl-thread 6)',
+            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+            '(:return (:ok nil) 6)')
+
+    def test_emacs_interrupt_5(self):
+        self.assertSocketNoWait(
+            ['(:emacs-rex (swank:load-file "{}/test_emacs_interrupt_5.l") "USER" :repl-thread 5)'.format(os.getcwd()),
+             '(:emacs-interrupt :repl-thread)',
+             '(:emacs-rex (swank:set-package "") "USER" :repl-thread 6)',],
+            ['(:write-string "Loading file: {}/test_emacs_interrupt_5.l ...\\n")'.format(os.getcwd()),
+             '(:write-string "start\\n")',
+             '(:write-string "; Evaluation aborted on \'Keyboard Interrupt\'\\n" :repl-result)',
+             '(:return (:ok nil) 5)',
+             '(:return (:ok ("USER" "B1-{}")) 6)'.format(self.EUSLISP_PROGRAM_NAME)])
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(reset)\n") "USER" :repl-thread 6)',
+            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+            '(:return (:ok nil) 6)')
+
+    def test_emacs_interrupt_6(self):
+        self.assertSocketNoWait(
+            ['(:emacs-rex (swank-repl:listener-eval "(let ((bak (unix:signal unix::sigint #\'(lambda (&rest args) (print \\\"TEST\\\"))))) (unwind-protect (unix:sleep 5) (unix:signal unix::sigint bak)))") "USER" :repl-thread 35)',
+             '(:emacs-interrupt :repl-thread)',
+             '(:emacs-rex (swank:set-package "") "USER" :repl-thread 36)'],
+            ['(:write-string "\\\"TEST\\\"\\n")',
+             '(:write-string "nil" :repl-result)',
+             '(:return (:ok nil) 35)',
+             '(:return (:ok ("USER" "{}")) 36)'.format(self.EUSLISP_PROGRAM_NAME)])
+        self.assertSocketNoWait(
+            ['(:emacs-interrupt :repl-thread)',
+             '(:emacs-rex (swank:set-package "") "USER" :repl-thread 37)'],
+            ['(:return (:ok ("USER" "B1-{}")) 37)'.format(self.EUSLISP_PROGRAM_NAME)])
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(reset)\n") "USER" :repl-thread 38)',
+            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+            '(:return (:ok nil) 38)')
 
     # SET PACKAGE
     def test_set_package_1(self):
