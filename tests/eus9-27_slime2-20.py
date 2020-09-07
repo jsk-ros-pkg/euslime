@@ -248,6 +248,29 @@ class eus(EuslimeTestCase):
             '(:write-string "(nil nil nil)" :repl-result)',
             '(:return (:ok nil) 10)')
 
+    def test_async_6(self):
+        self.assertAsyncRequest(
+            ['(:emacs-rex (swank-repl:listener-eval "(dotimes (i 5) (print i) (unix:usleep 100000))\n") "USER" :repl-thread 5)',
+             '(:emacs-rex (swank-repl:listener-eval "\'this\n") "USER" :repl-thread 6)',
+'(:emacs-rex (swank-repl:listener-eval "\'that\n") "USER" :repl-thread 7)',
+             '(:emacs-rex (swank-repl:listener-eval "1\n") "USER" :repl-thread 8)',
+             '(:emacs-rex (swank-repl:listener-eval "(1+ 1)\n") "USER" :repl-thread 9)'],
+            ['(:write-string "0\n")',
+             '(:write-string "1\n")',
+             '(:write-string "2\n")',
+             '(:write-string "3\n")',
+             '(:write-string "4\n")',
+             '(:write-string "nil" :repl-result)',
+             '(:return (:ok nil) 5)',
+             '(:write-string "this" :repl-result)',
+             '(:return (:ok nil) 6)',
+             '(:write-string "that" :repl-result)',
+             '(:return (:ok nil) 7)',
+             '(:write-string "1" :repl-result)',
+             '(:return (:ok nil) 8)',
+             '(:write-string "2" :repl-result)',
+             '(:return (:ok nil) 9)'])
+
     # COMPILE REGION
     def test_compile_region_1(self):
         self.assertSocket(
@@ -400,6 +423,11 @@ class eus(EuslimeTestCase):
             '(:emacs-rex (swank-repl:listener-eval "(makunbound \'c)\n") "USER" :repl-thread 42)',
             '(:write-string "t" :repl-result)',
             '(:return (:ok nil) 42)')
+
+    def test_autodoc_17(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc (quote ("deflocal" "" swank::%cursor-marker%)) :print-right-margin 80) "USER" :repl-thread 9)',
+            '(:return (:ok ("(deflocal ===> var <=== &optional (init nil) (doc nil))" t)) 9)')
 
     # COMPLETIONS
     def test_completions_1(self):
@@ -602,6 +630,21 @@ class eus(EuslimeTestCase):
             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:ok nil) 8)')
 
+    def test_sldb_8(self):
+        self.assertSocketIgnoreAddress(
+            '(:emacs-rex (swank-repl:listener-eval "(1+ nil)\n") "USER" :repl-thread 7)',
+            '(:debug 0 1 ("Integer expected in (1+ nil)" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(1+ nil)" (:restartable nil)) (1 "(slime:slimetop)" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "#<compiled-code #X6850290>" (:restartable nil))) (nil))')
+        self.assertSocket(
+            '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 1) "USER" 0 8)',
+            '(:debug-return 0 1 nil)',
+            '(:return (:abort "NIL") 8)',
+            '(:new-package "USER" "E1-{}")'.format(self.EUSLISP_PROGRAM_NAME),
+            '(:return (:abort "\'Integer expected\'") 7)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "reset\n") "USER" :repl-thread 9)',
+            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+            '(:return (:ok nil) 9)')
+
     # EMACS INTERRUPT
     def test_emacs_interrupt_1(self):
         self.assertAsyncRequest(
@@ -719,6 +762,56 @@ class eus(EuslimeTestCase):
             '(:emacs-rex (swank:describe-symbol "*prompt-string*") "USER" :repl-thread 16)',
             '(:return (:ok "NAME\\n     *prompt-string*\\nTYPE\\n     variable\\nDESCRIPTION\\n     prompt string used by \x1b[1meustop\x1b[m. \\n\\nPROPERTIES\\n\\nplist=nil\\nvalue=\\"{}\\"\\nvtype=2\\nfunction=*unbound*\\npname=\\"*PROMPT-STRING*\\"\\nhomepkg=#<package #X5f12ae8 LISP>\\n") 16)'.format(self.EUSLISP_PROGRAM_NAME))
 
+    # LOAD FILE
+    def test_load_file_1(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:load-file "{}/test_load_file_1.l") "USER" :repl-thread 6)'.format(os.getcwd()),
+            '(:write-string "Loading file: {}/test_load_file_1.l ...\\n")'.format(os.getcwd()),
+            '(:write-string "Loaded.\\n")',
+            '(:return (:ok t) 6)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(and (boundp \'test-load-var) test-load-var)\n") "USER" :repl-thread 11)',
+            '(:write-string "10" :repl-result)',
+            '(:return (:ok nil) 11)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(makunbound \'test-load-var)\n") "USER" :repl-thread 13)',
+            '(:write-string "t" :repl-result)',
+            '(:return (:ok nil) 13)')
+
+    def test_load_file_2(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(progn (with-output-to-string (s) (let ((*standard-output* s) (*error-output* s)) (compiler:compile-file \\\"test_load_file_1.l\\\" :o \\\"/tmp/\\\"))) t)\\n") "USER" :repl-thread 5)',
+            '(:write-string "t" :repl-result)',
+            '(:return (:ok nil) 5)')
+        self.assertSocket(
+            '(:emacs-rex (swank:load-file "/tmp/test_load_file_1.so") "USER" :repl-thread 6)',
+            '(:write-string "Loading file: /tmp/test_load_file_1.so ...\\n")',
+            '(:write-string "Loaded.\\n")',
+            '(:return (:ok t) 6)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(and (boundp \'test-load-var) test-load-var)\n") "USER" :repl-thread 11)',
+            '(:write-string "10" :repl-result)',
+            '(:return (:ok nil) 11)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(makunbound \'test-load-var)\n") "USER" :repl-thread 13)',
+            '(:write-string "t" :repl-result)',
+            '(:return (:ok nil) 13)')
+
+    def test_load_file_3(self):
+        if self.EUSLISP_PROGRAM == 'roseus':
+            print("Skipping test...")
+            return
+        file = "{}/none.l".format(os.getcwd())
+        self.assertSocketIgnoreAddress(
+            '(:emacs-rex (swank:load-file "{0}") "USER" :repl-thread 6)'.format(file),
+            '(:write-string "Loading file: {0} ...\\n")'.format(file),
+            '(:debug 0 1 ("File #P\\\"{0}\\\" not found in (load \\\"{0}\\\")" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(load \\\"{0}\\\")" (:restartable nil)) (1 "(slime:slimetop)" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "#<compiled-code #X48c80f0>" (:restartable nil))) (nil))'.format(file))
+        self.assertSocket(
+            '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 7)',
+            '(:debug-return 0 1 nil)',
+            '(:return (:abort "NIL") 7)',
+            '(:return (:abort "\'File #P\\\"{0}\\\" not found\'") 6)'.format(file))
+
     # MACRO EXPAND
     def test_macro_expand_1(self):
         self.assertSocket(
@@ -736,3 +829,9 @@ class eus(EuslimeTestCase):
             '(:write-string "\\"\xe3\x81\x93\xe3\x82\x93\xe3\x81\xab\xe3\x81\xa1\xe3\x81\xaf\xe3\x80\x82\\"\\n")',
             '(:write-string "\\"\xe3\x81\x93\xe3\x82\x93\xe3\x81\xab\xe3\x81\xa1\xe3\x81\xaf\xe3\x80\x82\\"" :repl-result)',
             '(:return (:ok nil) 5)')
+
+    def test_encoding_2(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(make-string 10)\n") "USER" :repl-thread 8)',
+            '(:write-string "\\\"{}\\\"" :repl-result)'.format(chr(0) * 10),
+            '(:return (:ok nil) 8)')
