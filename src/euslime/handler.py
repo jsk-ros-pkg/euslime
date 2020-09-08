@@ -306,7 +306,7 @@ class EuslimeHandler(object):
         return self.swank_invoke_nth_restart_for_emacs(lvl, 0)
 
     def swank_invoke_nth_restart_for_emacs(self, level, num):
-        deb = self.debugger.pop(level - 1)
+        deb = self.debugger[level - 1]
         res_dict = deb.restarts_dict
 
         def check_key(key):
@@ -316,12 +316,15 @@ class EuslimeHandler(object):
             self.debugger = []
             self.restart_euslisp_process()
         elif check_key('CONTINUE'):
+            self.debugger.pop(level - 1)  # remove from stack
             pass
         elif check_key('QUIT'):
             self.debugger = []
             self.euslisp.reset()
         else:
-            log.error("Restart not found!")
+            log.error("Restart number %s not found!" % num)
+            yield EuslispResult(None)
+            return
 
         msg = deb.message.split(self.euslisp.delim)[0]
         msg = repr(msg.rsplit(' in ', 1)[0])
