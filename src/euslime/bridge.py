@@ -134,7 +134,7 @@ class Process(object):
             signum = abs(self.process.returncode)
             msg = "Process exited with code {0} ({1})".format(
                 signum, get_signal(signum))
-            raise EuslispError(msg, fatal=True)
+            raise EuslispFatalError(msg)
 
     def input(self, cmd):
         cmd = cmd.strip().encode('utf-8')
@@ -145,12 +145,19 @@ class Process(object):
 
 
 class EuslispError(Exception):
-    def __init__(self, message, stack=None, fatal=False):
+    def __init__(self, message, stack=None):
         self.stack = stack
-        self.fatal = fatal
         # capitalize() converts the rest of the string to downcase
         message = message[0].upper() + message[1:]
         super(EuslispError, self).__init__(message)
+
+class EuslispInternalError(EuslispError):
+    # Only CONTINUE option
+    pass
+
+class EuslispFatalError(EuslispError):
+    # Only RESTART option
+    pass
 
 
 class EuslispResult(object):
@@ -204,7 +211,7 @@ class EuslispProcess(Process):
     def recv_socket_length(self, connection, hex_len):
         if hex_len == str():
             # recv() returns null string on EOF
-            raise EuslispError('Socket connection closed', fatal=True)
+            raise EuslispFatalError('Socket connection closed')
         length = int(hex_len, 16)
         while length > 0:
             msg = connection.recv(length)
@@ -248,7 +255,10 @@ class EuslispProcess(Process):
                 return
             msg = loads(data)
             stack = self.get_callstack()
-            raise EuslispError(msg, stack)
+            if connection == self.euslime_internal_connection:
+                raise EuslispInternalError(msg, stack)
+            else:
+                raise EuslispError(msg, stack)
         if command == 'abort':
             msg = loads(data)
             if msg:

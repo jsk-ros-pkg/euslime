@@ -99,17 +99,23 @@
          (*reptype* "B"))
     (catch *replevel* (reploop #'toplevel-prompt))))
 
-(defun slime-error (code msg1 form &optional (msg2))
+(defun format-error-message (msg1 form &optional msg2)
   (if (and msg2 (zerop (length msg1))) (setq msg1 msg2 msg2 nil))
-  (socket-request *slime-stream* "error"
-   (with-output-to-string (s)
-     (format s "~a" msg1)
-     (if msg2 (format s " ~a" msg2))
-     (if form (format s " in ~s" form))))
+  (with-output-to-string (s)
+    (format s "~a" msg1)
+    (if msg2 (format s " ~a" msg2))
+    (if form (format s " in ~s" form))))
+
+(defun slime-error (code msg1 form &optional (msg2))
+  (socket-request *slime-stream* "error" (format-error-message msg1 form msg2))
   (let ((*replevel* (1+ *replevel*))
         (*reptype* "E"))
     (while (catch *replevel* (reploop #'toplevel-prompt))))
   (throw *replevel* t))
+
+(defun slime-internal-error (code msg1 form &optional (msg2))
+  (socket-request *slime-internal-stream* "error" (format-error-message msg1 form msg2))
+  (throw 0 nil))
 
 (defun slime-finish-output (strm)
   (when (derivedp *slime-stream* socket-stream)
@@ -123,7 +129,11 @@
   (lisp::install-error-handler 'slime::slime-error)
   (setq lisp::*max-callstack-depth* 0)
   (sys::make-thread 1)
-  (sys::thread 'eval `(while t (slime::socket-eval slime::*slime-internal-stream*)))
+  (sys::thread 'eval
+    `(progn
+       (lisp::install-error-handler 'slime::slime-internal-error)
+       (while t
+         (catch 0 (slime::socket-eval slime::*slime-internal-stream*)))))
   (catch :eusexit
     (let* ((*standard-input* (setq slime::*slime-input-stream*
                                    (instance slime::slime-input-stream :init)))

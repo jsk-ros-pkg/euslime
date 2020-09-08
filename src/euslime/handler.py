@@ -8,7 +8,7 @@ import traceback
 from sexpdata import dumps, loads, Symbol, Quoted
 
 from euslime.bridge import AbortEvaluation
-from euslime.bridge import EuslispError
+from euslime.bridge import EuslispError, EuslispInternalError, EuslispFatalError
 from euslime.bridge import EuslispProcess
 from euslime.bridge import EuslispResult
 from euslime.bridge import no_color
@@ -58,8 +58,10 @@ class DebuggerHandler(object):
 
     def __init__(self, id, error):
         self.id = id
-        if isinstance(error, EuslispError) and error.fatal:
+        if isinstance(error, EuslispFatalError):
             self.restarts = self.restarts[2:]  # No QUIT & CONTINUE
+        elif isinstance(error, EuslispInternalError):
+            self.restarts = self.restarts[1:2]  # No QUIT & RESTART
         else:
             self.restarts = self.restarts
         self.restarts_dict = {}
