@@ -1,5 +1,6 @@
-from sexpdata import dumps, loads, Symbol
+import threading
 import traceback
+from sexpdata import dumps, loads, Symbol
 
 from euslime.bridge import EuslispResult
 from euslime.handler import DebuggerHandler
@@ -11,6 +12,7 @@ log = get_logger(__name__)
 class Protocol(object):
     def __init__(self, handler, *args, **kwargs):
         self.handler = handler(*args, **kwargs)
+        self.thread_local = threading.local()
 
     def dumps(self, sexp):
         def with_header(sexp):
@@ -29,7 +31,7 @@ class Protocol(object):
             return with_header(sexp)
 
     def make_error(self, err):
-        debug = DebuggerHandler(self.handler.thread_local.comm_id, err)
+        debug = DebuggerHandler(self.thread_local.comm_id, err)
         self.handler.debugger.append(debug)
 
         res = [
@@ -45,7 +47,7 @@ class Protocol(object):
 
     def make_response(self, result_type, sexp):
         try:
-            res = [Symbol(':return'), {result_type: sexp}, self.handler.thread_local.comm_id]
+            res = [Symbol(':return'), {result_type: sexp}, self.thread_local.comm_id]
             yield self.dumps(res)
         except Exception as e:
             for r in self.make_error(e):
@@ -70,7 +72,7 @@ class Protocol(object):
         func = form[0].value().replace(':', '_').replace('-', '_')
         args = form[1:]
         if comm_id:
-            self.handler.thread_local.comm_id = comm_id
+            self.thread_local.comm_id = comm_id
             log.debug("Processing id: %s ..." % comm_id)
 
         log.info("func: %s" % func)

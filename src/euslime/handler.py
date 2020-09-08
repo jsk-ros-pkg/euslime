@@ -3,9 +3,9 @@ from __future__ import print_function
 import os
 import platform
 import signal
-import threading
 import traceback
 from sexpdata import dumps, loads, Symbol, Quoted
+from threading import Event
 
 from euslime.bridge import AbortEvaluation
 from euslime.bridge import EuslispError, EuslispInternalError, EuslispFatalError
@@ -81,8 +81,7 @@ class DebuggerHandler(object):
 class EuslimeHandler(object):
     def __init__(self, *args, **kwargs):
         self.euslisp = EuslispProcess(*args, **kwargs)
-        self.close_request = threading.Event()
-        self.thread_local = threading.local()
+        self.close_request = Event()
         self.euslisp.start()
         self.package = None
         self.debugger = []
@@ -329,7 +328,7 @@ class EuslimeHandler(object):
         msg = deb.message.split(self.euslisp.delim)[0]
         msg = repr(msg.rsplit(' in ', 1)[0])
         yield [Symbol(':debug-return'), 0, level, Symbol('nil')]
-        yield [Symbol(':return'), {'abort': 'NIL'}, self.thread_local.comm_id]
+        yield EuslispResult(None, response_type='abort')
         for val in self.maybe_new_prompt():
             yield val
         yield [Symbol(':return'), {'abort': msg}, deb.id]

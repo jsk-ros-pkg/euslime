@@ -523,7 +523,7 @@ class eus(EuslimeTestCase):
         self.assertSocket(
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 8)',
             '(:debug-return 0 1 nil)',
-            '(:return (:abort "NIL") 8)',
+            '(:return (:abort nil) 8)',
             '(:return (:abort "\'Integer expected\'") 7)')
 
     def test_sldb_2(self):
@@ -533,7 +533,7 @@ class eus(EuslimeTestCase):
         self.assertSocket(
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 1) "USER" 0 18)',
             '(:debug-return 0 1 nil)',
-            '(:return (:abort "NIL") 18)',
+            '(:return (:abort nil) 18)',
             '(:new-package "USER" "E1-{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:abort "\'Test\'") 17)')
         self.assertSocket(
@@ -546,7 +546,7 @@ class eus(EuslimeTestCase):
         self.assertSocket(
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 26)',
             '(:debug-return 0 1 nil)',
-            '(:return (:abort "NIL") 26)',
+            '(:return (:abort nil) 26)',
             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:abort "\'Test\'") 25)')
         self.assertSocket(
@@ -565,7 +565,7 @@ class eus(EuslimeTestCase):
         self.assertSocket(
             '(:emacs-rex (swank:throw-to-toplevel) "USER" 0 32)',
             '(:debug-return 0 1 nil)',
-            '(:return (:abort "NIL") 32)',
+            '(:return (:abort nil) 32)',
             '(:return (:abort "\'Integer expected\'") 31)')
 
     def test_sldb_4(self):
@@ -575,7 +575,7 @@ class eus(EuslimeTestCase):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "\n") "USER" :repl-thread 34)',
             '(:debug-return 0 1 nil)',
-            '(:return (:abort "NIL") 34)',
+            '(:return (:abort nil) 34)',
             '(:return (:abort "\'Integer expected\'") 33)')
 
     def test_sldb_5(self):
@@ -585,7 +585,7 @@ class eus(EuslimeTestCase):
         self.assertSocket(
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 1) "USER" 0 19)',
             '(:debug-return 0 1 nil)',
-            '(:return (:abort "NIL") 19)',
+            '(:return (:abort nil) 19)',
             '(:new-package "USER" "E1-{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:abort "\'Integer expected\'") 18)')
         self.assertSocketIgnoreAddress(
@@ -597,7 +597,7 @@ class eus(EuslimeTestCase):
         self.assertSocket(
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 22)',
             '(:debug-return 0 1 nil)',
-            '(:return (:abort "NIL") 22)',
+            '(:return (:abort nil) 22)',
             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:abort "\'Integer expected\'") 20)')
 
@@ -608,7 +608,7 @@ class eus(EuslimeTestCase):
         self.assertSocket(
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 26)',
             '(:debug-return 0 1 nil)',
-            '(:return (:abort "NIL") 26)',
+            '(:return (:abort nil) 26)',
             '(:return (:abort "\'Integer expected\'") 25)')
 
     def test_sldb_7(self):
@@ -618,7 +618,7 @@ class eus(EuslimeTestCase):
         self.assertSocket(
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 1) "USER" 0 6)',
             '(:debug-return 0 1 nil)',
-            '(:return (:abort "NIL") 6)',
+            '(:return (:abort nil) 6)',
             '(:new-package "USER" "E1-{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:abort "\'THIS\'") 5)')
         self.assertSocket(
@@ -637,7 +637,7 @@ class eus(EuslimeTestCase):
         self.assertSocket(
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 1) "USER" 0 8)',
             '(:debug-return 0 1 nil)',
-            '(:return (:abort "NIL") 8)',
+            '(:return (:abort nil) 8)',
             '(:new-package "USER" "E1-{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:abort "\'Integer expected\'") 7)')
         self.assertSocket(
@@ -809,7 +809,7 @@ class eus(EuslimeTestCase):
         self.assertSocket(
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 7)',
             '(:debug-return 0 1 nil)',
-            '(:return (:abort "NIL") 7)',
+            '(:return (:abort nil) 7)',
             '(:return (:abort "\'File #P\\\"{0}\\\" not found\'") 6)'.format(file))
 
     # MACRO EXPAND
