@@ -331,6 +331,12 @@ class EuslimeHandler(object):
             yield val
         yield [Symbol(':return'), {'abort': msg}, deb.id]
 
+    def swank_sldb_return_from_frame(self, num, value):
+        return
+
+    def swank_restart_frame(self, num):
+        return
+
     def swank_swank_require(self, *sexp):
         return
 
