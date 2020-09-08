@@ -93,6 +93,7 @@ class EuslimeHandler(object):
         self.euslisp.stop()
         self.euslisp = EuslispProcess(program, init_file, on_output=on_output, color=color)
         self.euslisp.start()
+        self.euslisp.reset()  # get rid of the first abort request on the reploop
         self.euslisp.accumulate_output.clear()
 
     def maybe_new_prompt(self):
