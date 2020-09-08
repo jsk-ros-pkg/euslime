@@ -55,7 +55,8 @@
           (recenter-top-bottom)))
     (recenter-top-bottom)))
 
-;; Ovewrite to always dispatch and insert new prompt when needed
+;; INTERRUPT
+;; Override to always dispatch and insert new prompt when needed
 (defun slime-interrupt ()
   "Interrupt Lisp."
   (interactive)
@@ -63,7 +64,8 @@
   (sleep-for 0.1)
   (slime-repl-set-package ""))
 
-;; Ovewrite to inherit the buffer-local `slime-repl-shortcut-table'
+;; SHORTCUT COMMANDS
+;; Overrite to inherit the buffer-local `slime-repl-shortcut-table'
 (defun slime-list-repl-short-cuts ()
   (interactive)
   (let ((mode (if slime-euslisp-mode 'slime-euslisp-mode)))
@@ -96,24 +98,6 @@
               (slime-repl-send-input t)))
   (:one-liner "Define a new global, special, variable."))
 
-;; Override to abort operation instead of reinitializing (only have hard restarts)
-(defun slime-maybe-start-lisp (program program-args env directory buffer)
-  "Return a new or existing inferior lisp process."
-  (cond ((not (comint-check-proc buffer))
-         (slime-start-lisp program program-args env directory buffer))
-        ((slime-reinitialize-inferior-lisp-p program program-args env buffer)
-         (when (and (car program-args) (string= (car program-args) "euslime"))
-           (pop-to-buffer (slime-output-buffer))
-           (keyboard-quit))
-         (let ((conn (cl-find (get-buffer-process buffer)
-                              slime-net-processes
-                              :key #'slime-inferior-process)))
-           (when conn
-             (slime-net-close conn)))
-         (get-buffer-process buffer))
-        (t (slime-start-lisp program program-args env directory
-                             (generate-new-buffer-name buffer)))))
-
 ;; Override to avoid trailing newlines upon consecutive execution
 ;; The same could be attained by setting `slime-repl-history-trim-whitespaces',
 ;; but this causes color change in the prompt-string in Euslisp mode
@@ -123,46 +107,6 @@
               (insert (car slime-repl-input-history))
               (slime-repl-send-input t)))
   (:one-liner "Resend the last form."))
-
-;; Override to avoid printing the warning message
-(defun slime-repl-abort-read (thread tag)
-  (with-current-buffer (slime-output-buffer)
-    (pop slime-read-string-threads)
-    (pop slime-read-string-tags)
-    (slime-repl-read-mode -1)
-    (unless slime-euslisp-mode
-      (message "Read aborted"))))
-
-;; Support ansi-colors in popup buffers
-(add-hook 'slime-popup-buffer-mode-hook
-          (lambda () (ansi-color-apply-on-region (point-min) (point-max))))
-
-;; Wrap lines on slime debugger
-(add-hook 'sldb-mode-hook
-          (lambda () (visual-line-mode nil)))
-
-;; Use find-tag when `tags-table-list' is set
-(add-hook 'slime-edit-definition-hooks
-          (lambda (name where) (if (or tags-file-name tags-table-list) (find-tag name where))))
-
-;; Set custom recenter function
-(add-hook 'slime-repl-mode-hook
-          (lambda ()
-            (when slime-use-slime-clear-screen
-              (define-key slime-repl-mode-map "\C-l" 'slime-clear-screen)
-
-              ;; Override to avoid recentering when the output doesn't reach end of buffer
-              (defun slime-repl-show-maximum-output ()
-                "Put the end of the buffer at the bottom of the window when necessary."
-                (when (eobp)
-                  (let ((win (if (eq (window-buffer) (current-buffer))
-                                 (selected-window)
-                               (get-buffer-window (current-buffer) t))))
-                    (when win
-                      (with-selected-window win
-                        (set-window-point win (point-max))
-                        ;; (recenter -1)
-                        ))))))))
 
 ;; COMPLETION FUNCTIONS
 ;; Override to allow `package://' completion and avoid full paths
@@ -194,7 +138,39 @@
   (let ((buf (other-buffer (current-buffer) t)))
     (if (local-variable-if-set-p 'slime-complete-symbol-function buf)
         (setq-local slime-complete-symbol-function
-          (buffer-local-value 'slime-complete-symbol-function buf)))))
+                    (buffer-local-value 'slime-complete-symbol-function buf)))))
+
+;; HOOKS
+;; Support ansi-colors in popup buffers
+(add-hook 'slime-popup-buffer-mode-hook
+          (lambda () (ansi-color-apply-on-region (point-min) (point-max))))
+
+;; Wrap lines on slime debugger
+(add-hook 'sldb-mode-hook
+          (lambda () (visual-line-mode nil)))
+
+;; Use find-tag when `tags-table-list' is set
+(add-hook 'slime-edit-definition-hooks
+          (lambda (name where) (if (or tags-file-name tags-table-list) (find-tag name where))))
+
+;; Set custom recenter function
+(add-hook 'slime-repl-mode-hook
+          (lambda ()
+            (when slime-use-slime-clear-screen
+              (define-key slime-repl-mode-map "\C-l" 'slime-clear-screen)
+
+              ;; Override to avoid recentering when the output doesn't reach end of buffer
+              (defun slime-repl-show-maximum-output ()
+                "Put the end of the buffer at the bottom of the window when necessary."
+                (when (eobp)
+                  (let ((win (if (eq (window-buffer) (current-buffer))
+                                 (selected-window)
+                               (get-buffer-window (current-buffer) t))))
+                    (when win
+                      (with-selected-window win
+                        (set-window-point win (point-max))
+                        ;; (recenter -1)
+                        ))))))))
 
 ;; DEFINE MINOR MODE
 (defun slime-euslisp--doc-map-prefix ()

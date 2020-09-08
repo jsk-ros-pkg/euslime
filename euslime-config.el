@@ -155,6 +155,24 @@
                tag-file)))
     (cl-pushnew tag-file tags-table-list)))
 
+;; Override to abort operation instead of reinitializing (only have hard restarts)
+(defun slime-maybe-start-lisp (program program-args env directory buffer)
+  "Return a new or existing inferior lisp process."
+  (cond ((not (comint-check-proc buffer))
+         (slime-start-lisp program program-args env directory buffer))
+        ((slime-reinitialize-inferior-lisp-p program program-args env buffer)
+         (when (and (car program-args) (string= (car program-args) "euslime"))
+           (pop-to-buffer (slime-output-buffer))
+           (keyboard-quit))
+         (let ((conn (cl-find (get-buffer-process buffer)
+                              slime-net-processes
+                              :key #'slime-inferior-process)))
+           (when conn
+             (slime-net-close conn)))
+         (get-buffer-process buffer))
+        (t (slime-start-lisp program program-args env directory
+                             (generate-new-buffer-name buffer)))))
+
 (defun euslime-init (file _)
   (setq slime-protocol-version 'ignore)
   (format "--euslisp-program %s --init-file %s --port %s --port-filename %s %s\n"
