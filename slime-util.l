@@ -210,7 +210,10 @@
       (slime-do-symbols (sym pack)
                         (let ((sym-str (maybe-downcase (send sym :pname))))
                           (when (string-equal str sym-str :start1 0 :end1 len :start2 0 :end2 len)
-                            (push (concatenate string prefix start (subseq sym-str len)) str-lst))))
+                            (if (and pack (not (find-external-symbol sym pack)))
+                                (push (concatenate string prefix (subseq start 0 (length pack)) "::" sym-str) str-lst)
+                                (push (concatenate string prefix start (subseq sym-str len)) str-lst)
+))))
       (append-common (sort str-lst #'string<) len))))
 
 

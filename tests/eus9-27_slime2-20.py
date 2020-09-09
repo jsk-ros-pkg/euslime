@@ -500,6 +500,16 @@ class eus(EuslimeTestCase):
             '(:emacs-rex (swank:completions-for-character "") "USER" :repl-thread 20)',
             '(:return (:ok (("Space" "Newline" "Linefeed" "Backspace" "Delete" "Rubout" "Return" "Page" "Formfeed" "Esc" "Escape" "Tab" "Left-Paren" "Right-Paren" "Lparen" "Rparen" "Bell" "Null" "SOH" "STX" "ETX") "")) 20)')
 
+    def test_completions_15(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:completions "LISP::*stan" \'"USER") "USER" :repl-thread 6)',
+            '(:return (:ok (("LISP::*standard-input*" "LISP::*standard-output*") "LISP::*standard-")) 6)')
+
+    def test_completions_16(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:completions "unix:sigin" \'"USER") "USER" :repl-thread 5)',
+            '(:return (:ok (("unix::sigint") "unix::sigint")) 5)')
+
     # OUTPUT
     def test_output_1(self):
         self.assertSocketWriteString(
