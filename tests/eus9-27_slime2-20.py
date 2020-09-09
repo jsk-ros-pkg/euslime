@@ -102,6 +102,23 @@ class eus(EuslimeTestCase):
             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:ok nil) 8)')
 
+    def test_eval_12(self):
+        self.assertSocketIgnoreAddress(
+            '(:emacs-rex (swank-repl:listener-eval "(lisp:none 10)\n") "USER" :repl-thread 12)',
+            '(:write-string "LISP:NONE ")',
+            '(:debug 0 1 ("No such external symbol LISP:NONE in (slime:slimetop)" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(slime:slimetop)" (:restartable nil)) (1 "(slime:slimetop)" (:restartable nil)) (2 "#<compiled-code #X6147290>" (:restartable nil))) (nil))')
+        self.assertSocket(
+            '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 13)',
+            '(:debug-return 0 1 nil)',
+            '(:return (:abort nil) 13)',
+            '(:return (:abort "\'No such external symbol LISP:NONE\'") 12)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "\n") "USER" :repl-thread 14)',
+            '(:write-string "10" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:write-string "nil" :repl-result)',
+            '(:return (:ok nil) 14)')
+
     # READ
     def test_read_1(self):
         # Both with and without slime-input-stream the behavior of toplevel read is ustable
