@@ -28,7 +28,9 @@ REGEX_ANSI = re.compile(r'\x1b[^m]*m')
 
 
 def get_signal(signum):
-    return [v for v, k in signal.__dict__.iteritems() if k == signum][0]
+    match = [v for v, k in signal.__dict__.iteritems() if k == signum]
+    if match:
+        return match[0]
 
 
 def no_color(msg):
@@ -132,8 +134,10 @@ class Process(object):
     def check_poll(self):
         if self.process.poll() is not None:
             signum = abs(self.process.returncode)
-            msg = "Process exited with code {0} ({1})".format(
-                signum, get_signal(signum))
+            signame = get_signal(signum)
+            msg = "Process exited with code {}".format(signum)
+            if signame:
+                msg += " ({})".format(signame)
             raise EuslispFatalError(msg)
 
     def input(self, cmd):

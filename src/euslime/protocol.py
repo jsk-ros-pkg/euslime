@@ -40,7 +40,7 @@ class Protocol(object):
             len(self.handler.debugger),  # the depth of the condition
             [debug.message, str(), None],  # s-exp with a description
             debug.restarts,  # list of available restarts
-            debug.stack[:10],  # stacktrace
+            debug.stack and debug.stack[:10],  # stacktrace
             [None],  # pending continuation
         ]
         yield self.dumps(res)

@@ -739,6 +739,28 @@ class eus(EuslimeTestCase):
             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:abort "\'Array index out of range\'") 27)')
 
+    def test_sldb_13(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(quit)\n") "USER" :repl-thread 5)',
+            '(:debug 0 1 ("Process exited with code 0 (SIG_DFL)" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))')
+        self.assertSocket(
+            '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 6)',
+            '(:debug-return 0 1 nil)',
+            '(:return (:abort nil) 6)',
+            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+            '(:return (:abort "\'Process exited with code 0 (SIG_DFL)\'") 5)')
+
+    def test_sldb_14(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(exit -1)\n") "USER" :repl-thread 10)',
+            '(:debug 0 1 ("Process exited with code 255" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))')
+        self.assertSocket(
+            '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 11)',
+            '(:debug-return 0 1 nil)',
+            '(:return (:abort nil) 11)',
+            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+            '(:return (:abort "\'Process exited with code 255\'") 10)')
+
     # EMACS INTERRUPT
     def test_emacs_interrupt_1(self):
         self.assertAsyncRequest(
