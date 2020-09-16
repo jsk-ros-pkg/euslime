@@ -95,7 +95,7 @@ class EuslimeHandler(object):
         self.euslisp = EuslispProcess(program, init_file, on_output=on_output, color=color)
         self.euslisp.start()
         self.euslisp.reset()  # get rid of the first abort request on the reploop
-        self.euslisp.accumulate_output.clear()
+        self.euslisp.accumulate_output = False
 
     def maybe_new_prompt(self):
         new_prompt = self.euslisp.exec_internal('(slime::slime-prompt)', force_repl_socket=True)
@@ -155,7 +155,7 @@ class EuslimeHandler(object):
 
     def swank_create_repl(self, sexp):
         res = self.euslisp.exec_internal('(slime::slime-prompt)')
-        self.euslisp.accumulate_output.clear()
+        self.euslisp.accumulate_output = False
         yield EuslispResult(res)
 
     def swank_repl_create_repl(self, *sexp):

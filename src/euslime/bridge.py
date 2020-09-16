@@ -57,7 +57,7 @@ class Process(object):
         self.bufsize = bufsize or BUFSIZE
         self.delim = delim or DELIM
         self.output = Queue()
-        self.accumulate_output = Event()
+        self.accumulate_output = False
         self.finished_output = Event()
         self.process = None
         self.threads = None
@@ -68,7 +68,7 @@ class Process(object):
         # as explained in section 8 of http://wiki.ros.org/rosconsole
         slime_env['ROSCONSOLE_STDOUT_LINE_BUFFERED'] = '1'
 
-        self.accumulate_output.set()  # ignore init messages
+        self.accumulate_output = True  # ignore init messages
         log.debug("Starting process with command %s" % self.cmd)
         self.process = subprocess.Popen(
             self.cmd,
@@ -114,7 +114,7 @@ class Process(object):
                 if len(has_token) >= 3:
                     log.error('More than one token detected on output!')
                 for out in [x for x in has_token if x]:
-                    if self.accumulate_output.is_set():
+                    if self.accumulate_output:
                         self.output.put(out)
                     else:
                         callback(out)
@@ -295,13 +295,13 @@ class EuslispProcess(Process):
 
     def get_callstack(self, end=10):
         self.output = Queue()
-        self.accumulate_output.set()
+        self.accumulate_output = True
         self.clear_socket_stack(self.euslime_connection)
         cmd_str = '(slime:print-callstack {})'.format(end + 4)
         self.euslime_connection.send(cmd_str + self.delim)
         self.get_socket_response(self.euslime_connection, recursive=True)
         stack = list(self.output.queue)
-        self.accumulate_output.clear()
+        self.accumulate_output = False
         stack = gen_to_string(stack)
         stack = [x.strip() for x in stack.split(self.delim)]
         # Remove 'Call Stack' and dummy error messages
