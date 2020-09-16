@@ -342,6 +342,9 @@ class EuslimeHandler(object):
     def swank_swank_require(self, *sexp):
         return
 
+    def swank_swank_add_load_paths(self, *sexp):
+        return
+
     def swank_init_presentations(self, *sexp):
         return
 
