@@ -285,11 +285,6 @@ class EuslispProcess(Process):
                     yield val
                 return
 
-    def try_get_socket_result(self, connection):
-        command, data = self.recv_socket_data(connection, wait=False)
-        if command == 'result':
-            return gen_to_string(data)
-
     def clear_socket_stack(self, connection):
         while True:
             command, data = self.recv_socket_data(connection, wait=False)
@@ -370,11 +365,3 @@ class EuslispProcess(Process):
         # e.g. #.(swank:lookup-presented-object-or-lose 0.)
         for r in self.get_socket_result(connection, wait=True):
             yield r
-        # Pendant output is sometimes post processed, leading to
-        # virtually having more than one result per evaluation
-        # e.g. (lisp:none 10) [RET] [RET]
-        second_result = self.try_get_socket_result(connection)
-        if second_result:
-            log.warn("Received second result: %s", second_result)
-            yield [Symbol(":write-string"), "\n", Symbol(":repl-result")]
-            yield second_result
