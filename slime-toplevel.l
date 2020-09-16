@@ -124,6 +124,12 @@
              (send (lisp::socket-stream-address *slime-stream*) :port))
      (finish-output strm))))
 
+(defun slime-clear-stream (strm)
+  (let ((in (send strm :instream)))
+    (send in :set-val "COUNT" 0)
+    (send in :set-val "TAIL" 0))
+  t)
+
 (defun slimetop ()
   (clean-eustop)
   (lisp::install-error-handler 'slime::slime-error)
@@ -177,11 +183,13 @@
                      (make-string-output-stream)))
          (result (rep1 repstream eof local-bindings ttyp)))
     (if (eql result eof) (throw :reploop-select nil))
+    (slime::slime-clear-stream repstream)
     (slime::slime-finish-output out)
     (slime::socket-request slime::*slime-stream* "result" result)))
 
 (defun reploop (prompt &optional (repstream slime::*old-terminal-io*) (ttyp nil))
   (let ((*prompt* prompt))
+    (slime::slime-clear-stream repstream)
     (slime::slime-finish-output repstream)
     (slime::socket-request slime::*slime-stream* "abort" nil)
     (send *top-selector* :add-port slime::*slime-stream* #'slime::socket-eval slime::*slime-stream*)
