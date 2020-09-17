@@ -200,10 +200,14 @@ class EuslimeHandler(object):
                 yield EuslispResult(e.message, response_type='abort')
             else:
                 yield EuslispResult(None)
-        except Exception:
+        except Exception as e:
+            log.error(traceback.format_exc())
+            if self.euslisp.read_mode:
+                self.euslisp.read_mode = False
+                yield [Symbol(":read-aborted"), 0, 1]
             if lock.locked():
                 lock.release()
-            raise
+            raise e
 
     def swank_interactive_eval(self, sexp):
         return self.swank_eval(sexp)

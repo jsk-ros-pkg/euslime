@@ -43,12 +43,12 @@ class Protocol(object):
             debug.stack and debug.stack[:10],  # stacktrace
             [None],  # pending continuation
         ]
-        yield self.dumps(res)
+        yield res
 
     def make_response(self, result_type, sexp):
         try:
             res = [Symbol(':return'), {result_type: sexp}, self.thread_local.comm_id]
-            yield self.dumps(res)
+            yield res
         except Exception as e:
             for r in self.make_error(e):
                 yield r
@@ -64,7 +64,7 @@ class Protocol(object):
             cmd, comm_id, form = data
             for r in self.process(dumps(form)):
                 yield r
-            yield self.dumps([Symbol(":euslime-test"), comm_id])
+            yield [Symbol(":euslime-test"), comm_id]
             return
         else:
             form = data
@@ -91,7 +91,7 @@ class Protocol(object):
                                                 resp.value):
                         yield r
                 else:
-                    yield self.dumps(resp)
+                    yield resp
         except Exception as e:
             log.error(traceback.format_exc())
             for r in self.make_error(e):

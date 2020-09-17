@@ -18,6 +18,9 @@ ENCODINGS = {
     'iso-utf-8-unix': 'utf-8'
 }
 HEADER_LENGTH = 6
+ERROR_STRING = """;; You are still in a signal handler.
+;;Try reset or throw to upper level as soon as possible.
+"""
 
 log = get_logger(__name__)
 
@@ -32,17 +35,26 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
             request, client_address, server)
 
     def _process_data(self, recv_data):
-        for send_data in self.swank.process(recv_data):
-            log.debug('response: %s', send_data)
-            send_data = send_data.encode(self.encoding)
-            self.request.send(send_data)
+        for data in self.swank.process(recv_data):
+            log.debug('response: %s', data)
+            self.send_data(data)
 
     def _process_output(self, out=None):
         if not out:
             return
         log.debug('output: %s', out)
-        response = [Symbol(":write-string"), out]
-        send_data = self.swank.dumps(response)
+        self.send_data([Symbol(":write-string"), out])
+        if ERROR_STRING in out:
+            # TODO: find a better way to detect error signals
+            # Even if the user issues a command with same output,
+            # read-mode will be desativated when the evaluation ends
+            log.error("Error signal received!")
+            log.debug("Entering read mode...")
+            self.swank.handler.euslisp.read_mode = True
+            self.send_data([Symbol(":read-string"), 0, 1])
+
+    def send_data(self, data):
+        send_data = self.swank.dumps(data)
         send_data = send_data.encode(self.encoding)
         self.request.send(send_data)
 
