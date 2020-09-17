@@ -151,7 +151,10 @@
 
 ;; Use find-tag when `tags-table-list' is set
 (add-hook 'slime-edit-definition-hooks
-          (lambda (name where) (if (or tags-file-name tags-table-list) (find-tag name where))))
+          (lambda (name where)
+            ;; TODO change based on euslime/slime rather than tags-table-list?
+            (when (or tags-file-name tags-table-list)
+              (slime-edit-definition-cont (euslime-find-definitions name) name where))))
 
 ;; Set custom recenter function
 (add-hook 'slime-repl-mode-hook
