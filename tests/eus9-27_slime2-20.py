@@ -225,18 +225,19 @@ class eus(EuslimeTestCase):
              '(:emacs-rex (swank:compile-string-for-emacs "(print \\\"hello\\\")" "test.l" \'((:position 1) (:line 1 1)) "/tmp/test.l" \'nil) "USER" t 15)'],
             ['(:write-string "t" :repl-result)',
              '(:return (:ok nil) 14)',
-             '(:write-string "\"hello\"\n")',
-             '(:write-string "; Loaded (print \"hello\")\n")',
-             '(:return (:ok (:compilation-result nil t 0.01 nil nil)) 15)'])
+             '(:write-string "\\"hello\\"\\n")',
+             '(:write-string "; Loaded (print \\"hello\\")\\n")',
+             '(:return (:ok (:compilation-result () t 0.01 nil nil)) 15)'])
 
     def test_async_3(self):
         self.assertAsyncRequest(
             ['(:emacs-rex (swank-repl:listener-eval "(unix:usleep 200000)\\n") "USER" :repl-thread 8)',
-             '(:emacs-rex (swank:load-file "{}/test_async_4.l") "USER" :repl-thread 9)'.format(os.getcwd())],
+             '(:emacs-rex (swank:load-file "{}/test_async_3.l") "USER" :repl-thread 9)'.format(os.getcwd())],
             ['(:write-string "t" :repl-result)',
              '(:return (:ok nil) 8)',
-             '(:write-string "Loading file: {}/test_async_4.l ...\\n")'.format(os.getcwd()),
-             '(:write-string "start\\nend\\n")',
+             '(:write-string "Loading file: {}/test_async_3.l ...\\n")'.format(os.getcwd()),
+             '(:write-string "start\\n")',
+             '(:write-string "end\\n")',
              '(:write-string "Loaded.\\n")',
              '(:return (:ok t) 9)'])
 
@@ -257,7 +258,7 @@ class eus(EuslimeTestCase):
              '(:emacs-rex (swank-repl:clear-repl-variables) "USER" :repl-thread 6)'],
             ['(:write-string "t" :repl-result)',
              '(:return (:ok nil) 5)',
-             '(:return (:ok nil) 6)'])
+             '(:return (:ok ()) 6)'])
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(list * ** ***)\\n") "USER" :repl-thread 10)',
             '(:write-string "(nil nil nil)" :repl-result)',
@@ -270,11 +271,11 @@ class eus(EuslimeTestCase):
 '(:emacs-rex (swank-repl:listener-eval "\'that\n") "USER" :repl-thread 7)',
              '(:emacs-rex (swank-repl:listener-eval "1\n") "USER" :repl-thread 8)',
              '(:emacs-rex (swank-repl:listener-eval "(1+ 1)\n") "USER" :repl-thread 9)'],
-            ['(:write-string "0\n")',
-             '(:write-string "1\n")',
-             '(:write-string "2\n")',
-             '(:write-string "3\n")',
-             '(:write-string "4\n")',
+            ['(:write-string "0\\n")',
+             '(:write-string "1\\n")',
+             '(:write-string "2\\n")',
+             '(:write-string "3\\n")',
+             '(:write-string "4\\n")',
              '(:write-string "nil" :repl-result)',
              '(:return (:ok nil) 5)',
              '(:write-string "this" :repl-result)',

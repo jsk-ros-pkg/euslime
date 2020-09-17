@@ -163,7 +163,7 @@ class EuslimeTestCase(unittest.TestCase):
 
     def assertAsyncRequest(self, req_list, res_list, rate_send=0.05):
         handshake_list = []
-        result = []
+        response = []
         for req in req_list:
             self.validation_num += 1
             val_num = self.validation_num
@@ -173,9 +173,10 @@ class EuslimeTestCase(unittest.TestCase):
             time.sleep(rate_send)
         while handshake_list:
             res = self.socket_recv_one()
-            if res is None:
-                return tuple(result) or None
             if res in handshake_list:
                 handshake_list.remove(res)
                 continue
-            result.append(res)
+            response.append(res)
+        log.info('expected response: \n%s', pprint.pformat(res_list, width=5))
+        log.info('received response: \n%s', pprint.pformat(response, width=5))
+        self.assertEqual(res_list, response)
