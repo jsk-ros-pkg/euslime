@@ -57,6 +57,7 @@ class Process(object):
         self.bufsize = bufsize or BUFSIZE
         self.delim = delim or DELIM
         self.output = Queue()
+        self.read_mode = False
         self.accumulate_output = False
         self.finished_output = Event()
         self.process = None
@@ -253,6 +254,9 @@ class EuslispProcess(Process):
         # Process generator to avoid pendant messages
         data = gen_to_string(data)
         if command == 'read':
+            return [Symbol(":read-string"), 0, 1]
+        if command == 'read-mode':
+            self.read_mode = True
             return [Symbol(":read-string"), 0, 1]
         if command == 'error':
             if recursive:

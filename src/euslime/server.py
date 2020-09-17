@@ -75,7 +75,10 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
                 log.error('Socket Timeout')
                 break
             except socket.error:
-                time.sleep(0.01)
+                try:
+                    time.sleep(0.01)
+                except KeyboardInterrupt:
+                    log.info("server keyboard interrupt")
                 continue
             except Exception:
                 log.error(traceback.format_exc())

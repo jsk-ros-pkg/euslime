@@ -120,9 +120,14 @@ class EuslimeHandler(object):
         if len(msg) % 128 == 0:
             # communicate when the message ends exactly at buffer end
             self.euslisp.exec_internal('(send slime::*slime-input-stream* :set-flag)')
+        if self.euslisp.read_mode:
+            yield [Symbol(":read-string"), 0, 1]
 
     def _emacs_interrupt(self, process):
-        self.euslisp.process.send_signal(signal.SIGINT)
+        if self.euslisp.read_mode:
+            os.kill(- os.getpgid(self.euslisp.process.pid), 2)
+        else:
+            self.euslisp.process.send_signal(signal.SIGINT)
         if isinstance(process,int):
             yield [Symbol(":read-aborted"), process, 1]
 
@@ -175,12 +180,18 @@ class EuslimeHandler(object):
                     yield [Symbol(":write-string"), no_color(val), Symbol(":repl-result")]
                 else:
                     yield val
+            if self.euslisp.read_mode:
+                self.euslisp.read_mode = False
+                yield [Symbol(":read-aborted"), 0, 1]
             for val in self.maybe_new_prompt():
                 yield val
             yield EuslispResult(None)
             lock.release()
         except AbortEvaluation as e:
             log.info('Aborting evaluation...')
+            if self.euslisp.read_mode:
+                self.euslisp.read_mode = False
+                yield [Symbol(":read-aborted"), 0, 1]
             for val in self.maybe_new_prompt():
                 yield val
             if lock.locked():
