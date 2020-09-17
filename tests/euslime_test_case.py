@@ -13,6 +13,7 @@ from threading import Thread
 
 HEADER_LENGTH = 6
 REGEX_ADDR = re.compile(r' #X[0-9a-f]*')
+REGEX_C_ADDR = re.compile(r'-?[0-9a-f]{8,10}')
 
 log = get_logger(__name__)
 
@@ -101,13 +102,11 @@ class EuslimeTestCase(unittest.TestCase):
         while self.socket_recv_one(socket.MSG_DONTWAIT):
             pass
 
-    def assertSocket(self, req, *res):
-        response = self.socket_get_response(req)
-        log.info('expected response: \n%s', pprint.pformat(res, width=5))
-        log.info('received response: \n%s', pprint.pformat(response, width=5))
-        self.assertEqual(res, response)
+    def with_join_write_string(self, lst):
+        output = []
+        buffer = []
+        buffer_type = None
 
-    def assertSocketWriteString(self, req, *res):
         def join_write_string(first, *more):
             """Merge the string part of several :write-string lines into one statement"""
             if not more:
@@ -121,32 +120,39 @@ class EuslimeTestCase(unittest.TestCase):
             else:
                 return loaded_form[2]
 
-        def with_join_write_string(lst):
-            output = []
-            buffer = []
-            buffer_type = None
-            for a in lst:
-                is_write_string = a[1:14] == ':write-string'
-                if is_write_string:
-                    ld_a = loads(a)
-                    bt = get_buffer_type(ld_a)
-                    if buffer and not buffer_type == bt:
-                        out = dumps(join_write_string(*buffer))
-                        output.append(out)
-                        buffer = []
-                    buffer_type = bt
-                    buffer.append(ld_a)
-                else:
-                    if buffer:
-                        out = dumps(join_write_string(*buffer))
-                        output.append(out.encode('utf-8'))
-                        buffer = []
-                    output.append(a)
-            return output
+        def check_buffer():
+            if buffer:
+                out = dumps(join_write_string(*buffer))
+                output.append(out.encode('utf-8'))
+                return True
+            return False
 
+        for a in lst:
+            is_write_string = a[1:14] == ':write-string'
+            if is_write_string:
+                ld_a = loads(a)
+                bt = get_buffer_type(ld_a)
+                if not buffer_type == bt and check_buffer():
+                    buffer = []
+                buffer_type = bt
+                buffer.append(ld_a)
+            else:
+                if check_buffer():
+                    buffer = []
+                output.append(a)
+        check_buffer()
+        return output
+
+    def assertSocket(self, req, *res):
         response = self.socket_get_response(req)
-        res = with_join_write_string(res)
-        response = with_join_write_string(response)
+        log.info('expected response: \n%s', pprint.pformat(res, width=5))
+        log.info('received response: \n%s', pprint.pformat(response, width=5))
+        self.assertEqual(res, response)
+
+    def assertSocketWriteString(self, req, *res):
+        response = self.socket_get_response(req)
+        res = self.with_join_write_string(res)
+        response = self.with_join_write_string(response)
         log.info('expected response: \n%s', pprint.pformat(res, width=5))
         log.info('received response: \n%s', pprint.pformat(response, width=5))
         self.assertEqual(res, response)
@@ -161,7 +167,9 @@ class EuslimeTestCase(unittest.TestCase):
         log.info('received response: \n%s', pprint.pformat(response, width=5))
         self.assertEqual(res, response)
 
-    def assertAsyncRequest(self, req_list, res_list, rate_send=0.05):
+    def assertAsyncRequest(self, req_list, res_list, rate_send=0.05,
+                           ignore_address=False, ignore_c_address=False,
+                           unordered_output=False):
         handshake_list = []
         response = []
         for req in req_list:
@@ -177,6 +185,27 @@ class EuslimeTestCase(unittest.TestCase):
                 handshake_list.remove(res)
                 continue
             response.append(res)
+        if ignore_address:
+            res_list = [REGEX_ADDR.sub(str(), msg) for msg in res_list]
+            response = [REGEX_ADDR.sub(str(), msg) for msg in response]
+        if ignore_c_address:
+            res_list = [REGEX_C_ADDR.sub(str(), msg) for msg in res_list]
+            response = [REGEX_C_ADDR.sub(str(), msg) for msg in response]
+        if unordered_output:
+            def split_out(lst):
+                out = []
+                other = []
+                for l in lst:
+                    if l[1:14] == ':write-string':
+                        out.append(l)
+                    else:
+                        other.append(l)
+                return other, self.with_join_write_string(out)
+            res_list, res_out_list = split_out(res_list)
+            response, response_out = split_out(response)
+            log.info('expected output: \n%s', pprint.pformat(res_out_list, width=5))
+            log.info('received output: \n%s', pprint.pformat(response_out, width=5))
+            self.assertEqual(res_out_list, response_out)
         log.info('expected response: \n%s', pprint.pformat(res_list, width=5))
         log.info('received response: \n%s', pprint.pformat(response, width=5))
         self.assertEqual(res_list, response)

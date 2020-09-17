@@ -1,5 +1,6 @@
 from euslime_test_case import EuslimeTestCase
 import os
+import signal
 
 class eus(EuslimeTestCase):
     EUSLISP_PROGRAM = 'eus'
@@ -116,6 +117,19 @@ class eus(EuslimeTestCase):
             '(:emacs-rex (swank-repl:listener-eval "\n") "USER" :repl-thread 14)',
             '(:write-string "nil" :repl-result)',
             '(:return (:ok nil) 14)')
+
+    def test_eval_13(self):
+        self.assertAsyncRequest(
+            ['(:emacs-rex (swank-repl:listener-eval "eus\n") "USER" :repl-thread 5)',
+             '(:emacs-return-string 0 1 "(1+ 1)\n")',
+             '(:emacs-return-string 0 1 "(quit)\n")'],
+            ['(:read-string 0 1)',
+             '(:read-string 0 1)',
+             '(:write-string "2\\n")',
+             '(:read-string 0 1)',
+             '(:write-string "0" :repl-result)',
+             '(:read-aborted 0 1)',
+             '(:return (:ok nil) 5)'])
 
     # READ
     def test_read_1(self):
@@ -760,6 +774,102 @@ class eus(EuslimeTestCase):
             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:abort "\'Process exited with code 255\'") 10)')
 
+    # SEGMENTATION FAULT
+    def test_segfault_1(self):
+        self.assertAsyncRequest(
+            ['(:emacs-rex (swank-repl:listener-eval "(1+ (and))\n") "USER" :repl-thread 6)',
+             '(:emacs-return-string 0 1 "(1+ 1)\n")',
+             '(:emacs-return-string 0 1 "(reset)\n")'],
+            ['(:write-string ";; Segmentation Fault.\\n;; in ")',
+             '(:write-string "(1+ (and))\\n;; You are still in a signal handler.\\n;;Try reset or throw to upper level as soon as possible.\\n;; code=782681776 x=2ea6c580 addr=0\\n")',
+             '(:read-string 0 1)',
+             '(:read-string 0 1)',
+             '(:write-string "signal=11 to thread 0, \\n")',
+             '(:write-string "2\\n")',
+             '(:read-string 0 1)',
+             '(:read-aborted 0 1)',
+             '(:return (:ok nil) 6)'],
+            ignore_c_address=True,
+            unordered_output=True)
+
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(1+ (and))\n") "USER" :repl-thread 8)',
+            '(:debug 0 1 ("Process exited with code 11 (SIGSEGV)" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))')
+
+        self.assertSocket(
+            '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 9)',
+            '(:debug-return 0 1 nil)',
+            '(:return (:abort nil) 9)',
+            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+            '(:return (:abort "\'Process exited with code 11 (SIGSEGV)\'") 8)')
+
+    def test_segfault_2(self):
+        self.assertAsyncRequest(
+            ['(:emacs-rex (swank-repl:listener-eval "(1+ (and))\n") "USER" :repl-thread 6)',
+             '(:emacs-return-string 0 1 "(list 1 2 3)\n")',
+             '(:emacs-return-string 0 1 "reset\n")'],
+            ['(:write-string ";; Segmentation Fault.\\n;; in (1+ (and))\\n;; You are still in a signal handler.\\n;;Try reset or throw to upper level as soon as possible.\\n;; code=-107578960 x=f9967880 addr=0\\n")',
+             '(:read-string 0 1)',
+             '(:read-string 0 1)',
+             '(:write-string "signal=11 to thread 0, \\n(1 2 3)\\n")',
+             '(:read-string 0 1)',
+             '(:read-aborted 0 1)',
+             '(:debug 0 1 ("Unbound variable reset in (1+ (and))" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(1+ (and))" (:restartable nil)) (1 "(slime:slimetop)" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "#<compiled-code #X5df2290>" (:restartable nil))) (nil))'],
+            ignore_address=True,
+            ignore_c_address=True,
+            unordered_output=True)
+
+        self.assertSocket(
+            '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 7)',
+            '(:debug-return 0 1 nil)',
+            '(:return (:abort nil) 7)',
+            '(:return (:abort "\'Unbound variable reset\'") 6)')
+
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(1+ (and))\n") "USER" :repl-thread 8)',
+            '(:debug 0 1 ("Process exited with code 11 (SIGSEGV)" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))')
+
+        self.assertSocket(
+            '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 9)',
+            '(:debug-return 0 1 nil)',
+            '(:return (:abort nil) 9)',
+            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+            '(:return (:abort "\'Process exited with code 11 (SIGSEGV)\'") 8)')
+
+    def test_segfault_3(self):
+        fn = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        try:
+            self.assertAsyncRequest(
+                ['(:emacs-rex (swank-repl:listener-eval "(1+ (and))\n") "USER" :repl-thread 5)',
+                 '(:emacs-interrupt 0)'],
+                ['(:write-string ";; Segmentation Fault.\\n;; in ")',
+                 '(:write-string "(1+ (and))\\n;; You are still in a signal handler.\\n;;Try reset or throw to upper level as soon as possible.\\n;; code=1614907632 x=604187c0 addr=0\\n")',
+                 '(:read-string 0 1)',
+                 '(:read-aborted 0 1)',
+                 '(:read-aborted 0 1)',
+                 '(:new-package "USER" "B1-{}")'.format(self.EUSLISP_PROGRAM_NAME),
+                 '(:return (:abort "\'Keyboard Interrupt\'") 5)'],
+                ignore_c_address=True,
+                unordered_output=True)
+        finally:
+            signal.signal(signal.SIGINT, fn)
+
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "reset\n") "USER" :repl-thread 6)',
+            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+            '(:return (:ok nil) 6)')
+
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(1+ (and))\n") "USER" :repl-thread 8)',
+            '(:debug 0 1 ("Process exited with code 11 (SIGSEGV)" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))')
+
+        self.assertSocket(
+            '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 9)',
+            '(:debug-return 0 1 nil)',
+            '(:return (:abort nil) 9)',
+            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+            '(:return (:abort "\'Process exited with code 11 (SIGSEGV)\'") 8)')
+
     # EMACS INTERRUPT
     def test_emacs_interrupt_1(self):
         self.assertAsyncRequest(
@@ -845,6 +955,23 @@ class eus(EuslimeTestCase):
             '(:emacs-rex (swank-repl:listener-eval "(reset)\n") "USER" :repl-thread 38)',
             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:ok nil) 38)')
+
+    def test_emacs_interrupt_7(self):
+        fn = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        try:
+            self.assertAsyncRequest(
+                ['(:emacs-rex (swank-repl:listener-eval "eus\n") "USER" :repl-thread 8)',
+                 '(:emacs-return-string 0 1 "(list 1 2 3)\n")',
+                 '(:emacs-interrupt 0)'],
+                ['(:read-string 0 1)',
+                 '(:read-string 0 1)',
+                 '(:write-string "(1 2 3)\\n")',
+                 '(:read-aborted 0 1)',
+                 '(:write-string "2" :repl-result)',
+             '(:read-aborted 0 1)',
+                 '(:return (:ok nil) 8)'])
+        finally:
+            signal.signal(signal.SIGINT, fn)
 
     # SET PACKAGE
     def test_set_package_1(self):
