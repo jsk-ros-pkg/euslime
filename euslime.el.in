@@ -154,8 +154,10 @@
           (lambda (name where)
             ;; TODO change based on euslime/slime rather than tags-table-list?
             (when (or tags-file-name tags-table-list)
-              (let ((name (slime-eval `(swank:find-tag-name-for-emacs ,name))))
-                (slime-edit-definition-cont (euslime-find-definitions name) name where)))))
+              (let* ((name-lst
+                      (slime-eval `(swank:find-tag-name-for-emacs ,name ,(slime-lisp-package))))
+                     (name (car name-lst)))
+                (slime-edit-definition-cont (apply #'euslime-find-definitions name-lst) name where)))))
 
 ;; Set custom recenter function
 (add-hook 'slime-repl-mode-hook

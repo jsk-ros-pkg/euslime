@@ -155,7 +155,8 @@
                tag-file)))
     (cl-pushnew tag-file tags-table-list)))
 
-(defun euslime-find-definitions (name)
+(defun euslime-find-definitions (name &rest other-names)
+  ;; e.g. (euslime-find-definitions "simple-action-server" "ros::simple-action-server")
   (let ((first-table t)
         result)
     (flet ((etag>xref (file tag-info)
@@ -169,7 +170,8 @@
         (if first-table (setq first-table nil))
         (goto-char (point-min))
         (while (search-forward name nil t)
-          (when (tag-implicit-name-match-p name)
+          (when (or (tag-implicit-name-match-p name)
+                    (some #'tag-implicit-name-match-p other-names))
             (beginning-of-line)
             (push
              (etag>xref

@@ -462,8 +462,9 @@ class EuslimeHandler(object):
     def swank_find_definitions_for_emacs(self, keyword):
         return
 
-    def swank_find_tag_name_for_emacs(self, name):
-        cmd = '(slime::find-tag-name-for-emacs "{0}")'.format(qstr(name))
+    def swank_find_tag_name_for_emacs(self, name, pkg):
+        cmd = '(slime::find-tag-name-for-emacs "{0}" "{1}")'.format(
+            qstr(name), qstr(pkg))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_describe_symbol(self, sym):
