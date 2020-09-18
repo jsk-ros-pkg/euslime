@@ -540,6 +540,46 @@ class eus(EuslimeTestCase):
             '(:emacs-rex (swank:completions "unix:sigin" \'"USER") "USER" :repl-thread 5)',
             '(:return (:ok (("unix::sigint") "unix::sigint")) 5)')
 
+    def test_completions_17(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:completions "setf-exp" \'"USER") "USER" :repl-thread 5)',
+            '(:return (:ok ()) 5)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions "setf-exp" \'"LISP") "LISP" :repl-thread 8)',
+            '(:return (:ok (("setf-expand" "setf-expand-1") "setf-expand")) 8)')
+
+    def test_completions_18(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(defun foo (&key test-not))\n") "USER" :repl-thread 17)',
+            '(:write-string "foo" :repl-result)',
+            '(:return (:ok nil) 17)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":t" \'("foo" "" swank::%cursor-marker%)) "USER" :repl-thread 19)',
+            '(:return (:ok ((":test-not") ":test-not")) 19)')
+        self.assertSocket(
+            '(:emacs-rex (swank:set-package "LISP") "USER" :repl-thread 21)',
+            '(:return (:ok ("LISP" "LISP:{}")) 21)'.format(self.EUSLISP_PROGRAM_NAME))
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":t" \'("foo" "" swank::%cursor-marker%)) "LISP" :repl-thread 22)',
+            '(:return (:ok ()) 22)')
+        self.assertSocket(
+            '(:emacs-rex (swank:set-package "USER") "LISP" :repl-thread 27)',
+            '(:return (:ok ("USER" "{}")) 27)'.format(self.EUSLISP_PROGRAM_NAME))
+
+    def test_completions_19(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":sl" \'("send" "*user-package*" "" swank::%cursor-marker%)) "USER" :repl-thread 53)',
+            '(:return (:ok ((":slots") ":slots")) 53)')
+        self.assertSocket(
+            '(:emacs-rex (swank:set-package "KEYWORD") "USER" :repl-thread 55)',
+            '(:return (:ok ("KEYWORD" "KEYWORD:{}")) 55)'.format(self.EUSLISP_PROGRAM_NAME))
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":sl" \'("send" "*lisp-package*" "" swank::%cursor-marker%)) "KEYWORD" :repl-thread 60)',
+            '(:return (:ok ()) 60)')
+        self.assertSocket(
+            '(:emacs-rex (swank:set-package "USER") "KEYWORD" :repl-thread 73)',
+            '(:return (:ok ("USER" "{}")) 73)'.format(self.EUSLISP_PROGRAM_NAME))
+
     # OUTPUT
     def test_output_1(self):
         self.assertSocketWriteString(

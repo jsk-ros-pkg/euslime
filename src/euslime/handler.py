@@ -44,6 +44,11 @@ def qstr(s):
     # double escape characters for string formatting
     return s.encode('utf-8').encode('string_escape').replace('"', '\\"')
 
+def unquote(s):
+    if isinstance(s, Quoted):
+        # For instance in emacs 27
+        return s.value()
+    return s[1]  # [Symbol('quote'), [ ... ]]
 
 def dumps_lisp(s):
     return dumps(s, true_as='lisp:t', false_as='lisp:nil', none_as='lisp:nil')
@@ -239,12 +244,7 @@ class EuslimeHandler(object):
  19)
         """
         try:
-            # unquote
-            if isinstance(sexp, Quoted):
-                # For instance in emacs 27
-                sexp = sexp.value()
-            else:
-                sexp = sexp[1]  # [Symbol('quote'), [ ... ]]
+            sexp = unquote(sexp)
             scope, cursor = current_scope(sexp)
             log.debug("scope: %s, cursor: %s" % (scope, cursor))
             assert cursor > 0
@@ -276,7 +276,8 @@ class EuslimeHandler(object):
 
     def swank_simple_completions(self, start, pkg):
         # (swank:simple-completions "vector-" (quote "USER"))
-        cmd = '(slime::slime-find-symbol "{0}")'.format(qstr(start))
+        pkg = unquote(pkg)
+        cmd = '(slime::slime-find-symbol "{0}" "{1}")'.format(qstr(start), qstr(pkg))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_fuzzy_completions(self, start, pkg, *args):
@@ -285,7 +286,7 @@ class EuslimeHandler(object):
 
     def swank_completions_for_keyword(self, start, sexp):
         if sexp:
-            sexp = sexp[1]  # unquote
+            sexp = unquote(sexp)
             scope, _ = current_scope(sexp)
             if scope:
                 scope = scope[:-1]  # remove marker
@@ -294,8 +295,8 @@ class EuslimeHandler(object):
 
         else:
             scope = None
-        cmd = '(slime::slime-find-keyword "{0}" (lisp:quote {1}))'.format(
-            qstr(start), dumps_lisp(scope))
+        cmd = '(slime::slime-find-keyword "{0}" (lisp:quote {1}) "{2}")'.format(
+            qstr(start), dumps_lisp(scope), qstr(self.package))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_completions_for_character(self, start):
@@ -488,7 +489,7 @@ class EuslimeHandler(object):
     def swank_apropos_list_for_emacs(self, key, external_only=None,
                                      case_sensitive=None, package=None):
         # ignore 'external_only' and 'case_sensitive' arguments
-        package = package[-1]  # unquote
+        package = unquote(package)
         cmd = '(slime::slime-apropos-list "{0}" {1})'.format(
             qstr(key), dumps_lisp(package))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
