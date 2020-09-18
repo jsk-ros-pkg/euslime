@@ -165,7 +165,7 @@
                 (:file ,file)
                 (:position ,(cddr tag-info))
                 (:snippet ,(car tag-info))))))
-      (visit-tags-table-buffer)
+      (visit-tags-table-buffer (car tags-table-list))
       (while (or first-table (visit-tags-table-buffer t))
         (if first-table (setq first-table nil))
         (goto-char (point-min))
