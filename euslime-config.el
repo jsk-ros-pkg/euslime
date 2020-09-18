@@ -158,25 +158,24 @@
 (defun euslime-find-definitions (name)
   (let ((first-table t)
         result)
-    (labels ((etag>xref (file tag-info)
-               `(,(car tag-info)
-                 (:location
-                  (:file ,file)
-                  (:position ,(cddr tag-info))
-                  (:snippet ,(car tag-info)))))
-             (maybe-push-info (file tag-info)
-               ;; filename lines match with tag-info of (t nil . 1)
-               (when (stringp (car tag-info))
-                 (push (etag>xref file tag-info) result))))
+    (flet ((etag>xref (file tag-info)
+             `(,(car tag-info)
+               (:location
+                (:file ,file)
+                (:position ,(cddr tag-info))
+                (:snippet ,(car tag-info))))))
       (visit-tags-table-buffer)
       (while (or first-table (visit-tags-table-buffer t))
         (if first-table (setq first-table nil))
         (goto-char (point-min))
         (while (search-forward name nil t)
-          (beginning-of-line)
-          (maybe-push-info
-           (expand-file-name (save-excursion (forward-line 1) (file-of-tag)))
-           (funcall snarf-tag-function))))
+          (when (tag-implicit-name-match-p name)
+            (beginning-of-line)
+            (push
+             (etag>xref
+              (expand-file-name (save-excursion (forward-line 1) (file-of-tag)))
+              (funcall snarf-tag-function))
+             result))))
       result)))
 
 ;; Override to abort operation instead of reinitializing (only have hard restarts)

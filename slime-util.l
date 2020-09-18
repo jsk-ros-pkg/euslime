@@ -375,6 +375,12 @@
      #'string< #'cadr)))
 
 
+;; SWANK-FIND-TAG-NAME-FOR-EMACS
+(defun find-tag-name-for-emacs (name)
+  (let* ((sym (find-callable-symbol name))
+         (cname (get sym 'compiler::builtin-function-entry)))
+    (or cname name)))
+
 ;; SWANK-SET-PACKAGE
 (defun set-package (name)
   (cond
