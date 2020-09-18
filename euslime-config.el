@@ -59,8 +59,7 @@
 ;; Start EusLisp mode
 (add-hook 'slime-repl-mode-hook
           (lambda ()
-            (when (string= "euslisp"
-                   (ignore-errors (slime-connection-name (slime-current-connection))))
+            (when (string= (ignore-errors (slime-connection-name)) "euslisp")
               (slime-euslisp-mode 1))))
 
 (defun euslime-prepare-files ()
