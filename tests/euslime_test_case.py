@@ -154,6 +154,14 @@ class EuslimeTestCase(unittest.TestCase):
         for x,y in zip(res_list, res_list[1:]):
             self.assertEqual(x,y)
 
+    def assertSocketPossibleResults(self, req, *res_lsts):
+        response = list(self.socket_get_response(req))
+        recv_response_msg = pprint.pformat(response, width=5)
+        log.info('received response: \n%s', recv_response_msg)
+        self.assertTrue(response in res_lsts,
+                        'Response not found in list of possible results: \n\n{}'.
+                        format(recv_response_msg))
+
     def assertSocketWriteString(self, req, *res):
         response = self.socket_get_response(req)
         res = self.with_join_write_string(res)

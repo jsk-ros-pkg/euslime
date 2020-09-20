@@ -820,26 +820,36 @@ class eus(EuslimeTestCase):
             '(:return (:abort "\'Array index out of range\'") 27)')
 
     def test_sldb_12(self):
-        self.assertSocket(
+        self.assertSocketPossibleResults(
             '(:emacs-rex (swank-repl:listener-eval "(quit)\n") "USER" :repl-thread 5)',
-            '(:debug 0 1 ("Process exited with code 0 (SIG_DFL)" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))')
-        self.assertSocket(
+            ['(:debug 0 1 ("Process exited with code 0 (SIG_DFL)" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))'],
+            ['(:debug 0 1 ("Socket connection closed" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))'])
+        self.assertSocketPossibleResults(
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 6)',
-            '(:debug-return 0 1 nil)',
-            '(:return (:abort nil) 6)',
-            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
-            '(:return (:abort "\'Process exited with code 0 (SIG_DFL)\'") 5)')
+            ['(:debug-return 0 1 nil)',
+             '(:return (:abort nil) 6)',
+             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+             '(:return (:abort "\'Process exited with code 0 (SIG_DFL)\'") 5)'],
+            ['(:debug-return 0 1 nil)',
+             '(:return (:abort nil) 6)',
+             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+             '(:return (:abort "\'Socket connection closed\'") 5)'])
 
     def test_sldb_13(self):
-        self.assertSocket(
+        self.assertSocketPossibleResults(
             '(:emacs-rex (swank-repl:listener-eval "(exit -1)\n") "USER" :repl-thread 10)',
-            '(:debug 0 1 ("Process exited with code 255" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))')
-        self.assertSocket(
+            ['(:debug 0 1 ("Process exited with code 255" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))'],
+            ['(:debug 0 1 ("Socket connection closed" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))'])
+        self.assertSocketPossibleResults(
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 11)',
-            '(:debug-return 0 1 nil)',
-            '(:return (:abort nil) 11)',
-            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
-            '(:return (:abort "\'Process exited with code 255\'") 10)')
+            ['(:debug-return 0 1 nil)',
+             '(:return (:abort nil) 11)',
+             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+             '(:return (:abort "\'Process exited with code 255\'") 10)'],
+            ['(:debug-return 0 1 nil)',
+             '(:return (:abort nil) 11)',
+             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+             '(:return (:abort "\'Socket connection closed\'") 10)'])
 
     # SEGMENTATION FAULT
     def test_segfault_1(self):
@@ -859,16 +869,21 @@ class eus(EuslimeTestCase):
             ignore_c_address=True,
             unordered_output=True)
 
-        self.assertSocket(
+        self.assertSocketPossibleResults(
             '(:emacs-rex (swank-repl:listener-eval "(1+ (and))\n") "USER" :repl-thread 8)',
-            '(:debug 0 1 ("Process exited with code 11 (SIGSEGV)" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))')
+            ['(:debug 0 1 ("Process exited with code 11 (SIGSEGV)" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))'],
+            ['(:debug 0 1 ("Socket connection closed" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))'])
 
-        self.assertSocket(
+        self.assertSocketPossibleResults(
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 9)',
-            '(:debug-return 0 1 nil)',
-            '(:return (:abort nil) 9)',
-            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
-            '(:return (:abort "\'Process exited with code 11 (SIGSEGV)\'") 8)')
+            ['(:debug-return 0 1 nil)',
+             '(:return (:abort nil) 9)',
+             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+             '(:return (:abort "\'Process exited with code 11 (SIGSEGV)\'") 8)'],
+            ['(:debug-return 0 1 nil)',
+             '(:return (:abort nil) 9)',
+             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+             '(:return (:abort "\'Socket connection closed\'") 8)'])
 
     def test_segfault_2(self):
         self.assertAsyncRequest(
@@ -892,16 +907,21 @@ class eus(EuslimeTestCase):
             '(:return (:abort nil) 7)',
             '(:return (:abort "\'Unbound variable reset\'") 6)')
 
-        self.assertSocket(
+        self.assertSocketPossibleResults(
             '(:emacs-rex (swank-repl:listener-eval "(1+ (and))\n") "USER" :repl-thread 8)',
-            '(:debug 0 1 ("Process exited with code 11 (SIGSEGV)" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))')
+            ['(:debug 0 1 ("Process exited with code 11 (SIGSEGV)" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))'],
+            ['(:debug 0 1 ("Socket connection closed" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))'])
 
-        self.assertSocket(
+        self.assertSocketPossibleResults(
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 9)',
-            '(:debug-return 0 1 nil)',
-            '(:return (:abort nil) 9)',
-            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
-            '(:return (:abort "\'Process exited with code 11 (SIGSEGV)\'") 8)')
+            ['(:debug-return 0 1 nil)',
+             '(:return (:abort nil) 9)',
+             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+             '(:return (:abort "\'Process exited with code 11 (SIGSEGV)\'") 8)'],
+            ['(:debug-return 0 1 nil)',
+             '(:return (:abort nil) 9)',
+             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+             '(:return (:abort "\'Socket connection closed\'") 8)'])
 
     def test_segfault_3(self):
         fn = signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -926,16 +946,21 @@ class eus(EuslimeTestCase):
             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:ok nil) 6)')
 
-        self.assertSocket(
+        self.assertSocketPossibleResults(
             '(:emacs-rex (swank-repl:listener-eval "(1+ (and))\n") "USER" :repl-thread 8)',
-            '(:debug 0 1 ("Process exited with code 11 (SIGSEGV)" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))')
+            ['(:debug 0 1 ("Process exited with code 11 (SIGSEGV)" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))'],
+            ['(:debug 0 1 ("Socket connection closed" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))'])
 
-        self.assertSocket(
+        self.assertSocketPossibleResults(
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 9)',
-            '(:debug-return 0 1 nil)',
-            '(:return (:abort nil) 9)',
-            '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
-            '(:return (:abort "\'Process exited with code 11 (SIGSEGV)\'") 8)')
+            ['(:debug-return 0 1 nil)',
+             '(:return (:abort nil) 9)',
+             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+             '(:return (:abort "\'Process exited with code 11 (SIGSEGV)\'") 8)'],
+            ['(:debug-return 0 1 nil)',
+             '(:return (:abort nil) 9)',
+             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+             '(:return (:abort "\'Socket connection closed\'") 8)'])
 
     # EMACS INTERRUPT
     def test_emacs_interrupt_1(self):
