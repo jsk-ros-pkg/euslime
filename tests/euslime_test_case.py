@@ -3,6 +3,7 @@ import pprint
 import re
 import socket
 import time
+import traceback
 import unittest
 
 from euslime.logger import get_logger
@@ -142,6 +143,28 @@ class EuslimeTestCase(unittest.TestCase):
                 output.append(a)
         check_buffer()
         return output
+
+    def with_unwind_protect(self, *body):
+        error = None
+        for form in body:
+            fn = form[0]
+            if isinstance(form[-1], dict):
+                args = form[1:-1]
+                kargs = form[-1]
+            else:
+                args = form[1:]
+                kargs = None
+            try:
+                if kargs:
+                    fn(*args, **kargs)
+                else:
+                    fn(*args)
+            except AssertionError as e:
+                traceback.print_exception(type(e), e, None)
+                if error is None:
+                    error = e
+        if error:
+            raise error
 
     def assertSocket(self, req, *res):
         response = self.socket_get_response(req)
