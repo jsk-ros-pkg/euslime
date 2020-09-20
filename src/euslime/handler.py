@@ -485,7 +485,8 @@ class EuslimeHandler(object):
         return self.swank_describe_symbol(name)
 
     def swank_swank_expand_1(self, form):
-        cmd = '(slime::slime-macroexpand (lisp:quote {0}))'.format(form)
+        cmd = '(slime::slime-macroexpand "{0}" "{1}")'.format(
+            qstr(form), qstr(self.package))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_list_all_package_names(self, nicknames=None):

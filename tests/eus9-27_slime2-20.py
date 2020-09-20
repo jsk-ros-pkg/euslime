@@ -1172,6 +1172,39 @@ class eus(EuslimeTestCase):
             '(:emacs-rex (swank:swank-expand-1 "(foo (print 1) (print 2) (print 3))") "USER" :repl-thread 27)',
             '(:return (:ok "(progn (print 3) (print 2) (print 1))\\n") 27)')
 
+    def test_macro_expand_2(self):
+        self.assertSocketIgnoreAddress(
+            '(:emacs-rex (swank:swank-expand-1 "(none 1 2 3)") "USER" :repl-thread 51)',
+            '(:debug 0 1 ("Undefined function none in (slime::slime-macroexpand \\"(none 1 2 3)\\" \\"USER\\")" "" nil) (("CONTINUE" "Ignore the error and continue in the same stack level")) ((0 "#<compiled-code #X547e290>" (:restartable nil))) (nil))')
+        self.assertSocket(
+            '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 52)',
+            '(:debug-return 0 1 nil)',
+            '(:return (:abort nil) 52)',
+            '(:return (:abort "\'Undefined function none\'") 51)')
+
+    def test_macro_expand_3(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(defmacro foo (form) (reverse form))\n") "USER" :repl-thread 5)',
+            '(:write-string "foo" :repl-result)',
+            '(:return (:ok nil) 5)')
+        self.assertSocket(
+            '(:emacs-rex (swank:swank-expand-1 "(foo (3 2 1 list))") "USER" :repl-thread 10)',
+            '(:return (:ok "(list 1 2 3)\\n") 10)')
+        self.assertSocket(
+            '(:emacs-rex (swank:set-package "LISP") "USER" :repl-thread 12)',
+            '(:return (:ok ("LISP" "LISP:{}")) 12)'.format(self.EUSLISP_PROGRAM_NAME))
+        self.assertSocketIgnoreAddress(
+            '(:emacs-rex (swank:swank-expand-1 "(foo (3 2 1 list))") "LISP" :repl-thread 13)',
+            '(:debug 0 1 ("Undefined function foo in (slime::slime-macroexpand \\"(foo (3 2 1 list))\\" \\"LISP\\")" "" nil) (("CONTINUE" "Ignore the error and continue in the same stack level")) ((0 "#<compiled-code #X5853290>" (:restartable nil))) (nil))')
+        self.assertSocket(
+            '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "LISP" 0 14)',
+            '(:debug-return 0 1 nil)',
+            '(:return (:abort nil) 14)',
+            '(:return (:abort "\'Undefined function foo\'") 13)')
+        self.assertSocket(
+            '(:emacs-rex (swank:set-package "USER") "LISP" :repl-thread 16)',
+            '(:return (:ok ("USER" "{}")) 16)'.format(self.EUSLISP_PROGRAM_NAME))
+
     # ENCODING
     def test_encoding_1(self):
         self.assertSocket(

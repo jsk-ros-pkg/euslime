@@ -342,9 +342,10 @@
 
 
 ;; SWANK-EXPAND-1
-(defun slime-macroexpand (form)
-  (with-output-to-string (s)
-    (pprint (macroexpand form) s)))
+(defun slime-macroexpand (form &optional package)
+  (let ((*package* (or (find-package package) *package*)))
+    (with-output-to-string (s)
+      (pprint (macroexpand (read-from-string form)) s))))
 
 
 ;; SWANK-LIST-ALL-PACKAGE-NAMES
