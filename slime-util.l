@@ -92,6 +92,20 @@
              ,@body
              ,@(cddr var-lst))))))
 
+(defun list-possible-symbol-names (sym)
+  (let ((name (symbol-pname sym))
+        (pkg (symbol-homepkg sym)))
+    (mapcar #'string-downcase
+            (remove-duplicates
+             (append
+              (list name)
+              (mapcar #'(lambda (val) (format nil "~A::~A" val name))
+                      (send pkg :nicknames))
+              (if (find-external-symbol name pkg)
+                  (mapcar #'(lambda (val) (format nil "~A:~A" val name))
+                          (send pkg :nicknames))))
+             :test #'string-equal))))
+
 ;; Prefix related
 (defun append-common (match-lst start-len)
   (cond
@@ -138,7 +152,7 @@
   (or (get-help name)
       (let ((sym (find-callable-symbol name)))
         (if sym
-            (or (get-help (format nil "~a" sym))
+            (or (some #'get-help (list-possible-symbol-names sym))
                 (if (and (fboundp sym) (consp (symbol-function sym)))
                     (cons sym (copy-list (cadr (symbol-function sym)))))
                 (aif (assoc :function-documentation (send sym :plist))
@@ -314,13 +328,15 @@
 ;; SWANK-DESCRIBE-SYMBOL
 (defun slime-describe-symbol (name)
   (let* ((sym (find-callable-symbol name))
-         (help-name (string-downcase (format nil "~a" sym))))
+         (help-name-lst (list-possible-symbol-names sym)))
     (unless sym
       (error "symbol not found"))
     (with-output-to-string (s)
-      (when (gethash help-name help::*help-hash*)
-        (help help-name nil s)
-        (terpri s))
+      (dolist (help-name help-name-lst)
+        (when (gethash help-name help::*help-hash*)
+          (help help-name nil s)
+          (terpri s)
+          (return)))
       (format s "PROPERTIES~%~%")
       (describe sym s))))
 
@@ -383,16 +399,7 @@
            (cname (get sym 'compiler::builtin-function-entry)))
       (cond
         (cname (list cname))
-        (sym
-         (remove-duplicates
-          (append
-           (list name)
-           (mapcar #'(lambda (val) (format nil "~A::~A" val (symbol-pname sym)))
-                   (send (symbol-homepkg sym) :nicknames))
-           (if (find-external-symbol (symbol-pname sym) (symbol-homepkg sym))
-               (mapcar #'(lambda (val) (format nil "~A:~A" val (symbol-pname sym)))
-                       (send (symbol-homepkg sym) :nicknames))))
-          :test #'string-equal))
+        (sym (list-possible-symbol-names sym))
         (t (list name))))))
 
 ;; SWANK-SET-PACKAGE
