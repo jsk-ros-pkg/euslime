@@ -764,16 +764,6 @@ class eus(EuslimeTestCase):
 
     def test_sldb_9(self):
         self.assertSocketIgnoreAddress(
-            '(:emacs-rex (swank:describe-symbol "none") "USER" :repl-thread 5)',
-            '(:debug 0 1 ("Symbol not found in (slime::slime-describe-symbol \\\"none\\\")" "" nil) (("CONTINUE" "Ignore the error and continue in the same stack level")) ((0 "#<compiled-code #X48fb290>" (:restartable nil))) (nil))')
-        self.assertSocket(
-            '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 6)',
-            '(:debug-return 0 1 nil)',
-            '(:return (:abort nil) 6)',
-            '(:return (:abort "\'Symbol not found\'") 5)')
-
-    def test_sldb_10(self):
-        self.assertSocketIgnoreAddress(
             '(:emacs-rex (swank-repl:listener-eval "(error \\\"THIS\\\")\n") "USER" :repl-thread 9)',
             '(:debug 0 1 ("THIS in (error \\\"THIS\\\")" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(error \\\"THIS\\\")" (:restartable nil)) (1 "(slime:slimetop)" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "#<compiled-code #X48fb290>" (:restartable nil))) (nil))')
         self.assertSocket(
@@ -785,7 +775,7 @@ class eus(EuslimeTestCase):
             '(:return (:abort nil) 11)',
             '(:return (:abort "\'THIS\'") 9)')
 
-    def test_sldb_11(self):
+    def test_sldb_10(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(defvar test-sldb-11)\n") "USER" :repl-thread 7)',
             '(:write-string "test-sldb-11" :repl-result)',
@@ -809,7 +799,7 @@ class eus(EuslimeTestCase):
             '(:return (:ok nil) 11)')
 
 
-    def test_sldb_12(self):
+    def test_sldb_11(self):
         self.assertSocketIgnoreAddress(
             '(:emacs-rex (swank-repl:listener-eval "(elt #f() 1)\n") "USER" :repl-thread 23)',
             '(:debug 0 1 ("Array index out of range in (elt #f() 1)" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(elt #f() 1)" (:restartable nil)) (1 "(slime:slimetop)" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "#<compiled-code #X5f9d290>" (:restartable nil))) (nil))')
@@ -829,7 +819,7 @@ class eus(EuslimeTestCase):
             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:abort "\'Array index out of range\'") 27)')
 
-    def test_sldb_13(self):
+    def test_sldb_12(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(quit)\n") "USER" :repl-thread 5)',
             '(:debug 0 1 ("Process exited with code 0 (SIG_DFL)" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))')
@@ -840,7 +830,7 @@ class eus(EuslimeTestCase):
             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
             '(:return (:abort "\'Process exited with code 0 (SIG_DFL)\'") 5)')
 
-    def test_sldb_14(self):
+    def test_sldb_13(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(exit -1)\n") "USER" :repl-thread 10)',
             '(:debug 0 1 ("Process exited with code 255" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))')
@@ -1083,6 +1073,16 @@ class eus(EuslimeTestCase):
 
     def test_describe_3(self):
         self.assertSocketIgnoreAddress(
+            '(:emacs-rex (swank:describe-symbol "none") "USER" :repl-thread 5)',
+            '(:debug 0 1 ("Symbol not found in (slime::slime-describe-symbol \\"none\\" \\"USER\\")" "" nil) (("CONTINUE" "Ignore the error and continue in the same stack level")) ((0 "#<compiled-code #X48fb290>" (:restartable nil))) (nil))')
+        self.assertSocket(
+            '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 6)',
+            '(:debug-return 0 1 nil)',
+            '(:return (:abort nil) 6)',
+            '(:return (:abort "\'Symbol not found\'") 5)')
+
+    def test_describe_4(self):
+        self.assertSocketIgnoreAddress(
             '(:emacs-rex (swank:describe-symbol "sys:list-all-bindings") "USER" :repl-thread 7)',
             '(:return (:ok "NAME\\n     sys:list-all-bindings\\nTYPE\\n     function\\nSYNOPSIS\\n     sys:list-all-bindings  \\nDESCRIPTION\\n     scans bind stack, and returns a list of all the accessible value bindings. \\n\\nPROPERTIES\\n\\nplist=((compiler::builtin-function-entry . \\"LISTBINDINGS\\"))\\nvalue=*unbound*\\nvtype=1\\nfunction=#<compiled-code #X5884ab8>\\npname=\\"LIST-ALL-BINDINGS\\"\\nhomepkg=#<package #X58a7ce0 SYSTEM>\\n") 7)')
         self.assertSocketSameResult(
@@ -1093,7 +1093,7 @@ class eus(EuslimeTestCase):
             '(:emacs-rex (swank:describe-symbol "sys::list-all-bindings") "USER" :repl-thread 28)',
             '(:emacs-rex (swank:describe-symbol "system::list-all-bindings") "USER" :repl-thread 28)')
 
-    def test_describe_4(self):
+    def test_describe_5(self):
         self.assertSocketIgnoreAddress(
             '(:emacs-rex (swank:describe-symbol "setf-expand-1") "USER" :repl-thread 31)',
             '(:debug 0 1 ("Symbol not found in (slime::slime-describe-symbol \\"setf-expand-1\\" \\"USER\\")" "" nil) (("CONTINUE" "Ignore the error and continue in the same stack level")) ((0 "#<compiled-code #X5136290>" (:restartable nil))) (nil))')
