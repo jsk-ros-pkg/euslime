@@ -580,6 +580,17 @@ class eus(EuslimeTestCase):
             '(:emacs-rex (swank:set-package "USER") "KEYWORD" :repl-thread 73)',
             '(:return (:ok ("USER" "{}")) 73)'.format(self.EUSLISP_PROGRAM_NAME))
 
+    def test_completions_20(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:fuzzy-completions "find-i" "USER" :limit 300 :time-limit-in-msec 1500) "USER" t 5)',
+            '(:return (:ok ((("find-if" 0 nil nil) ("find-if-not" 0 nil nil)) nil)) 5)')
+        self.assertSocket(
+            '(:emacs-rex (swank:fuzzy-completions "find-if-n" "USER" :limit 300 :time-limit-in-msec 1500) "USER" t 6)',
+            '(:return (:ok ((("find-if-not" 0 nil nil)) nil)) 6)')
+        self.assertSocket(
+            '(:emacs-rex (swank:fuzzy-completions "none" "USER" :limit 300 :time-limit-in-msec 1500) "USER" t 7)',
+            '(:return (:ok (() nil)) 7)')
+
     # OUTPUT
     def test_output_1(self):
         self.assertSocketWriteString(

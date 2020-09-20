@@ -281,8 +281,14 @@ class EuslimeHandler(object):
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_fuzzy_completions(self, start, pkg, *args):
-        # Unsupported. Use swank_simple_completions instead
-        yield EuslispResult([None, None])
+        # Unsupported. Just returning a list of simple_completions in the fuzzy format
+        simple_completions = self.swank_simple_completions(start,pkg).next().value
+        if simple_completions:
+            simple_completions = [[x, 0, None, None] for x in simple_completions[0]]
+        yield EuslispResult([simple_completions, None])
+
+    def swank_fuzzy_completion_selected(self, original_string, completion):
+        yield EuslispResult(None)
 
     def swank_completions_for_keyword(self, start, sexp):
         if sexp:
