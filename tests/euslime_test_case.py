@@ -149,6 +149,11 @@ class EuslimeTestCase(unittest.TestCase):
         log.info('received response: \n%s', pprint.pformat(response, width=5))
         self.assertEqual(res, response)
 
+    def assertSocketSameResult(self, *req):
+        res_list = [self.socket_get_response(x) for x in req]
+        for x,y in zip(res_list, res_list[1:]):
+            self.assertEqual(x,y)
+
     def assertSocketWriteString(self, req, *res):
         response = self.socket_get_response(req)
         res = self.with_join_write_string(res)

@@ -459,6 +459,18 @@ class eus(EuslimeTestCase):
             '(:emacs-rex (swank:autodoc (quote ("deflocal" "" swank::%cursor-marker%)) :print-right-margin 80) "USER" :repl-thread 9)',
             '(:return (:ok ("(deflocal ===> var <=== &optional (init nil) (doc nil))" t)) 9)')
 
+    def test_autodoc_18(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc \'("sys:list-all-bindings" "" swank::%cursor-marker%) :print-right-margin 100) "USER" :repl-thread 6)',
+'(:return (:ok ("(system:list-all-bindings)" t)) 6)')
+        self.assertSocketSameResult(
+            '(:emacs-rex (swank:autodoc \'("si:list-all-bindings" "" swank::%cursor-marker%) :print-right-margin 80) "USER" :repl-thread 27)',
+            '(:emacs-rex (swank:autodoc \'("sys:list-all-bindings" "" swank::%cursor-marker%) :print-right-margin 80) "USER" :repl-thread 27)',
+            '(:emacs-rex (swank:autodoc \'("system:list-all-bindings" "" swank::%cursor-marker%) :print-right-margin 80) "USER" :repl-thread 27)',
+            '(:emacs-rex (swank:autodoc \'("si::list-all-bindings" "" swank::%cursor-marker%) :print-right-margin 80) "USER" :repl-thread 27)',
+            '(:emacs-rex (swank:autodoc \'("sys::list-all-bindings" "" swank::%cursor-marker%) :print-right-margin 80) "USER" :repl-thread 27)',
+            '(:emacs-rex (swank:autodoc \'("system::list-all-bindings" "" swank::%cursor-marker%) :print-right-margin 80) "USER" :repl-thread 27)')
+
     # COMPLETIONS
     def test_completions_1(self):
         self.assertSocket(
@@ -1054,6 +1066,19 @@ class eus(EuslimeTestCase):
         self.assertSocketIgnoreAddress(
             '(:emacs-rex (swank:describe-symbol "*prompt-string*") "USER" :repl-thread 16)',
             '(:return (:ok "NAME\\n     *prompt-string*\\nTYPE\\n     variable\\nDESCRIPTION\\n     prompt string used by \x1b[1meustop\x1b[m. \\n\\nPROPERTIES\\n\\nplist=nil\\nvalue=\\"{}\\"\\nvtype=2\\nfunction=*unbound*\\npname=\\"*PROMPT-STRING*\\"\\nhomepkg=#<package #X5f12ae8 LISP>\\n") 16)'.format(self.EUSLISP_PROGRAM_NAME))
+
+    def test_describe_3(self):
+        self.assertSocketIgnoreAddress(
+            '(:emacs-rex (swank:describe-symbol "sys:list-all-bindings") "USER" :repl-thread 7)',
+            '(:return (:ok "NAME\\n     sys:list-all-bindings\\nTYPE\\n     function\\nSYNOPSIS\\n     sys:list-all-bindings  \\nDESCRIPTION\\n     scans bind stack, and returns a list of all the accessible value bindings. \\n\\nPROPERTIES\\n\\nplist=((compiler::builtin-function-entry . \\"LISTBINDINGS\\"))\\nvalue=*unbound*\\nvtype=1\\nfunction=#<compiled-code #X5884ab8>\\npname=\\"LIST-ALL-BINDINGS\\"\\nhomepkg=#<package #X58a7ce0 SYSTEM>\\n") 7)')
+        self.assertSocketSameResult(
+            '(:emacs-rex (swank:describe-symbol "si:list-all-bindings") "USER" :repl-thread 28)',
+            '(:emacs-rex (swank:describe-symbol "sys:list-all-bindings") "USER" :repl-thread 28)',
+            '(:emacs-rex (swank:describe-symbol "system:list-all-bindings") "USER" :repl-thread 28)',
+            '(:emacs-rex (swank:describe-symbol "si::list-all-bindings") "USER" :repl-thread 28)',
+            '(:emacs-rex (swank:describe-symbol "sys::list-all-bindings") "USER" :repl-thread 28)',
+            '(:emacs-rex (swank:describe-symbol "system::list-all-bindings") "USER" :repl-thread 28)')
+
 
     # LOAD FILE
     def test_load_file_1(self):
