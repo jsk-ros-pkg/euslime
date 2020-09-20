@@ -164,7 +164,7 @@ class EuslimeHandler(object):
         yield EuslispResult(res)
 
     def swank_create_repl(self, sexp):
-        res = self.euslisp.exec_internal('(slime::slime-prompt)')
+        res = self.euslisp.exec_internal('(slime::slime-prompt)', force_repl_socket=True)
         self.euslisp.accumulate_output = False
         yield EuslispResult(res)
 
@@ -534,8 +534,8 @@ class EuslimeHandler(object):
             raise
 
     def swank_default_directory(self):
-        cmd = self.euslisp.exec_internal('(lisp:pwd)')
-        yield EuslispResult(cmd)
+        cmd = '(lisp:pwd)'
+        yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_set_default_directory(self, dir):
         cmd = '(lisp:progn (lisp:cd "{0}") (lisp:pwd))'.format(qstr(dir))

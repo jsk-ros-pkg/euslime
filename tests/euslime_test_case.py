@@ -13,7 +13,7 @@ from threading import Thread
 
 HEADER_LENGTH = 6
 REGEX_ADDR = re.compile(r' #X[0-9a-f]*')
-REGEX_C_ADDR = re.compile(r'-?[0-9a-f]{8,10}')
+REGEX_C_ADDR = re.compile(r'-?[0-9a-f]{6,10}')
 
 log = get_logger(__name__)
 
