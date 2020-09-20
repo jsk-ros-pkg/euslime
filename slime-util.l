@@ -149,14 +149,13 @@
 
 ;; Properties list
 (defun lambda-list (name)
-  (or (get-help name)
-      (let ((sym (find-callable-symbol name)))
-        (if sym
-            (or (some #'get-help (list-possible-symbol-names sym))
-                (if (and (fboundp sym) (consp (symbol-function sym)))
-                    (cons sym (copy-list (cadr (symbol-function sym)))))
-                (aif (assoc :function-documentation (send sym :plist))
-                     (read-copy (cdr it) sym)))))))
+  (let ((sym (find-callable-symbol name)))
+    (if sym
+        (or (some #'get-help (list-possible-symbol-names sym))
+            (if (and (fboundp sym) (consp (symbol-function sym)))
+                (cons sym (copy-list (cadr (symbol-function sym)))))
+            (aif (assoc :function-documentation (send sym :plist))
+                 (read-copy (cdr it) sym))))))
 
 (defun method-lambda-list (obj name)
   (let* ((sym (or (find-symbol (string-upcase (subseq name 1)) *keyword-package*)

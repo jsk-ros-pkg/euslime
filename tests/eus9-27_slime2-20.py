@@ -471,6 +471,20 @@ class eus(EuslimeTestCase):
             '(:emacs-rex (swank:autodoc \'("sys::list-all-bindings" "" swank::%cursor-marker%) :print-right-margin 80) "USER" :repl-thread 27)',
             '(:emacs-rex (swank:autodoc \'("system::list-all-bindings" "" swank::%cursor-marker%) :print-right-margin 80) "USER" :repl-thread 27)')
 
+    def test_autodoc_19(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:set-package "KEYWORD") "USER" :repl-thread 6)',
+            '(:return (:ok ("KEYWORD" "KEYWORD:{}")) 6)'.format(self.EUSLISP_PROGRAM_NAME))
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc \'("set-matrix-column" "" swank::%cursor-marker%) :print-right-margin 100) "KEYWORD" :repl-thread 11)',
+            '(:return (:ok (:not-available t)) 11)')
+        self.assertSocket(
+            '(:emacs-rex (swank:set-package "USER") "KEYWORD" :repl-thread 13)',
+            '(:return (:ok ("USER" "{}")) 13)'.format(self.EUSLISP_PROGRAM_NAME))
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc \'("set-matrix-column" "" swank::%cursor-marker%) :print-right-margin 100) "USER" :repl-thread 14)',
+            '(:return (:ok ("(set-matrix-column ===> mat <=== col values)" t)) 14)')
+
     # COMPLETIONS
     def test_completions_1(self):
         self.assertSocket(
