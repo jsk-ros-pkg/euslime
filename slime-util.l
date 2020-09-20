@@ -325,8 +325,9 @@
 
 
 ;; SWANK-DESCRIBE-SYMBOL
-(defun slime-describe-symbol (name)
-  (let* ((sym (find-callable-symbol name))
+(defun slime-describe-symbol (name &optional package)
+  (let* ((*package* (or (find-package package) *package*))
+         (sym (find-callable-symbol name))
          (help-name-lst (list-possible-symbol-names sym)))
     (unless sym
       (error "symbol not found"))

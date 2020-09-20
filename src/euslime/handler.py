@@ -474,8 +474,8 @@ class EuslimeHandler(object):
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_describe_symbol(self, sym):
-        cmd = '(slime::slime-describe-symbol "{0}")'.format(
-            qstr(sym.strip()))
+        cmd = '(slime::slime-describe-symbol "{0}" "{1}")'.format(
+            qstr(sym.strip()), qstr(self.package))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_describe_function(self, func):

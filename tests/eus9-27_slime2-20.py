@@ -1093,6 +1093,24 @@ class eus(EuslimeTestCase):
             '(:emacs-rex (swank:describe-symbol "sys::list-all-bindings") "USER" :repl-thread 28)',
             '(:emacs-rex (swank:describe-symbol "system::list-all-bindings") "USER" :repl-thread 28)')
 
+    def test_describe_4(self):
+        self.assertSocketIgnoreAddress(
+            '(:emacs-rex (swank:describe-symbol "setf-expand-1") "USER" :repl-thread 31)',
+            '(:debug 0 1 ("Symbol not found in (slime::slime-describe-symbol \\"setf-expand-1\\" \\"USER\\")" "" nil) (("CONTINUE" "Ignore the error and continue in the same stack level")) ((0 "#<compiled-code #X5136290>" (:restartable nil))) (nil))')
+        self.assertSocket(
+            '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 32)',
+            '(:debug-return 0 1 nil)',
+            '(:return (:abort nil) 32)',
+            '(:return (:abort "\'Symbol not found\'") 31)')
+        self.assertSocket(
+            '(:emacs-rex (swank:set-package "LISP") "USER" :repl-thread 34)',
+            '(:return (:ok ("LISP" "LISP:{}")) 34)'.format(self.EUSLISP_PROGRAM_NAME))
+        self.assertSocketIgnoreAddress(
+            '(:emacs-rex (swank:describe-symbol "setf-expand-1") "LISP" :repl-thread 35)',
+            '(:return (:ok "PROPERTIES\\n\\nplist=((:function-documentation . \\"(place newvalue)\\"))\\nvalue=*unbound*\\nvtype=1\\nfunction=#<compiled-code #X5077558>\\npname=\\"SETF-EXPAND-1\\"\\nhomepkg=#<package #X5072ae8 LISP>\\n") 35)')
+        self.assertSocket(
+            '(:emacs-rex (swank:set-package "USER") "LISP" :repl-thread 37)',
+            '(:return (:ok ("USER" "{}")) 37)'.format(self.EUSLISP_PROGRAM_NAME))
 
     # LOAD FILE
     def test_load_file_1(self):
