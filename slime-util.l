@@ -301,11 +301,14 @@
        (slime-find-symbol (subseq start 1) *keyword-package* ":"))
       ((string-equal (car form) "send")
        (if (stringp (cadr form))
+           ;; Always return nil if a matching callable symbol is not found
            (with-callable-symbol-value (value (cadr form))
              (if (cddr form)
                  (let ((keys (keyword-list (method-lambda-list-from-form form))))
                    (find-prefix start keys 1))
-                 (find-prefix start (method-list value) 1)))))
+                 (find-prefix start (method-list value) 1)))
+           ;; Complete as global symbol if object is an s-expression
+           (slime-find-symbol (subseq start 1) *keyword-package* ":")))
       (t
        (let ((keys (keyword-list (lambda-list (car form)))))
          (find-prefix start keys 1))))))
