@@ -134,6 +134,34 @@
              (comint-replace-by-expanded-filename))))
        t)))
 
+;; Override to avoid regular symbol completions when keywords do not match
+(cl-defun slime-contextual-completions (beg end)
+  "Return a list of completions of the token from BEG to END in the
+current buffer."
+  (let ((token (buffer-substring-no-properties beg end)))
+    (cond
+     ((and (< beg (point-max))
+           (string= (buffer-substring-no-properties beg (1+ beg)) ":"))
+      ;; Contextual keyword completion
+      (let ((completions 
+             (slime-completions-for-keyword token
+                                            (save-excursion 
+                                              (goto-char beg)
+                                              (slime-parse-form-upto-point)))))
+        (when (or slime-euslisp-mode (cl-first completions))
+          ;; Always return when in euslisp mode
+          (cl-return-from slime-contextual-completions completions))
+        ;; If no matching keyword was found, do regular symbol
+        ;; completion.
+        ))
+     ((and (>= (length token) 2)
+           (string= (cl-subseq token 0 2) "#\\"))
+      ;; Character name completion
+      (cl-return-from slime-contextual-completions
+        (slime-completions-for-character token))))
+    ;; Regular symbol completion
+    (slime-completions token)))
+
 (defun slime-set-minibuffer-completion ()
   (let ((buf (other-buffer (current-buffer) t)))
     (if (local-variable-if-set-p 'slime-complete-symbol-function buf)
