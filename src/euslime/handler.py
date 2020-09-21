@@ -183,6 +183,7 @@ class EuslimeHandler(object):
                 if isinstance(val,str):
                     # Colors are not allowed in :repl-result formatting
                     yield [Symbol(":write-string"), no_color(val), Symbol(":repl-result")]
+                    yield [Symbol(":write-string"), "\n", Symbol(":repl-result")]
                 else:
                     yield val
             if self.euslisp.read_mode:

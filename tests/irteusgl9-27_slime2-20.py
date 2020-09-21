@@ -8,6 +8,7 @@ class irteusgl(eus):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(progn (setq c (make-coords :name \\"test\\")) (send c :name))\n") "USER" :repl-thread 31)',
             '(:write-string "\\"test\\"" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
             '(:return (:ok nil) 31)')
         self.assertSocket(
             '(:emacs-rex (swank:completions-for-keyword ":pos" (quote ("send" "c" "" swank::%cursor-marker%))) "USER" :repl-thread 35)',
@@ -21,12 +22,14 @@ class irteusgl(eus):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(makunbound \'c)\n") "USER" :repl-thread 45)',
             '(:write-string "t" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
             '(:return (:ok nil) 45)')
 
     def test_autodoc_irt_1(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(progn (make-irtviewer) (send *irtviewer* :name))\n") "USER" :repl-thread 78)',
             '(:write-string "\\"IRT viewer\\"" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
             '(:return (:ok nil) 78)')
         self.assertSocket(
             '(:emacs-rex (swank:autodoc (quote ("send" "*irtviewer*" ":view" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 85)',
@@ -43,4 +46,5 @@ class irteusgl(eus):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(send *irtviewer* :quit )\n") "USER" :repl-thread 95)',
             '(:write-string ":destroyed" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
             '(:return (:ok nil) 95)')
