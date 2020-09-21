@@ -178,10 +178,10 @@
 (defun method-lambda-list (obj name &optional instance-completion-p)
   (let* ((sym (or (find-symbol (string-upcase (subseq name 1)) *keyword-package*)
                   (return-from method-lambda-list nil)))
-         (method
-          (if instance-completion-p
-              (and (classp obj) (list obj (send obj :method sym)))
-              (find-method obj sym)))
+         (method (or (if instance-completion-p
+                         (and (classp obj) (list obj (send obj :method sym)))
+                         (find-method obj sym))
+                     (return-from method-lambda-list nil)))
          (class (car method))
          (def (second (second method)))
          (arglist (or

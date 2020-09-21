@@ -568,6 +568,11 @@ class eus(EuslimeTestCase):
             '(:emacs-rex (swank:autodoc \'("lisp:setf-expand" "" swank::%cursor-marker%) :print-right-margin 80) "USER" :repl-thread 9)',
             '(:return (:ok (:not-available t)) 9)')
 
+    def test_autodoc_21(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc \'("send" "*lisp-package*" ":none" swank::%cursor-marker%) :print-right-margin 80) "USER" :repl-thread 10)',
+            '(:return (:ok ("(send object ===> selector <=== &rest args)" t)) 10)')
+
     # COMPLETIONS
     def test_completions_1(self):
         self.assertSocket(
