@@ -102,7 +102,9 @@
     (mapcar #'string-downcase
             (remove-duplicates
              (append
-              (list name)
+              (if (eq pkg *keyword-package*)
+                  (list (format nil ":~A" name))
+                  (list name))
               (mapcar #'(lambda (val) (format nil "~A::~A" val name))
                       (send pkg :nicknames))
               (if (find-external-symbol name pkg)
