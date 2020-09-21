@@ -38,12 +38,13 @@
 (defun split-package (name)
   ;; TODO: read |escaped\|forms|
   (let* ((pos (position-from-end #\: name))
-         (internal (and pos (plusp pos) (= #\: (elt name (1- pos))))))
+         (external (and pos (plusp pos) (not (= #\: (elt name (1- pos)))))))
     (case pos
-      (nil (values nil name))
-      (0 (values "KEYWORD" (subseq name (1+ pos))))
-      (t (values (string-upcase (subseq name 0 (if internal (1- pos) pos)))
-                 (subseq name (1+ pos)))))))
+      (nil (values nil name external))
+      (0 (values "KEYWORD" (subseq name (1+ pos)) external))
+      (t (values (string-upcase (subseq name 0 (if external pos (1- pos))))
+                 (subseq name (1+ pos))
+                 external)))))
 
 (defmacro slime-do-symbols (var &rest body)
   ;; var: (variable-name &optional package result)
@@ -65,10 +66,13 @@
         (return-from find-external-symbol sym))))
 
 (defun find-callable-symbol (name)
-  (multiple-value-bind (pack name) (split-package name)
+  (multiple-value-bind (pack name external) (split-package name)
     (setq name (string-upcase name))
     (if pack
-        (and (find-package pack) (find-symbol name pack))
+        (and (find-package pack)
+             (if external
+                 (find-external-symbol name pack)
+                 (find-symbol name pack)))
         (or (find-symbol name) 
             (let ((packs (package-use *package*)))
               (dolist (p packs)

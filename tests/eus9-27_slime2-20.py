@@ -557,6 +557,17 @@ class eus(EuslimeTestCase):
              '(:emacs-rex (swank:autodoc \'("set-matrix-column" "" swank::%cursor-marker%) :print-right-margin 100) "USER" :repl-thread 14)',
              '(:return (:ok ("(set-matrix-column ===> mat <=== col values)" t)) 14)'))
 
+    def test_autodoc_20(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc \'("lisp::setf-expand" "" swank::%cursor-marker%) :print-right-margin 80) "USER" :repl-thread 12)',
+            '(:return (:ok ("(lisp::setf-expand ===> l <===)" t)) 12)')
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc \'("setf-expand" "" swank::%cursor-marker%) :print-right-margin 80) "USER" :repl-thread 8)',
+            '(:return (:ok (:not-available t)) 8)')
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc \'("lisp:setf-expand" "" swank::%cursor-marker%) :print-right-margin 80) "USER" :repl-thread 9)',
+            '(:return (:ok (:not-available t)) 9)')
+
     # COMPLETIONS
     def test_completions_1(self):
         self.assertSocket(
@@ -643,19 +654,25 @@ class eus(EuslimeTestCase):
             '(:emacs-rex (swank:completions "setf-exp" \'"USER") "USER" :repl-thread 5)',
             '(:return (:ok ()) 5)')
         self.assertSocket(
+            '(:emacs-rex (swank:completions "lisp::setf-exp" \'"USER") "USER" :repl-thread 7)',
+            '(:return (:ok (("lisp::setf-expand" "lisp::setf-expand-1") "lisp::setf-expand")) 7)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions "lisp:setf-exp" \'"USER") "USER" :repl-thread 8)',
+            '(:return (:ok (("lisp::setf-expand" "lisp::setf-expand-1") "lisp::setf-expand")) 8)')
+        self.assertSocket(
             '(:emacs-rex (swank:completions "setf-exp" \'"LISP") "LISP" :repl-thread 8)',
             '(:return (:ok (("setf-expand" "setf-expand-1") "setf-expand")) 8)')
 
     def test_completions_18(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(defun foo (&key test-not))\n") "USER" :repl-thread 17)',
+            '(:write-string "foo" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:return (:ok nil) 17)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":t" \'("foo" "" swank::%cursor-marker%)) "USER" :repl-thread 19)',
+            '(:return (:ok ((":test-not") ":test-not")) 19)')
         self.with_unwind_protect(
-            (self.assertSocket,
-             '(:emacs-rex (swank-repl:listener-eval "(defun foo (&key test-not))\n") "USER" :repl-thread 17)',
-             '(:write-string "foo" :repl-result)',
-             '(:write-string "\\n" :repl-result)',
-             '(:return (:ok nil) 17)'),
-            (self.assertSocket,
-             '(:emacs-rex (swank:completions-for-keyword ":t" \'("foo" "" swank::%cursor-marker%)) "USER" :repl-thread 19)',
-             '(:return (:ok ((":test-not") ":test-not")) 19)'),
             (self.assertSocket,
              '(:emacs-rex (swank:set-package "LISP") "USER" :repl-thread 21)',
              '(:return (:ok ("LISP" "LISP:{}")) 21)'.format(self.EUSLISP_PROGRAM_NAME)),
@@ -667,10 +684,10 @@ class eus(EuslimeTestCase):
              '(:return (:ok ("USER" "{}")) 27)'.format(self.EUSLISP_PROGRAM_NAME)))
 
     def test_completions_19(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":sl" \'("send" "*user-package*" "" swank::%cursor-marker%)) "USER" :repl-thread 53)',
+            '(:return (:ok ((":slots") ":slots")) 53)')
         self.with_unwind_protect(
-            (self.assertSocket,
-             '(:emacs-rex (swank:completions-for-keyword ":sl" \'("send" "*user-package*" "" swank::%cursor-marker%)) "USER" :repl-thread 53)',
-             '(:return (:ok ((":slots") ":slots")) 53)'),
             (self.assertSocket,
              '(:emacs-rex (swank:set-package "KEYWORD") "USER" :repl-thread 55)',
              '(:return (:ok ("KEYWORD" "KEYWORD:{}")) 55)'.format(self.EUSLISP_PROGRAM_NAME)),
@@ -1256,6 +1273,20 @@ class eus(EuslimeTestCase):
             (self.assertSocket,
              '(:emacs-rex (swank:set-package "USER") "LISP" :repl-thread 37)',
              '(:return (:ok ("USER" "{}")) 37)'.format(self.EUSLISP_PROGRAM_NAME)))
+
+    def test_describe_6(self):
+        self.assertSocketIgnoreAddress(
+            '(:emacs-rex (swank:describe-symbol "lisp::setf-expand") "USER" :repl-thread 24)',
+            '(:return (:ok "PROPERTIES\\n\\nplist=((:function-documentation . \\"(l)\\"))\\nvalue=*unbound*\\nvtype=1\\nfunction=#<compiled-code #X60dc588>\\npname=\\"SETF-EXPAND\\"\\nhomepkg=#<package #X60d7ae8 LISP>\\n") 24)')
+        self.with_unwind_protect(
+            (self.assertSocketIgnoreAddress,
+             '(:emacs-rex (swank:describe-symbol "lisp:setf-expand") "USER" :repl-thread 22)',
+             '(:debug 0 1 ("Symbol not found in (slime::slime-describe-symbol \\"lisp:setf-expand\\" \\"USER\\")" "" nil) (("CONTINUE" "Ignore the error and continue in the same stack level")) ((0 "#<compiled-code #X619b290>" (:restartable nil))) (nil))'),
+            (self.assertSocket,
+             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 23)',
+             '(:debug-return 0 1 nil)',
+             '(:return (:abort nil) 23)',
+             '(:return (:abort "\'Symbol not found\'") 22)'))
 
     # LOAD FILE
     def test_load_file_1(self):
