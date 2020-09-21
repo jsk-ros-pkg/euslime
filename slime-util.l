@@ -110,6 +110,11 @@
                           (send pkg :nicknames))))
              :test #'string-equal))))
 
+;; for optimization
+(defmacro is-send-symbol (name)
+  `(some #'(lambda (val) (string-equal ,name val))
+         ',(list-possible-symbol-names 'send)))
+
 ;; Prefix related
 (defun append-common (match-lst start-len)
   (cond
@@ -277,7 +282,7 @@
 (defun method-lambda-list-from-form (form)
   ;; form: '("send" "obj" ":selector" ...)
   (if (and (cddr form)
-           (string-equal (first form) "send")
+           (is-send-symbol (first form))
            (stringp (second form))
            (stringp (third form)))
       (with-callable-symbol-value (value (cadr form))
@@ -303,7 +308,7 @@
     (cond
       ((null form)
        (slime-find-symbol (subseq start 1) *keyword-package* ":"))
-      ((string-equal (car form) "send")
+      ((is-send-symbol (car form))
        (if (stringp (cadr form))
            ;; Always return nil if a matching callable symbol is not found
            (with-callable-symbol-value (value (cadr form))
