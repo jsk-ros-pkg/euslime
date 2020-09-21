@@ -818,6 +818,14 @@ class eus(EuslimeTestCase):
             '(:emacs-rex (swank:fuzzy-completions "none" "USER" :limit 300 :time-limit-in-msec 1500) "USER" t 7)',
             '(:return (:ok (() nil)) 7)')
 
+    def test_completions_24(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":all-m" \'("send" "geo::coordinates" "" swank::%cursor-marker%)) "USER" :repl-thread 44)',
+            '(:return (:ok ((":all-methods" ":all-method-names") ":all-method")) 44)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":ini" \'("send" "geo::coordinates" "" swank::%cursor-marker%)) "USER" :repl-thread 45)',
+            '(:return (:ok ()) 45)')
+
     # OUTPUT
     def test_output_1(self):
         self.assertSocketWriteString(

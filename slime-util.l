@@ -203,8 +203,11 @@
                           (format nil ":~a" key))))
                 (nthcdr pos arglist)))))
 
-(defun method-list (obj)
-  (let* ((class (if (classp obj) obj (class obj)))
+(defun method-list (obj &optional instance-completion-p)
+  (let* ((class (or (if instance-completion-p
+                        (and (classp obj) obj)
+                        (class obj))
+                    (return-from method-list nil)))
          (meths (mapcar #'car (send class :all-methods))))
     (mapcar #'(lambda (val) (format nil "~a" val))
             (remove-duplicates meths))))
@@ -327,7 +330,7 @@
              (if (cddr form)
                  (let ((keys (keyword-list (method-lambda-list-from-form form send/instance))))
                    (find-prefix start keys 1))
-                 (find-prefix start (method-list value) 1)))
+                 (find-prefix start (method-list value (string= send/instance "instance")) 1)))
            ;; Complete as global symbol if object is an s-expression
            (slime-find-symbol (subseq start 1) *keyword-package* ":")))
       (t
