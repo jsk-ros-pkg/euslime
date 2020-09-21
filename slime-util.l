@@ -113,9 +113,16 @@
              :test #'string-equal))))
 
 ;; for optimization
-(defmacro is-send-symbol (name)
-  `(some #'(lambda (val) (string-equal ,name val))
-         ',(list-possible-symbol-names 'send)))
+(defmacro is-send/instance-symbol (name)
+  ;; return "send", "instance" or nil
+  `(cdr (assoc ,name
+               ',(mapcan #'list
+                         (mapcar #'(lambda (val) (cons val "send"))
+                                 (list-possible-symbol-names 'send))
+                         (mapcar #'(lambda (val) (cons val "instance"))
+                                 (list-possible-symbol-names 'instance)))
+               :test #'string-equal)))
+
 
 ;; Prefix related
 (defun append-common (match-lst start-len)
@@ -168,10 +175,13 @@
             (aif (assoc :function-documentation (send sym :plist))
                  (read-copy (cdr it) sym))))))
 
-(defun method-lambda-list (obj name)
+(defun method-lambda-list (obj name &optional instance-completion-p)
   (let* ((sym (or (find-symbol (string-upcase (subseq name 1)) *keyword-package*)
                   (return-from method-lambda-list nil)))
-         (method (find-method obj sym))
+         (method
+          (if instance-completion-p
+              (and (classp obj) (list obj (send obj :method sym)))
+              (find-method obj sym)))
          (class (car method))
          (def (second (second method)))
          (arglist (or
@@ -281,14 +291,14 @@
           arglist
           (set-cursor arglist cursor)))))
 
-(defun method-lambda-list-from-form (form)
+(defun method-lambda-list-from-form (form &optional send/instance)
   ;; form: '("send" "obj" ":selector" ...)
   (if (and (cddr form)
-           (is-send-symbol (first form))
+           (setq send/instance (or send/instance (is-send/instance-symbol (first form))))
            (stringp (second form))
            (stringp (third form)))
       (with-callable-symbol-value (value (cadr form))
-        (method-lambda-list value (third form)))))
+        (method-lambda-list value (third form) (string= send/instance "instance")))))
 
 (defun set-cursor (lst pos)
   ;; TODO: use string not symbols
@@ -310,12 +320,12 @@
     (cond
       ((null form)
        (slime-find-symbol (subseq start 1) *keyword-package* ":"))
-      ((is-send-symbol (car form))
+      ((setq send/instance (is-send/instance-symbol (car form)))
        (if (stringp (cadr form))
            ;; Always return nil if a matching callable symbol is not found
            (with-callable-symbol-value (value (cadr form))
              (if (cddr form)
-                 (let ((keys (keyword-list (method-lambda-list-from-form form))))
+                 (let ((keys (keyword-list (method-lambda-list-from-form form send/instance))))
                    (find-prefix start keys 1))
                  (find-prefix start (method-list value) 1)))
            ;; Complete as global symbol if object is an s-expression
