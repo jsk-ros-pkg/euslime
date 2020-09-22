@@ -629,7 +629,7 @@ class eus(EuslimeTestCase):
             '(:return (:ok nil) 42)')
 
     def test_autodoc_send_7(self):
-        # unbound object
+        # from unbound object
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(boundp \'unbound)\n") "USER" :repl-thread 204)',
             '(:write-string "nil" :repl-result)',
@@ -649,7 +649,7 @@ class eus(EuslimeTestCase):
             '(:return (:ok ("(send object ===> selector <=== &rest args)" t)) 201)')
 
     def test_autodoc_send_8(self):
-        # expression
+        # from expression
         self.assertSocket(
             '(:emacs-rex (swank:autodoc \'("send" ("make-coords" ":name" "\"test\"") ":pos" swank::%cursor-marker%) :print-right-margin 100) "USER" :repl-thread 16)',
             '(:return (:ok ("(send object ===> selector <=== &rest args)" t)) 16)')
@@ -820,87 +820,344 @@ class eus(EuslimeTestCase):
             '(:emacs-rex (swank:autodoc \'("lisp::instance" "symbol" ":init" "" swank::%cursor-marker%) :print-right-margin 100) "USER" :repl-thread 27)')
 
     # COMPLETIONS
-    def test_completions_1(self):
+    def test_completions_symbol_1(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions "find-if" (quote "USER")) "USER" :repl-thread 11)',
             '(:return (:ok (("find-if" "find-if-not") "find-if")) 11)')
 
-    def test_completions_2(self):
+    def test_completions_symbol_2(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions "find-if-no" (quote "USER")) "USER" :repl-thread 13)',
             '(:return (:ok (("find-if-not") "find-if-not")) 13)')
 
-    def test_completions_3(self):
+    def test_completions_symbol_3(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions "*er" (quote "USER")) "USER" :repl-thread 5)',
             '(:return (:ok (("*error-handler*" "*error-output*") "*error-")) 5)')
 
-    def test_completions_4(self):
+    def test_completions_symbol_4(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions "*prompt" (quote "USER")) "USER" :repl-thread 20)',
             '(:return (:ok (("*prompt*" "*prompt-string*") "*prompt")) 20)')
 
-    def test_completions_5(self):
+    def test_completions_symbol_5(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions "*prompt-" (quote "USER")) "USER" :repl-thread 23)',
             '(:return (:ok (("*prompt-string*") "*prompt-string*")) 23)')
 
-    def test_completions_6(self):
-        self.assertSocket(
-            '(:emacs-rex (swank:completions-for-keyword ":test" (quote ("find" "1" ("list" "1" "2" "3") "" swank::%cursor-marker%))) "USER" :repl-thread 17)',
-            '(:return (:ok ((":test" ":test-not") ":test")) 17)')
-
-    def test_completions_7(self):
-        self.assertSocket(
-            '(:emacs-rex (swank:completions-for-keyword ":test-n" (quote ("find" "1" ("list" "1" "2" "3") "" swank::%cursor-marker%))) "USER" :repl-thread 19)',
-            '(:return (:ok ((":test-not") ":test-not")) 19)')
-
-    def test_completions_8(self):
-        self.assertSocket(
-            '(:emacs-rex (swank:completions-for-keyword ":count" (quote ("find" "1" ("list" "1" "2" "3") ":test-not" "" swank::%cursor-marker%))) "USER" :repl-thread 22)',
-            '(:return (:ok ((":count") ":count")) 22)')
-
-    def test_completions_9(self):
-        self.assertSocket(
-            '(:emacs-rex (swank:completions-for-keyword ":none" (quote ("find" "1" ("list" "1" "2" "3") ":test-not" ":count" "" swank::%cursor-marker%))) "USER" :repl-thread 26)',
-            '(:return (:ok ()) 26)')
-
-    def test_completions_10(self):
+    def test_completions_symbol_6(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions ":none" (quote "USER")) "USER" :repl-thread 27)',
             '(:return (:ok ()) 27)')
 
-    def test_completions_11(self):
+    def test_completions_keyword_1(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":test" (quote ("find" "1" ("list" "1" "2" "3") "" swank::%cursor-marker%))) "USER" :repl-thread 17)',
+            '(:return (:ok ((":test" ":test-not") ":test")) 17)')
+
+    def test_completions_keyword_2(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":test-n" (quote ("find" "1" ("list" "1" "2" "3") "" swank::%cursor-marker%))) "USER" :repl-thread 19)',
+            '(:return (:ok ((":test-not") ":test-not")) 19)')
+
+    def test_completions_keyword_3(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":count" (quote ("find" "1" ("list" "1" "2" "3") ":test-not" "" swank::%cursor-marker%))) "USER" :repl-thread 22)',
+            '(:return (:ok ((":count") ":count")) 22)')
+
+    def test_completions_keyword_4(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":none" (quote ("find" "1" ("list" "1" "2" "3") ":test-not" ":count" "" swank::%cursor-marker%))) "USER" :repl-thread 26)',
+            '(:return (:ok ()) 26)')
+
+    def test_completions_keyword_5(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions-for-keyword ":test" (quote nil)) "USER" :repl-thread 5)',
             '(:return (:ok ((":test" ":test-not") ":test")) 5)')
 
-    def test_completions_12(self):
+    def test_completions_keyword_6(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions-for-keyword ":test" (quote nil)) "USER" :repl-thread 47)',
             '(:return (:ok ((":test" ":test-not") ":test")) 47)')
 
-    def test_completions_13(self):
+    def test_completions_character_1(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions-for-character "Ne") "USER" :repl-thread 19)',
             '(:return (:ok (("Newline") "Newline")) 19)')
 
-    def test_completions_14(self):
+    def test_completions_character_2(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions-for-character "") "USER" :repl-thread 20)',
             '(:return (:ok (("Space" "Newline" "Linefeed" "Backspace" "Delete" "Rubout" "Return" "Page" "Formfeed" "Esc" "Escape" "Tab" "Left-Paren" "Right-Paren" "Lparen" "Rparen" "Bell" "Null" "SOH" "STX" "ETX") "")) 20)')
 
-    def test_completions_15(self):
+    def test_completions_send_1(self):
+        # from instance
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":sl" \'("send" "*lisp-package*" "" swank::%cursor-marker%)) "USER" :repl-thread 32)',
+            '(:return (:ok ((":slots") ":slots")) 32)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":ini" \'("send" "*lisp-package*" "" swank::%cursor-marker%)) "USER" :repl-thread 33)',
+            '(:return (:ok ()) 33)')
+
+    def test_completions_send_2(self):
+        # from class
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":all-m" \'("send" "geo::coordinates" "" swank::%cursor-marker%)) "USER" :repl-thread 44)',
+            '(:return (:ok ((":all-methods" ":all-method-names") ":all-method")) 44)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":ini" \'("send" "geo::coordinates" "" swank::%cursor-marker%)) "USER" :repl-thread 45)',
+            '(:return (:ok ()) 45)')
+
+    def test_completions_send_3(self):
+        # for bound object
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(progn (setq c (make-coords)) t)\n") "USER" :repl-thread 36)',
+            '(:write-string "t" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:return (:ok nil) 36)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":worldp" \'("send" "c" "" swank::%cursor-marker%)) "USER" :repl-thread 41)',
+            '(:return (:ok ((":worldpos") ":worldpos")) 41)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":world" \'("send" "c" "" swank::%cursor-marker%)) "USER" :repl-thread 46)',
+            '(:return (:ok ((":worldrot" ":worldpos" ":worldcoords") ":world")) 46)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":world-" \'("send" "c" "" swank::%cursor-marker%)) "USER" :repl-thread 53)',
+            '(:return (:ok ()) 53)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(makunbound \'c)\n") "USER" :repl-thread 56)',
+            '(:write-string "t" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:return (:ok nil) 56)')
+
+    def test_completions_send_4(self):
+        # from unbound object
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(boundp \'unbound)\n") "USER" :repl-thread 204)',
+            '(:write-string "nil" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:return (:ok nil) 204)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":worldp" \'("send" "unbound" "" swank::%cursor-marker%)) "USER" :repl-thread 8)',
+            '(:return (:ok ()) 8)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":world" \'("send" "unbound" "" swank::%cursor-marker%)) "USER" :repl-thread 9)',
+            '(:return (:ok ()) 9)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":world-" \'("send" "unbound" "" swank::%cursor-marker%)) "USER" :repl-thread 11)',
+            '(:return (:ok ()) 11)')
+
+    def test_completions_send_5(self):
+        # from expression
+        # intern keyword to unify eus, irteus, roseus
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(intern \\"WORLD-CENTROID\\" *keyword-package*)\n") "USER" :repl-thread 10)',
+            '(:write-string ":world-centroid" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:return (:ok nil) 10)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":worldp" \'("send" ("make-coords") "" swank::%cursor-marker%)) "USER" :repl-thread 61)',
+            '(:return (:ok ((":worldpos") ":worldpos")) 61)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":world" \'("send" ("make-coords") "" swank::%cursor-marker%)) "USER" :repl-thread 62)',
+            '(:return (:ok ((":world" ":world-centroid" ":worldcoords" ":worldpos" ":worldrot") ":world")) 62)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":world-" \'("send" ("make-coords") "" swank::%cursor-marker%)) "USER" :repl-thread 63)',
+            '(:return (:ok ((":world-centroid") ":world-centroid")) 63)')
+
+    def test_completions_send_6(self):
+        # with help
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(progn (setq c (make-coords)) t)\n") "USER" :repl-thread 36)',
+            '(:write-string "t" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:return (:ok nil) 36)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":po" \'("send" "c" ":init" "" swank::%cursor-marker%)) "USER" :repl-thread 14)',
+            '(:return (:ok ((":pos") ":pos")) 14)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":r" \'("send" "c" ":init" "" swank::%cursor-marker%)) "USER" :repl-thread 17)',
+            '(:return (:ok ((":rot" ":rpy") ":r")) 17)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":non" \'("send" "c" ":init" "" swank::%cursor-marker%)) "USER" :repl-thread 23)',
+            '(:return (:ok ()) 23)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(makunbound \'c)\n") "USER" :repl-thread 56)',
+            '(:write-string "t" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:return (:ok nil) 56)')
+
+    def test_completions_send_7(self):
+        # from compiled symbol
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(setq p #P\\"/tmp\\")\n") "USER" :repl-thread 24)',
+            '(:write-string "#P\\"/tmp\\"" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:return (:ok nil) 24)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":hos" \'("send" "p" ":init" "" swank::%cursor-marker%)) "USER" :repl-thread 49)',
+            '(:return (:ok ((":host") ":host")) 49)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":na" \'("send" "p" ":init" "" swank::%cursor-marker%)) "USER" :repl-thread 52)',
+            '(:return (:ok ((":name") ":name")) 52)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":non" \'("send" "p" ":init" "" swank::%cursor-marker%)) "USER" :repl-thread 53)',
+            '(:return (:ok ()) 53)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(makunbound \'p)\n") "USER" :repl-thread 56)',
+            '(:write-string "t" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:return (:ok nil) 56)')
+
+    def test_completions_send_8(self):
+        # from lisp form
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(defclass test_send)\n") "USER" :repl-thread 71)',
+            '(:write-string "test_send" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:return (:ok nil) 71)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(defmethod test_send (:foo (a b c)) (:bar ()) (:foobar (&key this that test)))\n") "USER" :repl-thread 72)',
+            '(:write-string "test_send" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:return (:ok nil) 72)')
+        self.assertSocketIgnoreAddress(
+            '(:emacs-rex (swank-repl:listener-eval "(setq c (instance test_send))\n") "USER" :repl-thread 76)',
+            '(:write-string "#<test_send #X63e58e8>" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:return (:ok nil) 76)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":tes" \'("send" "c" ":foobar" "" swank::%cursor-marker%)) "USER" :repl-thread 83)',
+            '(:return (:ok ((":test") ":test")) 83)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":t" \'("send" "c" ":foobar" "" swank::%cursor-marker%)) "USER" :repl-thread 84)',
+            '(:return (:ok ((":this" ":that" ":test") ":t")) 84)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":non" \'("send" "c" ":foobar" "" swank::%cursor-marker%)) "USER" :repl-thread 86)',
+            '(:return (:ok ()) 86)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(makunbound \'c)\n") "USER" :repl-thread 56)',
+            '(:write-string "t" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:return (:ok nil) 56)')
+
+    def test_completions_instance_1(self):
+        # from class
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":worldp" \'("instance" "geo::coordinates" "" swank::%cursor-marker%)) "USER" :repl-thread 41)',
+            '(:return (:ok ((":worldpos") ":worldpos")) 41)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":world" \'("instance" "geo::coordinates" "" swank::%cursor-marker%)) "USER" :repl-thread 46)',
+            '(:return (:ok ((":worldrot" ":worldpos" ":worldcoords") ":world")) 46)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":world-" \'("instance" "geo::coordinates" "" swank::%cursor-marker%)) "USER" :repl-thread 53)',
+            '(:return (:ok ()) 53)')
+
+    def test_completions_instance_2(self):
+        # from instance
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":sl" \'("instance" "*lisp-package*" "" swank::%cursor-marker%)) "USER" :repl-thread 32)',
+            '(:return (:ok ()) 32)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":ini" \'("instance" "*lisp-package*" "" swank::%cursor-marker%)) "USER" :repl-thread 33)',
+            '(:return (:ok ()) 33)')
+
+    def test_completions_instance_3(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(boundp \'unbound)\n") "USER" :repl-thread 204)',
+            '(:write-string "nil" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:return (:ok nil) 204)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":worldp" \'("instance" "unbound" "" swank::%cursor-marker%)) "USER" :repl-thread 8)',
+            '(:return (:ok ()) 8)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":world" \'("instance" "unbound" "" swank::%cursor-marker%)) "USER" :repl-thread 9)',
+            '(:return (:ok ()) 9)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":world-" \'("instance" "unbound" "" swank::%cursor-marker%)) "USER" :repl-thread 11)',
+            '(:return (:ok ()) 11)')
+
+    def test_completions_instance_4(self):
+        # from expression
+        # intern keyword to unify eus, irteus, roseus
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(intern \\"WORLD-CENTROID\\" *keyword-package*)\n") "USER" :repl-thread 10)',
+            '(:write-string ":world-centroid" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:return (:ok nil) 10)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":worldp" \'("instance" ("class" ("make-coords")) "" swank::%cursor-marker%)) "USER" :repl-thread 61)',
+            '(:return (:ok ((":worldpos") ":worldpos")) 61)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":world" \'("instance" ("class" ("make-coords")) "" swank::%cursor-marker%)) "USER" :repl-thread 62)',
+            '(:return (:ok ((":world" ":world-centroid" ":worldcoords" ":worldpos" ":worldrot") ":world")) 62)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":world-" \'("instance" ("class" ("make-coords")) "" swank::%cursor-marker%)) "USER" :repl-thread 63)',
+            '(:return (:ok ((":world-centroid") ":world-centroid")) 63)')
+
+    def test_completions_instance_5(self):
+        # with help
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":po" \'("instance" "geo::coordinates" ":init" "" swank::%cursor-marker%)) "USER" :repl-thread 14)',
+            '(:return (:ok ((":pos") ":pos")) 14)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":r" \'("instance" "geo::coordinates" ":init" "" swank::%cursor-marker%)) "USER" :repl-thread 17)',
+            '(:return (:ok ((":rot" ":rpy") ":r")) 17)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":non" \'("instance" "geo::coordinates" ":init" "" swank::%cursor-marker%)) "USER" :repl-thread 23)',
+            '(:return (:ok ()) 23)')
+
+    def test_completions_instance_6(self):
+        # from compiled symbol
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":hos" \'("instance" "pathname" ":init" "" swank::%cursor-marker%)) "USER" :repl-thread 49)',
+            '(:return (:ok ((":host") ":host")) 49)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":na" \'("instance" "pathname" ":init" "" swank::%cursor-marker%)) "USER" :repl-thread 52)',
+            '(:return (:ok ((":name") ":name")) 52)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":non" \'("instance" "pathname" ":init" "" swank::%cursor-marker%)) "USER" :repl-thread 53)',
+            '(:return (:ok ()) 53)')
+
+    def test_completions_instance_7(self):
+        # from lisp form
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(defclass test_send)\n") "USER" :repl-thread 71)',
+            '(:write-string "test_send" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:return (:ok nil) 71)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(defmethod test_send (:foo (a b c)) (:bar ()) (:foobar (&key this that test)))\n") "USER" :repl-thread 72)',
+            '(:write-string "test_send" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:return (:ok nil) 72)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":tes" \'("instance" "test_send" ":foobar" "" swank::%cursor-marker%)) "USER" :repl-thread 83)',
+            '(:return (:ok ((":test") ":test")) 83)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":t" \'("instance" "test_send" ":foobar" "" swank::%cursor-marker%)) "USER" :repl-thread 84)',
+            '(:return (:ok ((":this" ":that" ":test") ":t")) 84)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":non" \'("instance" "test_send" ":foobar" "" swank::%cursor-marker%)) "USER" :repl-thread 86)',
+            '(:return (:ok ()) 86)')
+
+    def test_completions_package_1(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:completions "user" \'"USER") "USER" :repl-thread 17)',
+            '(:return (:ok (("user:") "user:")) 17)')
+
+    def test_completions_package_2(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions "LISP::*stan" \'"USER") "USER" :repl-thread 6)',
             '(:return (:ok (("LISP::*standard-input*" "LISP::*standard-output*") "LISP::*standard-")) 6)')
 
-    def test_completions_16(self):
+    def test_completions_package_3(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions "unix:sigin" \'"USER") "USER" :repl-thread 5)',
             '(:return (:ok (("unix::sigint") "unix::sigint")) 5)')
 
-    def test_completions_17(self):
+    def test_completions_package_4(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions "setf-exp" \'"USER") "USER" :repl-thread 5)',
             '(:return (:ok ()) 5)')
@@ -914,7 +1171,7 @@ class eus(EuslimeTestCase):
             '(:emacs-rex (swank:completions "setf-exp" \'"LISP") "LISP" :repl-thread 8)',
             '(:return (:ok (("setf-expand" "setf-expand-1") "setf-expand")) 8)')
 
-    def test_completions_18(self):
+    def test_completions_package_5(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(defun foo (&key test-not))\n") "USER" :repl-thread 17)',
             '(:write-string "foo" :repl-result)',
@@ -934,7 +1191,7 @@ class eus(EuslimeTestCase):
              '(:emacs-rex (swank:set-package "USER") "LISP" :repl-thread 27)',
              '(:return (:ok ("USER" "{}")) 27)'.format(self.EUSLISP_PROGRAM_NAME)))
 
-    def test_completions_19(self):
+    def test_completions_package_6(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions-for-keyword ":sl" \'("send" "*user-package*" "" swank::%cursor-marker%)) "USER" :repl-thread 53)',
             '(:return (:ok ((":slots") ":slots")) 53)')
@@ -949,111 +1206,31 @@ class eus(EuslimeTestCase):
              '(:emacs-rex (swank:set-package "USER") "KEYWORD" :repl-thread 73)',
              '(:return (:ok ("USER" "{}")) 73)'.format(self.EUSLISP_PROGRAM_NAME)))
 
-    def test_completions_20(self):
-        # method completion for bound symbol
-        # intern keyword to unify eus, irteus, roseus
-        self.assertSocket(
-            '(:emacs-rex (swank-repl:listener-eval "(intern \\"WORLD-CENTROID\\" *keyword-package*)\n") "USER" :repl-thread 10)',
-            '(:write-string ":world-centroid" :repl-result)',
-            '(:write-string "\\n" :repl-result)',
-            '(:return (:ok nil) 10)')
-        self.assertSocket(
-            '(:emacs-rex (swank-repl:listener-eval "(progn (setq c (make-coords)) t)\n") "USER" :repl-thread 36)',
-            '(:write-string "t" :repl-result)',
-            '(:write-string "\\n" :repl-result)',
-            '(:return (:ok nil) 36)')
-        self.assertSocket(
-            '(:emacs-rex (swank:completions-for-keyword ":worldp" \'("send" "c" "" swank::%cursor-marker%)) "USER" :repl-thread 41)',
-            '(:return (:ok ((":worldpos") ":worldpos")) 41)')
-        self.assertSocket(
-            '(:emacs-rex (swank:completions-for-keyword ":world" \'("send" "c" "" swank::%cursor-marker%)) "USER" :repl-thread 46)',
-            '(:return (:ok ((":worldrot" ":worldpos" ":worldcoords") ":world")) 46)')
-        self.assertSocket(
-            '(:emacs-rex (swank:completions-for-keyword ":world-" \'("send" "c" "" swank::%cursor-marker%)) "USER" :repl-thread 53)',
-            '(:return (:ok ()) 53)')
+    def test_completions_package_7(self):
+        self.assertSocketSameResult(
+            '(:emacs-rex (swank:completions-for-keyword ":sl" \'("send" "*lisp-package*" "" swank::%cursor-marker%)) "USER" :repl-thread 32)',
+            '(:emacs-rex (swank:completions-for-keyword ":sl" \'("lisp:send" "*lisp-package*" "" swank::%cursor-marker%)) "USER" :repl-thread 32)',
+            '(:emacs-rex (swank:completions-for-keyword ":sl" \'("lisp::send" "*lisp-package*" "" swank::%cursor-marker%)) "USER" :repl-thread 32)')
+        self.assertSocketSameResult(
+            '(:emacs-rex (swank:completions-for-keyword ":ini" \'("send" "*lisp-package*" "" swank::%cursor-marker%)) "USER" :repl-thread 33)',
+            '(:emacs-rex (swank:completions-for-keyword ":ini" \'("lisp:send" "*lisp-package*" "" swank::%cursor-marker%)) "USER" :repl-thread 33)',
+            '(:emacs-rex (swank:completions-for-keyword ":ini" \'("lisp::send" "*lisp-package*" "" swank::%cursor-marker%)) "USER" :repl-thread 33)')
 
+    def test_completions_package_8(self):
         self.assertSocketSameResult(
-            '(:emacs-rex (swank:completions-for-keyword ":worldp" \'("send" "c" "" swank::%cursor-marker%)) "USER" :repl-thread 41)',
-            '(:emacs-rex (swank:completions-for-keyword ":worldp" \'("lisp:send" "c" "" swank::%cursor-marker%)) "USER" :repl-thread 41)',
-            '(:emacs-rex (swank:completions-for-keyword ":worldp" \'("lisp::send" "c" "" swank::%cursor-marker%)) "USER" :repl-thread 41)')
+            '(:emacs-rex (swank:completions-for-keyword ":worldp" \'("instance" "geo::coordinates" "" swank::%cursor-marker%)) "USER" :repl-thread 41)',
+            '(:emacs-rex (swank:completions-for-keyword ":worldp" \'("lisp:instance" "geo::coordinates" "" swank::%cursor-marker%)) "USER" :repl-thread 41)',
+            '(:emacs-rex (swank:completions-for-keyword ":worldp" \'("lisp::instance" "geo::coordinates" "" swank::%cursor-marker%)) "USER" :repl-thread 41)')
         self.assertSocketSameResult(
-            '(:emacs-rex (swank:completions-for-keyword ":world" \'("send" "c" "" swank::%cursor-marker%)) "USER" :repl-thread 46)',
-            '(:emacs-rex (swank:completions-for-keyword ":world" \'("lisp:send" "c" "" swank::%cursor-marker%)) "USER" :repl-thread 46)',
-            '(:emacs-rex (swank:completions-for-keyword ":world" \'("lisp::send" "c" "" swank::%cursor-marker%)) "USER" :repl-thread 46)')
+            '(:emacs-rex (swank:completions-for-keyword ":world" \'("instance" "geo::coordinates" "" swank::%cursor-marker%)) "USER" :repl-thread 46)',
+            '(:emacs-rex (swank:completions-for-keyword ":world" \'("lisp:instance" "geo::coordinates" "" swank::%cursor-marker%)) "USER" :repl-thread 46)',
+            '(:emacs-rex (swank:completions-for-keyword ":world" \'("lisp::instance" "geo::coordinates" "" swank::%cursor-marker%)) "USER" :repl-thread 46)')
         self.assertSocketSameResult(
-            '(:emacs-rex (swank:completions-for-keyword ":world-" \'("send" "c" "" swank::%cursor-marker%)) "USER" :repl-thread 53)',
-            '(:emacs-rex (swank:completions-for-keyword ":world-" \'("lisp:send" "c" "" swank::%cursor-marker%)) "USER" :repl-thread 53)',
-            '(:emacs-rex (swank:completions-for-keyword ":world-" \'("lisp::send" "c" "" swank::%cursor-marker%)) "USER" :repl-thread 53)')
+            '(:emacs-rex (swank:completions-for-keyword ":world-" \'("instance" "geo::coordinates" "" swank::%cursor-marker%)) "USER" :repl-thread 53)',
+            '(:emacs-rex (swank:completions-for-keyword ":world-" \'("lisp:instance" "geo::coordinates" "" swank::%cursor-marker%)) "USER" :repl-thread 53)',
+            '(:emacs-rex (swank:completions-for-keyword ":world-" \'("lisp::instance" "geo::coordinates" "" swank::%cursor-marker%)) "USER" :repl-thread 53)')
 
-        self.assertSocket(
-            '(:emacs-rex (swank-repl:listener-eval "(makunbound \'c)\n") "USER" :repl-thread 56)',
-            '(:write-string "t" :repl-result)',
-            '(:write-string "\\n" :repl-result)',
-            '(:return (:ok nil) 56)')
-
-    def test_completions_21(self):
-        # method completion for expression
-        # intern keyword to unify eus, irteus, roseus
-        self.assertSocket(
-            '(:emacs-rex (swank-repl:listener-eval "(intern \\"WORLD-CENTROID\\" *keyword-package*)\n") "USER" :repl-thread 10)',
-            '(:write-string ":world-centroid" :repl-result)',
-            '(:write-string "\\n" :repl-result)',
-            '(:return (:ok nil) 10)')
-        self.assertSocket(
-            '(:emacs-rex (swank:completions-for-keyword ":worldp" \'("send" ("make-coords") "" swank::%cursor-marker%)) "USER" :repl-thread 61)',
-            '(:return (:ok ((":worldpos") ":worldpos")) 61)')
-        self.assertSocket(
-            '(:emacs-rex (swank:completions-for-keyword ":world" \'("send" ("make-coords") "" swank::%cursor-marker%)) "USER" :repl-thread 62)',
-            '(:return (:ok ((":world" ":world-centroid" ":worldcoords" ":worldpos" ":worldrot") ":world")) 62)')
-        self.assertSocket(
-            '(:emacs-rex (swank:completions-for-keyword ":world-" \'("send" ("make-coords") "" swank::%cursor-marker%)) "USER" :repl-thread 63)',
-            '(:return (:ok ((":world-centroid") ":world-centroid")) 63)')
-
-        self.assertSocketSameResult(
-            '(:emacs-rex (swank:completions-for-keyword ":worldp" \'("send" ("make-coords") "" swank::%cursor-marker%)) "USER" :repl-thread 61)',
-            '(:emacs-rex (swank:completions-for-keyword ":worldp" \'("lisp:send" ("make-coords") "" swank::%cursor-marker%)) "USER" :repl-thread 61)',
-            '(:emacs-rex (swank:completions-for-keyword ":worldp" \'("lisp::send" ("make-coords") "" swank::%cursor-marker%)) "USER" :repl-thread 61)')
-        self.assertSocketSameResult(
-            '(:emacs-rex (swank:completions-for-keyword ":world" \'("send" ("make-coords") "" swank::%cursor-marker%)) "USER" :repl-thread 62)',
-            '(:emacs-rex (swank:completions-for-keyword ":world" \'("lisp:send" ("make-coords") "" swank::%cursor-marker%)) "USER" :repl-thread 62)',
-            '(:emacs-rex (swank:completions-for-keyword ":world" \'("lisp::send" ("make-coords") "" swank::%cursor-marker%)) "USER" :repl-thread 62)')
-        self.assertSocketSameResult(
-            '(:emacs-rex (swank:completions-for-keyword ":world-" \'("send" ("make-coords") "" swank::%cursor-marker%)) "USER" :repl-thread 63)',
-            '(:emacs-rex (swank:completions-for-keyword ":world-" \'("lisp:send" ("make-coords") "" swank::%cursor-marker%)) "USER" :repl-thread 63)',
-            '(:emacs-rex (swank:completions-for-keyword ":world-" \'("lisp::send" ("make-coords") "" swank::%cursor-marker%)) "USER" :repl-thread 63)')
-
-    def test_completions_22(self):
-        # method completion for unbound symbol
-        # intern keyword to unify eus, irteus, roseus
-        self.assertSocket(
-            '(:emacs-rex (swank-repl:listener-eval "(intern \\"WORLD-CENTROID\\" *keyword-package*)\n") "USER" :repl-thread 10)',
-            '(:write-string ":world-centroid" :repl-result)',
-            '(:write-string "\\n" :repl-result)',
-            '(:return (:ok nil) 10)')
-        self.assertSocket(
-            '(:emacs-rex (swank:completions-for-keyword ":worldp" \'("send" "none" "" swank::%cursor-marker%)) "USER" :repl-thread 8)',
-            '(:return (:ok ()) 8)')
-        self.assertSocket(
-            '(:emacs-rex (swank:completions-for-keyword ":world" \'("send" "none" "" swank::%cursor-marker%)) "USER" :repl-thread 9)',
-            '(:return (:ok ()) 9)')
-        self.assertSocket(
-            '(:emacs-rex (swank:completions-for-keyword ":world-" \'("send" "none" "" swank::%cursor-marker%)) "USER" :repl-thread 11)',
-            '(:return (:ok ()) 11)')
-
-        self.assertSocketSameResult(
-            '(:emacs-rex (swank:completions-for-keyword ":worldp" \'("send" "none" "" swank::%cursor-marker%)) "USER" :repl-thread 8)',
-            '(:emacs-rex (swank:completions-for-keyword ":worldp" \'("lisp:send" "none" "" swank::%cursor-marker%)) "USER" :repl-thread 8)',
-            '(:emacs-rex (swank:completions-for-keyword ":worldp" \'("lisp::send" "none" "" swank::%cursor-marker%)) "USER" :repl-thread 8)')
-        self.assertSocketSameResult(
-            '(:emacs-rex (swank:completions-for-keyword ":world" \'("send" "none" "" swank::%cursor-marker%)) "USER" :repl-thread 9)',
-            '(:emacs-rex (swank:completions-for-keyword ":world" \'("lisp:send" "none" "" swank::%cursor-marker%)) "USER" :repl-thread 9)',
-            '(:emacs-rex (swank:completions-for-keyword ":world" \'("lisp::send" "none" "" swank::%cursor-marker%)) "USER" :repl-thread 9)')
-        self.assertSocketSameResult(
-            '(:emacs-rex (swank:completions-for-keyword ":world-" \'("send" "none" "" swank::%cursor-marker%)) "USER" :repl-thread 11)',
-            '(:emacs-rex (swank:completions-for-keyword ":world-" \'("lisp:send" "none" "" swank::%cursor-marker%)) "USER" :repl-thread 11)',
-            '(:emacs-rex (swank:completions-for-keyword ":world-" \'("lisp::send" "none" "" swank::%cursor-marker%)) "USER" :repl-thread 11)')
-
-    def test_completions_23(self):
+    def test_completions_fuzzy_1(self):
         self.assertSocket(
             '(:emacs-rex (swank:fuzzy-completions "find-i" "USER" :limit 300 :time-limit-in-msec 1500) "USER" t 5)',
             '(:return (:ok ((("find-if" 0 nil nil) ("find-if-not" 0 nil nil)) nil)) 5)')
@@ -1063,14 +1240,6 @@ class eus(EuslimeTestCase):
         self.assertSocket(
             '(:emacs-rex (swank:fuzzy-completions "none" "USER" :limit 300 :time-limit-in-msec 1500) "USER" t 7)',
             '(:return (:ok (() nil)) 7)')
-
-    def test_completions_24(self):
-        self.assertSocket(
-            '(:emacs-rex (swank:completions-for-keyword ":all-m" \'("send" "geo::coordinates" "" swank::%cursor-marker%)) "USER" :repl-thread 44)',
-            '(:return (:ok ((":all-methods" ":all-method-names") ":all-method")) 44)')
-        self.assertSocket(
-            '(:emacs-rex (swank:completions-for-keyword ":ini" \'("send" "geo::coordinates" "" swank::%cursor-marker%)) "USER" :repl-thread 45)',
-            '(:return (:ok ()) 45)')
 
     # OUTPUT
     def test_output_1(self):
