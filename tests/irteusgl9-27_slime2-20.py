@@ -32,8 +32,8 @@ class irteusgl(eus):
             '(:write-string "\\n" :repl-result)',
             '(:return (:ok nil) 78)')
         self.assertSocket(
-            '(:emacs-rex (swank:autodoc (quote ("send" "*irtviewer*" ":view" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 85)',
-            '(:return (:ok ("(:view)" t)) 85)')
+            '(:emacs-rex (swank:autodoc (quote ("send" "*irtviewer*" ":redraw" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 85)',
+            '(:return (:ok ("(:redraw)" t)) 85)')
         self.assertSocket(
             '(:emacs-rex (swank:autodoc (quote ("send" "*irtviewer*" ":viewtarget" "" swank::%cursor-marker%)) :print-right-margin 100) "USER" :repl-thread 87)',
             '(:return (:ok ("(:viewtarget &optional ===> p <===)" t)) 87)')
