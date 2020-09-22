@@ -179,7 +179,7 @@
   (let* ((sym (or (find-symbol (string-upcase (subseq name 1)) *keyword-package*)
                   (return-from method-lambda-list nil)))
          (method (or (if instance-completion-p
-                         (and (classp obj) (list obj (send obj :method sym)))
+                         (aand (classp obj) (send obj :method sym) (list obj it))
                          (find-method obj sym))
                      (return-from method-lambda-list nil)))
          (class (car method))
