@@ -423,12 +423,12 @@
 ;; SWANK-FIND-TAG-NAME-FOR-EMACS
 (defun find-tag-name-for-emacs (name &optional package)
   (let ((*package* (or (find-package package) *package*)))
-    (let* ((sym (find-callable-symbol name))
+    (let* ((sym (or (find-callable-symbol name)
+                    (return-from find-tag-name-for-emacs nil)))
            (cname (get sym 'compiler::builtin-function-entry)))
-      (cond
-        (cname (list cname))
-        (sym (list-possible-symbol-names sym))
-        (t (list name))))))
+      (if cname
+          (list cname)
+          (list-possible-symbol-names sym)))))
 
 ;; SWANK-SET-PACKAGE
 (defun set-package (name)

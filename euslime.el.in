@@ -182,7 +182,8 @@ current buffer."
           (lambda (name where)
             (when (string= (ignore-errors (slime-connection-name)) "euslisp")
               (let* ((name-lst
-                      (slime-eval `(swank:find-tag-name-for-emacs ,name ,(slime-lisp-package))))
+                      (or (slime-eval `(swank:find-tag-name-for-emacs ,name ,(slime-lisp-package)))
+                          (list name)))
                      (name (car name-lst)))
                 (slime-edit-definition-cont (apply #'euslime-find-definitions name-lst) name where)))))
 
