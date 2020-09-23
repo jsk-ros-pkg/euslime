@@ -47,10 +47,13 @@
                  external)))))
 
 (defmacro slime-do-symbols (var &rest body)
-  ;; var: (variable-name &optional package result)
-  `(if ,(cadr var)
-       (if (find-package ,(cadr var)) (do-symbols ,var ,@body))
-       (do-callable-symbols (,(car var) ,(caddr var)) ,@body)))
+  ;; var: (variable-name &optional package external-p)
+  `(if ,(second var)
+       (if (find-package ,(second var))
+           (if ,(third var)
+               (do-external-symbols (,(car var) ,(cadr var)) ,@body)
+               (do-symbols (,(car var) ,(cadr var)) ,@body)))
+       (do-callable-symbols (,(car var)) ,@body)))
 
 (defmacro do-callable-symbols (var &rest forms)
   ;; var: (variable-name &optional result)
@@ -66,11 +69,11 @@
         (return-from find-external-symbol sym))))
 
 (defun find-callable-symbol (name)
-  (multiple-value-bind (pack name external) (split-package name)
+  (multiple-value-bind (pack name external-p) (split-package name)
     (setq name (string-upcase name))
     (if pack
         (and (find-package pack)
-             (if external
+             (if external-p
                  (find-external-symbol name pack)
                  (find-symbol name pack)))
         (or (find-symbol name) 
@@ -250,8 +253,7 @@
                             (when (string-equal str sym-str :start1 0 :end1 len :start2 0 :end2 len)
                               (if (and pack (not (find-external-symbol sym pack)))
                                   (push (concatenate string prefix (subseq start 0 (length pack)) "::" sym-str) str-lst)
-                                  (push (concatenate string prefix start (subseq sym-str len)) str-lst)
-                                  ))))
+                                  (push (concatenate string prefix start (subseq sym-str len)) str-lst)))))
         (append-common (sort str-lst #'string<) len)))))
 
 
