@@ -1233,6 +1233,14 @@ class eus(EuslimeTestCase):
             '(:emacs-rex (swank:completions-for-keyword ":world-" \'("lisp:instance" "geo::coordinates" "" swank::%cursor-marker%)) "USER" :repl-thread 53)',
             '(:emacs-rex (swank:completions-for-keyword ":world-" \'("lisp::instance" "geo::coordinates" "" swank::%cursor-marker%)) "USER" :repl-thread 53)')
 
+    def test_completions_package_9(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:completions "geo::coordinates-p" \'"USER") "USER" :repl-thread 7)',
+            '(:return (:ok (("geo::coordinates-p" "geo::coordinates-plist" "geo::coordinates-pos") "geo::coordinates-p")) 7)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions "geo:coordinates-p" \'"USER") "USER" :repl-thread 8)',
+            '(:return (:ok (("geo:coordinates-p" "geo:coordinates-pos") "geo:coordinates-p")) 8)')
+
     def test_completions_fuzzy_1(self):
         self.assertSocket(
             '(:emacs-rex (swank:fuzzy-completions "find-i" "USER" :limit 300 :time-limit-in-msec 1500) "USER" t 5)',

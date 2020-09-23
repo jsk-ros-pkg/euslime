@@ -128,10 +128,10 @@
 
 
 ;; Prefix related
-(defun append-common (match-lst start-len)
+(defun append-common (match-lst len)
   (cond
     ((cdr match-lst)
-     (list match-lst (subseq (car match-lst) 0 (get-common match-lst start-len))))
+     (list match-lst (subseq (car match-lst) 0 (get-common match-lst len))))
     (match-lst ;; one element list
      (list match-lst (car match-lst)))
     (t nil)))
@@ -238,23 +238,37 @@
 ;; SWANK-SIMPLE-COMPLETIONS
 (defun slime-find-symbol (start &optional package prefix)
   (let ((*package* (or (find-package package) *package*)))
-    (multiple-value-bind (pack str) (split-package start)
+    (multiple-value-bind (pack str external-p) (split-package start)
       (let ((len (length str))
             str-lst)
-        (unless (or pack prefix)
-          (mapc #'(lambda (p) (let ((name (package-name p)))
-                                (if (and (string-equal str name :end2 len)
-                                         (> (p . intsymcount) 0))
-                                    (push (format nil "~a:" (maybe-downcase name))
-                                          str-lst))))
-                (list-all-packages)))
-        (slime-do-symbols (sym pack)
-                          (let ((sym-str (maybe-downcase (send sym :pname))))
-                            (when (string-equal str sym-str :start1 0 :end1 len :start2 0 :end2 len)
-                              (if (and pack (not (find-external-symbol sym pack)))
-                                  (push (concatenate string prefix (subseq start 0 (length pack)) "::" sym-str) str-lst)
-                                  (push (concatenate string prefix start (subseq sym-str len)) str-lst)))))
-        (append-common (sort str-lst #'string<) len)))))
+        (flet ((fill-str-lst (ext-p)
+                 (slime-do-symbols (sym pack ext-p)
+                   (let ((sym-str (maybe-downcase (send sym :pname))))
+                     (when (string-equal str sym-str :start1 0 :end1 len :start2 0 :end2 len)
+                       (push
+                        (if (and external-p (not ext-p))
+                            (concatenate string prefix (subseq start 0 (length pack)) "::" sym-str)
+                            (concatenate string prefix (subseq start 0 (- (length start) len)) sym-str))
+                        str-lst))))))
+
+          ;; add possible package names
+          (unless (or pack prefix)
+            (mapc #'(lambda (p) (let ((name (package-name p)))
+                                  (if (and (string-equal str name :end2 len)
+                                           (> (p . intsymcount) 0))
+                                      (push (format nil "~a:" (maybe-downcase name))
+                                            str-lst))))
+                  (list-all-packages)))
+
+          ;; fill completions
+          (fill-str-lst external-p)
+
+          ;; if no external symbols are found search for internal ones
+          (if (and (null str-lst) external-p)
+              (fill-str-lst nil))
+
+          ;; sort results and append common substring in the end
+          (append-common (sort str-lst #'string<) (length start)))))))
 
 
 ;; SWANK-AUTODOC
