@@ -26,7 +26,6 @@ EXEC_RATE = 0.005
 DELIM = os.linesep
 REGEX_ANSI = re.compile(r'\x1b[^m]*m')
 
-
 def get_signal(signum):
     match = [v for v, k in signal.__dict__.iteritems() if k == signum]
     if match:

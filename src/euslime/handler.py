@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import os
 import platform
+import re
 import signal
 import traceback
 from sexpdata import dumps, loads, Symbol, Quoted
@@ -15,6 +16,7 @@ from euslime.bridge import no_color
 from euslime.logger import get_logger
 
 log = get_logger(__name__)
+REGEX_LISP_VECTOR = re.compile(r' \\(#[0-9]*[a-zA-Z]*) \(')
 
 
 def findp(s, l):
@@ -53,6 +55,9 @@ def unquote(s):
 def dumps_lisp(s):
     return dumps(s, true_as='lisp:t', false_as='lisp:nil', none_as='lisp:nil')
 
+def dumps_vec(s):
+    # Fix vector notation, which is not well supported by sexpdata
+    return REGEX_LISP_VECTOR.sub(r' \1(', dumps(s))
 
 class DebuggerHandler(object):
     restarts = [
@@ -117,7 +122,7 @@ class EuslimeHandler(object):
         if isinstance(result, str):
             return [result, False]
         elif result:
-            return [dumps(result), True]
+            return [dumps_vec(result), True]
         return None
 
     def _emacs_return_string(self, process, count, msg):

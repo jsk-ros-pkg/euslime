@@ -668,6 +668,9 @@ class eus(EuslimeTestCase):
         self.assertSocket(
             '(:emacs-rex (swank:autodoc \'("instance" "symbol" ":init" "" swank::%cursor-marker%) :print-right-margin 100) "USER" :repl-thread 27)',
             '(:return (:ok ("(:init ===> pn <=== &optional (vt 1))" t)) 27)')
+        self.assertSocket(
+            '(:emacs-rex (swank:autodoc \'("instance" "geo::coordinates" ":init" "" swank::%cursor-marker%) :print-right-margin 80) "USER" :repl-thread 11)',
+            '(:return (:ok ("(:init &key (pos #f(0.0 0.0 0.0)) (rot #2f((1.0 0.0 0.0) (0.0 1.0 0.0) (0.0 0.0 1.0))) rpy euler axis angle 4x4 coords properties name)" t)) 11)')
 
     def test_autodoc_instance_2(self):
         self.assertSocket(
