@@ -175,7 +175,10 @@
         (goto-char (point-min))
         (while (search-forward name nil t)
           (when (or (tag-implicit-name-match-p name)
-                    (some #'tag-implicit-name-match-p other-names))
+                    (some #'(lambda (nm)
+                              (and (looking-back nm)
+                                   (tag-implicit-name-match-p nm)))
+                          other-names))
             (beginning-of-line)
             (push
              (etag>xref
