@@ -44,7 +44,7 @@ def current_scope(sexp):
 
 def qstr(s):
     # double escape characters for string formatting
-    return s.encode('utf-8').encode('string_escape').replace('"', '\\"')
+    return s.encode('utf-8').replace('"', '\\"')
 
 def unquote(s):
     if isinstance(s, Quoted):

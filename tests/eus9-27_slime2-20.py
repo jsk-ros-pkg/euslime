@@ -1936,6 +1936,11 @@ class eus(EuslimeTestCase):
              '(:emacs-rex (swank:set-package "USER") "LISP" :repl-thread 16)',
              '(:return (:ok ("USER" "{}")) 16)'.format(self.EUSLISP_PROGRAM_NAME)))
 
+    def test_macro_expand_4(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:swank-expand-1 "(unless t\n       (print \\"HERE\\"))") "USER" :repl-thread 10)',
+            '(:return (:ok "(if (not t) (progn (print \\"HERE\\")))\\n") 10)')
+
     # ENCODING
     def test_encoding_1(self):
         self.assertSocket(
@@ -1951,3 +1956,8 @@ class eus(EuslimeTestCase):
             '(:write-string "\\"{}\\"" :repl-result)'.format(chr(0) * 10),
             '(:write-string "\\n" :repl-result)',
             '(:return (:ok nil) 8)')
+
+    def test_encoding_3(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:swank-expand-1 "(unless t\n\t(print \\"\xe3\x81\x82\xe3\x81\x82\xe3\x81\x82\\"))") "USER" :repl-thread 8)',
+            '(:return (:ok "(if (not t) (progn (print \\"\xe3\x81\x82\xe3\x81\x82\xe3\x81\x82\\")))\\n") 8)')
