@@ -167,8 +167,12 @@
   ;; e.g. (euslime-find-definitions "simple-action-server" "ros::simple-action-server")
   (let ((first-table t)
         result)
-    (flet ((etag>xref (file class tag-info)
-             `(,(concat class (car tag-info))
+    (flet ((etag>xref (file tag-info)
+             `(,(concat
+                 (if (string-match-p "(:" (car tag-info)) ;; class method
+                     ;; ignore-errors ?
+                     (save-excursion (forward-line 1) (etags-class-of-tag)))
+                 (car tag-info))
                (:location
                 (:file ,file)
                 (:position ,(cddr tag-info))
@@ -187,9 +191,6 @@
             (push
              (etag>xref
               (expand-file-name (save-excursion (forward-line 1) (file-of-tag)))
-              (if (string-prefix-p ":" name) ;; class method
-                  ;; ignore-errors ?
-                  (save-excursion (forward-line 1) (etags-class-of-tag)))
               (funcall snarf-tag-function))
              result))))
       result)))
