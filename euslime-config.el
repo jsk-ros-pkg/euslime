@@ -34,6 +34,10 @@
   "Path to Euslisp SLIME compiled files."
   :type 'string)
 
+(defcustom euslime-match-function 'tag-implicit-name-match-p
+  "Match function passed to `euslime-find-definitions' for finding a tag."
+  :type 'symbol)
+
 (defcustom inferior-euslisp-program "roseus"
   "Backend program invoked by Euslisp SLIME."
   :type 'string)
@@ -174,10 +178,10 @@
         (if first-table (setq first-table nil))
         (goto-char (point-min))
         (while (search-forward name nil t)
-          (when (or (tag-implicit-name-match-p name)
+          (when (or (funcall euslime-match-function name)
                     (some #'(lambda (nm)
                               (and (looking-back nm)
-                                   (tag-implicit-name-match-p nm)))
+                                   (funcall euslime-match-function nm)))
                           other-names))
             (beginning-of-line)
             (push

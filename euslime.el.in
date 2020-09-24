@@ -181,11 +181,15 @@ current buffer."
 (add-hook 'slime-edit-definition-hooks
           (lambda (name where)
             (when (string= (ignore-errors (slime-connection-name)) "euslisp")
-              (let* ((name-lst
-                      (or (slime-eval `(swank:find-tag-name-for-emacs ,name ,(slime-lisp-package)))
-                          (list name)))
-                     (name (car name-lst)))
-                (slime-edit-definition-cont (apply #'euslime-find-definitions name-lst) name where)))))
+              (let ((name-lst
+                     (slime-eval `(swank:find-tag-name-for-emacs ,name ,(slime-lisp-package)))))
+                (if name-lst
+                    (slime-edit-definition-cont (apply #'euslime-find-definitions name-lst)
+                                                (car name-lst) where)
+                  ;; Search for any match if symbol is not found
+                  (let ((euslime-match-function 'tag-any-match-p))
+                    (slime-edit-definition-cont (euslime-find-definitions name)
+                                                name where)))))))
 
 ;; Set custom recenter function
 (add-hook 'slime-repl-mode-hook
