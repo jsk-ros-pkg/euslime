@@ -66,8 +66,9 @@ class DebuggerHandler(object):
         ["RESTART", "Restart euslisp process"]
     ]
 
-    def __init__(self, id, error):
+    def __init__(self, id, lvl, error):
         self.id = id
+        self.level = lvl
         if isinstance(error, EuslispFatalError):
             self.restarts = self.restarts[2:]  # No QUIT & CONTINUE
         elif isinstance(error, EuslispInternalError):
@@ -86,6 +87,18 @@ class DebuggerHandler(object):
         else:
             self.message = error
             self.stack = []
+
+    def make_debug_response(self):
+        res = [
+            Symbol(':debug'),
+            0,  # the thread which threw the condition
+            self.level,  # the depth of the condition
+            [self.message, str(), None],  # s-exp with a description
+            self.restarts,  # list of available restarts
+            self.stack and self.stack[:10],  # stacktrace
+            [None],  # pending continuation
+        ]
+        return res
 
 
 class EuslimeHandler(object):
@@ -333,33 +346,52 @@ class EuslimeHandler(object):
         return self.swank_invoke_nth_restart_for_emacs(lvl, 0)
 
     def swank_invoke_nth_restart_for_emacs(self, level, num):
-        deb = self.debugger[level - 1]
+        # if everything goes well, it should be the self.debugger[level -1]
+        deb = next(x for x in self.debugger if x.level == level)
         res_dict = deb.restarts_dict
+        clear_stack = False
 
         def check_key(key):
             return key in res_dict and num == res_dict[key]
+        def debug_return(db):
+            msg = db.message.split(self.euslisp.delim)[0]
+            msg = repr(msg.rsplit(' in ', 1)[0])
+            yield [Symbol(':debug-return'), 0, db.level, Symbol('nil')]
+            yield [Symbol(':return'), {'abort': msg}, db.id]
 
-        if check_key('RESTART'):
-            self.debugger = []
-            self.restart_euslisp_process()
-        elif check_key('CONTINUE'):
-            self.debugger.pop(level - 1)  # remove from stack
-            pass
-        elif check_key('QUIT'):
-            self.debugger = []
+        if check_key('QUIT'):
+            clear_stack = True
             self.euslisp.reset()
+        elif check_key('CONTINUE'):
+            pass
+        elif check_key('RESTART'):
+            clear_stack = True
+            self.restart_euslisp_process()
         else:
             log.error("Restart number %s not found!" % num)
             yield EuslispResult(None)
             return
 
-        msg = deb.message.split(self.euslisp.delim)[0]
-        msg = repr(msg.rsplit(' in ', 1)[0])
-        yield [Symbol(':debug-return'), 0, level, Symbol('nil')]
         yield EuslispResult(None, response_type='abort')
-        for val in self.maybe_new_prompt():
-            yield val
-        yield [Symbol(':return'), {'abort': msg}, deb.id]
+
+        if clear_stack:
+            for val in self.maybe_new_prompt():
+                yield val
+            for db in reversed(self.debugger):
+                for val in debug_return(db):
+                    yield val
+            self.debugger = []
+        else:
+            self.debugger.remove(deb)
+            # Only test for new prompts if we are exitting the debugger
+            if not self.debugger:
+                for val in self.maybe_new_prompt():
+                    yield val
+            for val in debug_return(deb):
+                yield val
+            # Pop previous debugger, if any
+            if self.debugger:
+                yield self.debugger[-1].make_debug_response()
 
     def swank_sldb_return_from_frame(self, num, value):
         return

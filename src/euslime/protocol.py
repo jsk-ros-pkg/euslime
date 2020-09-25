@@ -31,19 +31,10 @@ class Protocol(object):
             return with_header(sexp)
 
     def make_error(self, err):
-        debug = DebuggerHandler(self.thread_local.comm_id, err)
-        self.handler.debugger.append(debug)
-
-        res = [
-            Symbol(':debug'),
-            0,  # the thread which threw the condition
-            len(self.handler.debugger),  # the depth of the condition
-            [debug.message, str(), None],  # s-exp with a description
-            debug.restarts,  # list of available restarts
-            debug.stack and debug.stack[:10],  # stacktrace
-            [None],  # pending continuation
-        ]
-        yield res
+        lvl = len(self.handler.debugger) + 1
+        deb = DebuggerHandler(self.thread_local.comm_id, lvl, err)
+        self.handler.debugger.append(deb)
+        yield deb.make_debug_response()
 
     def make_response(self, result_type, sexp):
         try:
