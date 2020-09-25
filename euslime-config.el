@@ -149,7 +149,7 @@
       (message (format "Generating %s file..." tag-file))
       (shell-command
        ;; Include `(:methods' in l files
-       (format "etags --regex='/[ \\t]*(:[^ \\t\\$]*/' %s/*.l %s-o %s"
+       (format "etags --regex='/[ \\t]*(:[^ \\t\\$\\(]*/' %s/*.l %s-o %s"
                (expand-file-name (or ldir "") src-dir)
                ;; Include `pointer FUNCTIONS' in c files
                (if ctags
