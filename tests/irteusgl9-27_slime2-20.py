@@ -25,6 +25,24 @@ class irteusgl(eus):
             '(:write-string "\\n" :repl-result)',
             '(:return (:ok nil) 45)')
 
+    def test_completions_irt_2(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(progn (make-irtviewer) (send *irtviewer* :name))\n") "USER" :repl-thread 78)',
+            '(:write-string "\\"IRT viewer\\"" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:return (:ok nil) 78)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":draw" \'("send" "*irtviewer*" "" swank::%cursor-marker%)) "USER" :repl-thread 10)',
+            '(:return (:ok ((":draw-event" ":draw-objects" ":draw-origin" ":draw-floor" ":drawable" ":draw-point" ":draw-string" ":draw-image-string" ":draw-rectangle" ":draw-fill-rectangle" ":draw-arc" ":draw-fill-arc" ":draw-lines" ":draw-polygon" ":drawline-primitive" ":draw-line") ":draw")) 10)')
+        self.assertSocket(
+            '(:emacs-rex (swank:completions-for-keyword ":view" \'("send" "*irtviewer*" "" swank::%cursor-marker%)) "USER" :repl-thread 14)',
+            '(:return (:ok ((":viewer" ":viewtarget" ":viewpoint") ":view")) 14)')
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(send *irtviewer* :quit )\n") "USER" :repl-thread 95)',
+            '(:write-string ":destroyed" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:return (:ok nil) 95)')
+
     def test_autodoc_irt_1(self):
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(progn (make-irtviewer) (send *irtviewer* :name))\n") "USER" :repl-thread 78)',

@@ -131,6 +131,7 @@ class EuslimeHandler(object):
             return None
         cmd = '(slime::autodoc "{0}" {1} (lisp:quote {2}))'.format(
             qstr(func), dumps_lisp(cursor), dumps_lisp(form))
+        # Eval from repl_socket to cope with thread special symbols
         result = self.euslisp.exec_internal(cmd, force_repl_socket=True)
         if isinstance(result, str):
             return [result, False]
@@ -322,7 +323,9 @@ class EuslimeHandler(object):
             scope = None
         cmd = '(slime::slime-find-keyword "{0}" (lisp:quote {1}) "{2}")'.format(
             qstr(start), dumps_lisp(scope), qstr(self.package))
-        yield EuslispResult(self.euslisp.exec_internal(cmd))
+        # Eval from repl_socket to cope with thread special symbols
+        result = self.euslisp.exec_internal(cmd, force_repl_socket=True)
+        yield EuslispResult(result)
 
     def swank_completions_for_character(self, start):
         cmd = '(slime::slime-find-character "{0}")'.format(qstr(start))
