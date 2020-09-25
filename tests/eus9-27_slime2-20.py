@@ -1507,6 +1507,50 @@ class eus(EuslimeTestCase):
               '(:debug-return 0 1 nil)',
               '(:return (:abort "\'Socket connection closed\'") 10)']))
 
+    def test_sldb_14(self):
+        self.with_unwind_protect(
+            (self.assertSocketIgnoreAddress,
+             '(:emacs-rex (swank-repl:listener-eval "(1+ nil)\n") "USER" :repl-thread 44)',
+             '(:debug 0 1 ("Integer expected in (1+ nil)" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(1+ nil)" (:restartable nil)) (1 "(slime:slimetop)" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "#<compiled-code #X5f21290>" (:restartable nil))) (nil))'),
+            (self.assertSocketIgnoreAddress,
+             '(:emacs-rex (swank:describe-symbol "none") "USER" 0 45)',
+             '(:debug 0 2 ("Symbol not found in (slime::slime-describe-symbol \\"none\\" \\"USER\\")" "" nil) (("CONTINUE" "Ignore the error and continue in the same stack level")) ((0 "(1+ nil)" (:restartable nil)) (1 "(slime:slimetop)" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "#<compiled-code #X5f21290>" (:restartable nil))) (nil))'),
+            (self.assertSocketIgnoreAddress,
+             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 2 0) "USER" 0 46)',
+             '(:return (:abort nil) 46)',
+             '(:debug-return 0 2 nil)',
+             '(:return (:abort "\'Symbol not found\'") 45)',
+             '(:debug 0 1 ("Integer expected in (1+ nil)" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(1+ nil)" (:restartable nil)) (1 "(slime:slimetop)" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "#<compiled-code #X5f21290>" (:restartable nil))) (nil))'),
+            (self.assertSocket,
+             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 47)',
+             '(:return (:abort nil) 47)',
+             '(:debug-return 0 1 nil)',
+             '(:return (:abort "\'Integer expected\'") 44)'))
+
+    def test_sldb_15(self):
+        self.with_unwind_protect(
+            (self.assertSocketIgnoreAddress,
+             '(:emacs-rex (swank-repl:listener-eval "(1+ nil)\n") "USER" :repl-thread 30)',
+             '(:debug 0 1 ("Integer expected in (1+ nil)" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(1+ nil)" (:restartable nil)) (1 "(slime:slimetop)" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "#<compiled-code #X5f21290>" (:restartable nil))) (nil))'),
+            (self.assertSocket,
+             '(:emacs-rex (swank:default-directory) "USER" 0 31)',
+             '(:return (:ok "{}") 31)'.format(os.getcwd())),
+            (self.assertSocketIgnoreAddress,
+             '(:emacs-rex (swank:describe-symbol "none") "USER" t 32)',
+             '(:debug 0 2 ("Symbol not found in (slime::slime-describe-symbol \\"none\\" \\"USER\\")" "" nil) (("CONTINUE" "Ignore the error and continue in the same stack level")) ((0 "(1+ nil)" (:restartable nil)) (1 "(slime:slimetop)" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "#<compiled-code #X5f21290>" (:restartable nil))) (nil))'),
+            (self.assertSocketIgnoreAddress,
+             '(:emacs-rex (swank:compile-string-for-emacs "(format \\"this\\")\n" "test.l" \'((:position 1) (:line 1 1)) "/tmp/test.l" \'nil) "USER" t 33)',
+             '(:debug 0 3 ("Mismatch argument in (format \\"this\\")" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(format \\"this\\")" (:restartable nil)) (1 "(progn (format \\"this\\"))" (:restartable nil)) (2 "slime:slime-error" (:restartable nil)) (3 "slime:slime-error" (:restartable nil)) (4 "(1+ nil)" (:restartable nil)) (5 "(slime:slimetop)" (:restartable nil)) (6 "(slime:slimetop)" (:restartable nil)) (7 "#<compiled-code #X5f21290>" (:restartable nil))) (nil))'),
+            (self.assertSocket,
+             '(:emacs-rex (swank-repl:listener-eval "10\n") "USER" :repl-thread 34)',
+             '(:return (:abort nil) 34)',
+             '(:debug-return 0 3 nil)',
+             '(:return (:abort "\'Mismatch argument\'") 33)',
+             '(:debug-return 0 2 nil)',
+             '(:return (:abort "\'Symbol not found\'") 32)',
+             '(:debug-return 0 1 nil)',
+             '(:return (:abort "\'Integer expected\'") 30)'))
+
     # SEGMENTATION FAULT
     def test_segfault_1(self):
         self.with_unwind_protect(
@@ -1961,3 +2005,9 @@ class eus(EuslimeTestCase):
         self.assertSocket(
             '(:emacs-rex (swank:swank-expand-1 "(unless t\n\t(print \\"\xe3\x81\x82\xe3\x81\x82\xe3\x81\x82\\"))") "USER" :repl-thread 8)',
             '(:return (:ok "(if (not t) (progn (print \\"\xe3\x81\x82\xe3\x81\x82\xe3\x81\x82\\")))\\n") 8)')
+
+    # DEFAULT-DIRECTORY
+    def test_default_directory_1(self):
+        self.assertSocket(
+            '(:emacs-rex (swank:default-directory) "USER" :repl-thread 48)',
+            '(:return (:ok "{}") 48)'.format(os.getcwd()))

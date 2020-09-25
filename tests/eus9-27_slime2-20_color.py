@@ -47,9 +47,9 @@ class eus_color(eus):
             '(:debug 0 1 ("Integer expected in (1+ nil)" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(1+ nil)" (:restartable nil)) (1 "(slime:slimetop)" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "#<compiled-code #X5a17290>" (:restartable nil))) (nil))')
         self.assertSocket(
             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 2) "USER" 0 14)',
-            '(:debug-return 0 1 nil)',
             '(:return (:abort nil) 14)',
             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+            '(:debug-return 0 1 nil)',
             '(:return (:abort "\'Integer expected\'") 13)')
         self.assertSocket(
             '(:emacs-rex (swank-repl:listener-eval "(warning-message 2 \\"Hello\\")\n") "USER" :repl-thread 15)',
