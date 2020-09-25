@@ -12,11 +12,6 @@ from threading import Event, Lock, Thread
 from sexpdata import loads, Symbol
 from euslime.logger import get_logger
 
-try:
-    from Queue import Queue
-except ImportError:
-    from queue import Queue
-
 log = get_logger(__name__)
 IS_POSIX = 'posix' in sys.builtin_module_names
 HEADER_LENGTH = 6
@@ -55,7 +50,7 @@ class Process(object):
         self.on_output = on_output or self.default_print_callback
         self.bufsize = bufsize or BUFSIZE
         self.delim = delim or DELIM
-        self.output = Queue()
+        self.output = []
         self.read_mode = False
         self.accumulate_output = False
         self.finished_output = Event()
@@ -115,7 +110,8 @@ class Process(object):
                     log.error('More than one token detected on output!')
                 for out in [x for x in has_token if x]:
                     if self.accumulate_output:
-                        self.output.put(out)
+                        log.debug('accumulating output: %s' % out)
+                        self.output.append(out)
                     else:
                         callback(out)
                 if len(has_token) >= 2:
@@ -259,6 +255,8 @@ class EuslispProcess(Process):
             return [Symbol(":read-string"), 0, 1]
         if command == 'error':
             if recursive:
+                log.debug('Waiting for repl output...')
+                self.finished_output.wait()
                 return
             msg = loads(data)
             stack = self.get_callstack()
@@ -297,15 +295,16 @@ class EuslispProcess(Process):
             log.debug("Ignoring: [%s] %s" % (command, msg))
 
     def get_callstack(self, end=10):
-        self.output = Queue()
+        self.output = []
+        self.finished_output.clear()
         self.accumulate_output = True
         self.clear_socket_stack(self.euslime_connection)
         cmd_str = '(slime:print-callstack {})'.format(end + 4)
+        log.info('exec: %s' % cmd_str)
         self.euslime_connection.send(cmd_str + self.delim)
         self.get_socket_response(self.euslime_connection, recursive=True)
-        stack = list(self.output.queue)
         self.accumulate_output = False
-        stack = gen_to_string(stack)
+        stack = gen_to_string(self.output)
         stack = [x.strip() for x in stack.split(self.delim)]
         # Remove 'Call Stack' and dummy error messages
         #  'Call Stack (max depth: 10):',
