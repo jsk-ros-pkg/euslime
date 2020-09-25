@@ -83,12 +83,15 @@
                    (expand-file-name "slime-util" euslime-compile-path)
                    "SLIME")
            (format "(load %S :package %S)\n"
+                   (expand-file-name "slime-connection" euslime-compile-path)
+                   "SLIME")
+           (format "(load %S :package %S)\n"
                    (expand-file-name "slime-toplevel" euslime-compile-path)
                    "LISP"))
           nil file)))
 
     (let* ((loader (expand-file-name "slime-loader.l" euslime-compile-path))
-           (files (cl-mapcan #'needs-compile (list "slime-util" "slime-toplevel")))
+           (files (cl-mapcan #'needs-compile (list "slime-util" "slime-connection" "slime-toplevel")))
            (res (apply #'euslime-compile-files files)))
       (cond
        ((null res) ;; FILES UP-TO-DATE

@@ -19,6 +19,7 @@ install(FILES
   README.md
   requirements.txt
 # EusLisp files
+  slime-connection.l
   slime-toplevel.l
   slime-util.l
 # Emacs Lisp files
