@@ -179,6 +179,7 @@
                  (read-copy (cdr it) sym))))))
 
 (defun method-lambda-list (obj name &optional instance-completion-p)
+  (if (zerop (length name)) (return-from method-lambda-list nil))
   (let* ((sym (or (find-symbol (string-upcase (subseq name 1)) *keyword-package*)
                   (return-from method-lambda-list nil)))
          (method (or (if instance-completion-p
@@ -335,6 +336,7 @@
 
 ;; SWANK-COMPLETIONS-FOR-KEYWORD
 (defun slime-find-keyword (start &optional form package)
+  (if (zerop (length start)) (return-from method-lambda-list nil))
   (let ((*package* (or (find-package package) *package*)))
     (cond
       ((null form)
