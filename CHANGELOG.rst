@@ -2,8 +2,8 @@
 Changelog for package euslime
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.1.0 (2020-09-26)
+------------------
 * Major updates in python and toplevel
 * Better support for packages
 * Better TAGS functionality
