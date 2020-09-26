@@ -336,7 +336,7 @@
 
 ;; SWANK-COMPLETIONS-FOR-KEYWORD
 (defun slime-find-keyword (start &optional form package)
-  (if (zerop (length start)) (return-from method-lambda-list nil))
+  (if (zerop (length start)) (return-from slime-find-keyword nil))
   (let ((*package* (or (find-package package) *package*)))
     (cond
       ((null form)
