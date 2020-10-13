@@ -91,6 +91,7 @@ Slime for EusLisp
 
 | On editing buffers | |
 | --- | --- |
+| C-c TAB | completion |
 | C-c C-c | load expression |
 | C-c C-l | load-file |
 
