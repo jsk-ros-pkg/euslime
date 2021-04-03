@@ -76,6 +76,24 @@ Slime for EusLisp
     M-x euslime
     ```
 
+## Run tests
+```shell
+# Run all tests
+tests/euslime_tests.py
+
+# RUN TESTS FOR EUSLISP PROGRAM
+tests/euslime_tests.py eus
+tests/euslime_tests.py irteusgl
+tests/euslime_tests.py roseus
+
+# RUN A SINGLE TEST
+tests/euslime_tests.py eus.test_eval_1
+
+# RUN MATCHING TESTS
+./euslime_tests.py eus.test_eval_*
+./euslime_tests.py *.test_eval_1
+```
+
 ## Cheat sheet
 
 | On slime buffer | |
@@ -99,7 +117,6 @@ Slime for EusLisp
 | --- | --- |
 | q | quit buffer |
 | [RET] | select option |
-
 
 ## How it Works
 
