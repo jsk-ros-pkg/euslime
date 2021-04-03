@@ -51,6 +51,10 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
             log.error("Error signal received!")
             log.debug("Entering read mode...")
             self.swank.handler.euslisp.read_mode = True
+            # Default prompt is not displayed because it is not a tty process
+            # and cannot afford to manually print one because ERROR_STRING
+            # could have beend issued by the user
+            # self.send_data([Symbol(":write-string"), "Fatal: "])
             self.send_data([Symbol(":read-string"), 0, 1])
 
     def send_data(self, data):

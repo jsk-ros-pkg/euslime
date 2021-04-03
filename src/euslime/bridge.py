@@ -251,6 +251,7 @@ class EuslispProcess(Process):
         if command == 'read':
             return [Symbol(":read-string"), 0, 1]
         if command == 'read-mode':
+            log.debug("Entering read mode...")
             self.read_mode = True
             return [Symbol(":read-string"), 0, 1]
         if command == 'error':

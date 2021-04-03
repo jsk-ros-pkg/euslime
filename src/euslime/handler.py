@@ -149,10 +149,13 @@ class EuslimeHandler(object):
 
     def _emacs_interrupt(self, process):
         if self.euslisp.read_mode:
+            # propagate the signal to all child processes
             os.kill(- os.getpgid(self.euslisp.process.pid), 2)
         else:
+            # send the signal directly to the euslisp process
             self.euslisp.process.send_signal(signal.SIGINT)
         if isinstance(process,int):
+            # during a :read-string call
             yield [Symbol(":read-aborted"), process, 1]
 
     def swank_connection_info(self):
@@ -206,6 +209,7 @@ class EuslimeHandler(object):
                 else:
                     yield val
             if self.euslisp.read_mode:
+                log.debug("Aborting read mode...")
                 self.euslisp.read_mode = False
                 yield [Symbol(":read-aborted"), 0, 1]
             for val in self.maybe_new_prompt():
@@ -215,6 +219,7 @@ class EuslimeHandler(object):
         except AbortEvaluation as e:
             log.info('Aborting evaluation...')
             if self.euslisp.read_mode:
+                log.debug("Aborting read mode...")
                 self.euslisp.read_mode = False
                 yield [Symbol(":read-aborted"), 0, 1]
             for val in self.maybe_new_prompt():
@@ -228,6 +233,7 @@ class EuslimeHandler(object):
         except Exception as e:
             log.error(traceback.format_exc())
             if self.euslisp.read_mode:
+                log.debug("Aborting read mode...")
                 self.euslisp.read_mode = False
                 yield [Symbol(":read-aborted"), 0, 1]
             if lock.locked():
