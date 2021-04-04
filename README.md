@@ -124,7 +124,7 @@ Euslime is composed by several layers of software, ultimately connecting the ema
 
 ![euslime-communications](https://user-images.githubusercontent.com/20625381/89138044-2cef6d80-d575-11ea-9923-5eac3dd9c8cc.jpg)
 
-**EMACS** acts as the front-end interface, accepting user input and displaying output correspondingly. It also provides a series of modes, commands and key bindings for improved user experience, which are introduced at [euslime.el](https://github.com/jsk-ros-pkg/euslime/blob/master/euslime.el.in), [euslime-config.el](https://github.com/jsk-ros-pkg/euslime/blob/master/euslime-config.el), and at the original slime framework.
+**EMACS** acts as the front-end interface, accepting user input and displaying output correspondingly. It also provides a series of modes, commands and key bindings for improved user experience, which are introduced at the original slime framework and slightly customized at [euslime.el](https://github.com/jsk-ros-pkg/euslime/blob/master/euslime.el.in) and [euslime-config.el](https://github.com/jsk-ros-pkg/euslime/blob/master/euslime-config.el).
 
 **SWANK** is the original slime backend, which handles interactions with emacs by delimiting a protocol that translates emacs commands into s-expressions. Such expressions are sent to and from the inferior lisp client (originally Common Lisp, in this case EusLisp) during an exchange which is logged at the `*slime-events*` buffer on emacs. A simple example is given below, illustrating an evaluation request for `(1+ 1)` followed by an output request for `2`.
 ```
@@ -142,9 +142,9 @@ The python middleware is divided into six files with well determined functionali
 
 [server.py](https://github.com/jsk-ros-pkg/euslime/blob/master/src/euslime/server.py) configures a socket server that communicates with the swank layer, receiving and answering to requests.
 
-[protocol.py](https://github.com/jsk-ros-pkg/euslime/blob/master/src/euslime/protocol.py) parses incoming s-expressions into python functions, and also defines utility used to generate common swank forms, such as evaluation result or errors.
+[protocol.py](https://github.com/jsk-ros-pkg/euslime/blob/master/src/euslime/protocol.py) parses incoming s-expressions into python functions, and also defines utility used to generate common swank forms, such as evaluation results or errors.
 
-[handler.py](https://github.com/jsk-ros-pkg/euslime/blob/master/src/euslime/handler.py) holds the actual definitions of the python functions responsible for handling the swank requests. For instance, the `swank_eval` function to answer to `:swank-repl:listener-eval` requests.
+[handler.py](https://github.com/jsk-ros-pkg/euslime/blob/master/src/euslime/handler.py) holds the actual definitions of the python functions responsible for handling the swank requests. For instance, the `swank_repl_listener_eval` function which answers to `:swank-repl:listener-eval` requests.
 
 [bridge.py](https://github.com/jsk-ros-pkg/euslime/blob/master/src/euslime/bridge.py) deals with the communications with the EusLisp layer. The EusLisp interpreter is started as a subprocess and interacts with the python layer through pipes and sockets. Pipes are used to pass user input and program output, while sockets are used to transmit evaluation results, errors, and to process other internal requests while avoiding updating the REPL history and variables.
 
@@ -152,10 +152,13 @@ The python middleware is divided into six files with well determined functionali
 
 [cli.py](https://github.com/jsk-ros-pkg/euslime/blob/master/src/euslime/cli.py) bundles all of the above and arranges command line arguments for an euslime executable invoked upon startup.
 
-Finally, in the **EUSLISP** layer a new slime package is defined and a few overwrites are performed in order to establish a framework for properly dealing with socket communications and handler requests. Such functionality is distributed among the following three files:
+Finally, in the **EUSLISP** layer a new package named `SLIME` is defined and a few overwrites are performed in order to establish a framework for properly dealing with socket communications and handler requests. Such functionality is distributed among the following three files:
 
 [slime-util.l](https://github.com/jsk-ros-pkg/euslime/blob/master/slime-util.l) gathers utility function designed to promptly respond to handler requests which would be hard to define solely with python coding, such as autodoc and completion.
 
 [slime-connection.l](https://github.com/jsk-ros-pkg/euslime/blob/master/slime-connection.l) configures the socket communication framework, defining two different socket channels: one started from another thread allowing parallel evaluation and the other added to the top-selector allowing access to thread special variables. A custom input stream which communicates to swank at every read attempt is also defined here, allowing for the slime framework to differentiate user input answering to `read` functions from new evaluation requests.
 
 [slime-toplevel.l](https://github.com/jsk-ros-pkg/euslime/blob/master/slime-toplevel.l) mainly overwrites lisp repl functions and error handlers so that they can send suitable socket information at each step of the evaluation. It is also responsible for setting up the sockets and streams defined at slime-connection and starting the main evaluation loop.
+
+
+A more detailed explanation can be found in [technical-report.md](https://github.com/jsk-ros-pkg/euslime/blob/master/technical-report.md).
