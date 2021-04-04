@@ -90,8 +90,8 @@ tests/euslime_tests.py roseus
 tests/euslime_tests.py eus.test_eval_1
 
 # RUN MATCHING TESTS
-./euslime_tests.py eus.test_eval_*
-./euslime_tests.py *.test_eval_1
+tests/euslime_tests.py eus.test_eval_*
+tests/euslime_tests.py *.test_eval_1
 ```
 
 ## Cheat sheet
