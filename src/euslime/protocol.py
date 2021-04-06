@@ -38,7 +38,9 @@ class Protocol(object):
 
     def make_response(self, result_type, sexp):
         try:
-            res = [Symbol(':return'), {result_type: sexp}, self.thread_local.comm_id]
+            res = [Symbol(':return'),
+                   {result_type: sexp},
+                   self.thread_local.comm_id]
             yield res
         except Exception as e:
             for r in self.make_error(e):

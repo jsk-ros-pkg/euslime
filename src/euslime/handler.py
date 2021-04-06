@@ -9,7 +9,9 @@ from sexpdata import dumps, loads, Symbol, Quoted
 from threading import Event
 
 from euslime.bridge import AbortEvaluation
-from euslime.bridge import EuslispError, EuslispInternalError, EuslispFatalError
+from euslime.bridge import EuslispError
+from euslime.bridge import EuslispFatalError
+from euslime.bridge import EuslispInternalError
 from euslime.bridge import EuslispProcess
 from euslime.bridge import EuslispResult
 from euslime.bridge import no_color
@@ -46,18 +48,22 @@ def qstr(s):
     # double escape characters for string formatting
     return s.encode('utf-8').replace('"', '\\"')
 
+
 def unquote(s):
     if isinstance(s, Quoted):
         # For instance in emacs 27
         return s.value()
     return s[1]  # [Symbol('quote'), [ ... ]]
 
+
 def dumps_lisp(s):
     return dumps(s, true_as='lisp:t', false_as='lisp:nil', none_as='lisp:nil')
+
 
 def dumps_vec(s):
     # Fix vector notation, which is not well supported by sexpdata
     return REGEX_LISP_VECTOR.sub(r' \1(', dumps(s))
+
 
 class DebuggerHandler(object):
     restarts = [
@@ -115,13 +121,18 @@ class EuslimeHandler(object):
         on_output = self.euslisp.on_output
         color = self.euslisp.color
         self.euslisp.stop()
-        self.euslisp = EuslispProcess(program, init_file, on_output=on_output, color=color)
+        self.euslisp = EuslispProcess(program,
+                                      init_file,
+                                      on_output=on_output,
+                                      color=color)
         self.euslisp.start()
-        self.euslisp.reset()  # get rid of the first abort request on the reploop
+        # get rid of the first abort request on the reploop
+        self.euslisp.reset()
         self.euslisp.accumulate_output = False
 
     def maybe_new_prompt(self):
-        new_prompt = self.euslisp.exec_internal('(slime::slime-prompt)', force_repl_socket=True)
+        cmd = '(slime::slime-prompt)'
+        new_prompt = self.euslisp.exec_internal(cmd, force_repl_socket=True)
         if new_prompt:
             yield [Symbol(":new-package")] + new_prompt
 
@@ -143,7 +154,8 @@ class EuslimeHandler(object):
         self.euslisp.input(msg)
         if len(msg) % 128 == 0:
             # communicate when the message ends exactly at buffer end
-            self.euslisp.exec_internal('(send slime::*slime-input-stream* :set-flag)')
+            cmd = '(send slime::*slime-input-stream* :set-flag)'
+            self.euslisp.exec_internal(cmd)
         if self.euslisp.read_mode:
             yield [Symbol(":read-string"), 0, 1]
 
@@ -154,13 +166,15 @@ class EuslimeHandler(object):
         else:
             # send the signal directly to the euslisp process
             self.euslisp.process.send_signal(signal.SIGINT)
-        if isinstance(process,int):
+        if isinstance(process, int):
             # during a :read-string call
             yield [Symbol(":read-aborted"), process, 1]
 
     def swank_connection_info(self):
-        version = self.euslisp.exec_internal('(slime::implementation-version)')
-        name = self.euslisp.exec_internal('(lisp:pathname-name lisp:*program-name*)')
+        cmd_version = '(slime::implementation-version)'
+        cmd_name = '(lisp:pathname-name lisp:*program-name*)'
+        version = self.euslisp.exec_internal(cmd_version)
+        name = self.euslisp.exec_internal(cmd_name)
         res = {
             'pid': os.getpid(),
             'style': False,
@@ -186,7 +200,8 @@ class EuslimeHandler(object):
         yield EuslispResult(res)
 
     def swank_create_repl(self, sexp):
-        res = self.euslisp.exec_internal('(slime::slime-prompt)', force_repl_socket=True)
+        cmd = '(slime::slime-prompt)'
+        res = self.euslisp.exec_internal(cmd, force_repl_socket=True)
         self.euslisp.accumulate_output = False
         yield EuslispResult(res)
 
@@ -202,10 +217,14 @@ class EuslimeHandler(object):
         lock.acquire()
         try:
             for val in self.euslisp.eval(sexp):
-                if isinstance(val,str):
+                if isinstance(val, str):
                     # Colors are not allowed in :repl-result formatting
-                    yield [Symbol(":write-string"), no_color(val), Symbol(":repl-result")]
-                    yield [Symbol(":write-string"), "\n", Symbol(":repl-result")]
+                    yield [Symbol(":write-string"),
+                           no_color(val),
+                           Symbol(":repl-result")]
+                    yield [Symbol(":write-string"),
+                           "\n",
+                           Symbol(":repl-result")]
                 else:
                     yield val
             if self.euslisp.read_mode:
@@ -303,14 +322,18 @@ class EuslimeHandler(object):
     def swank_simple_completions(self, start, pkg):
         # (swank:simple-completions "vector-" (quote "USER"))
         pkg = unquote(pkg)
-        cmd = '(slime::slime-find-symbol "{0}" "{1}")'.format(qstr(start), qstr(pkg))
+        cmd = '(slime::slime-find-symbol "{0}" "{1}")'.format(
+            qstr(start), qstr(pkg))
         yield EuslispResult(self.euslisp.exec_internal(cmd))
 
     def swank_fuzzy_completions(self, start, pkg, *args):
-        # Unsupported. Just returning a list of simple_completions in the fuzzy format
-        simple_completions = self.swank_simple_completions(start,pkg).next().value
+        # Unsupported
+        # Return a list of simple_completions in the fuzzy format
+        gen = self.swank_simple_completions(start, pkg)
+        simple_completions = gen.next().value
         if simple_completions:
-            simple_completions = [[x, 0, None, None] for x in simple_completions[0]]
+            first_comp = simple_completions[0]
+            simple_completions = [[x, 0, None, None] for x in first_comp]
         yield EuslispResult([simple_completions, None])
 
     def swank_fuzzy_completion_selected(self, original_string, completion):
@@ -327,7 +350,7 @@ class EuslimeHandler(object):
 
         else:
             scope = None
-        cmd = '(slime::slime-find-keyword "{0}" (lisp:quote {1}) "{2}")'.format(
+        cmd = '(slime::slime-find-keyword "{}" (lisp:quote {}) "{}")'.format(
             qstr(start), dumps_lisp(scope), qstr(self.package))
         # Eval from repl_socket to cope with thread special symbols
         result = self.euslisp.exec_internal(cmd, force_repl_socket=True)
@@ -362,6 +385,7 @@ class EuslimeHandler(object):
 
         def check_key(key):
             return key in res_dict and num == res_dict[key]
+
         def debug_return(db):
             msg = db.message.split(self.euslisp.delim)[0]
             msg = repr(msg.rsplit(' in ', 1)[0])
@@ -434,7 +458,7 @@ class EuslimeHandler(object):
         lock.acquire()
         try:
             for res in self.euslisp.eval(cmd_str):
-                if isinstance(res,list):
+                if isinstance(res, list):
                     yield res
             for msg in messages:
                 yield [Symbol(":write-string"), "; Loaded {}\n".format(msg)]
@@ -448,7 +472,8 @@ class EuslimeHandler(object):
             if lock.locked():
                 lock.release()
             log.info('Aborting evaluation...')
-            # Force print the message, which is by default only displayed on the minibuffer
+            # Force-print the message, which is
+            # by default only displayed on the minibuffer
             if e.message:
                 yield [Symbol(":write-string"),
                        "; Evaluation aborted on {}\n".format(e.message),
@@ -478,8 +503,9 @@ class EuslimeHandler(object):
         lock.acquire()
         yield [Symbol(":write-string"), "Loading file: %s ...\n" % filename]
         try:
-            for r in self.euslisp.eval('(lisp:load "{0}")'.format(qstr(filename))):
-                if isinstance(r,list):
+            cmd = '(lisp:load "{0}")'.format(qstr(filename))
+            for r in self.euslisp.eval(cmd):
+                if isinstance(r, list):
                     yield r
             yield [Symbol(":write-string"), "Loaded.\n"]
             yield EuslispResult(True)
@@ -488,7 +514,8 @@ class EuslimeHandler(object):
             if lock.locked():
                 lock.release()
             log.info('Aborting evaluation...')
-            # Force print the message, which is by default only displayed on the minibuffer
+            # Force-print the message, which is
+            # by default only displayed on the minibuffer
             if e.message:
                 yield [Symbol(":write-string"),
                        "; Evaluation aborted on {}\n".format(e.message),
