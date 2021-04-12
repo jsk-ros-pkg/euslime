@@ -159,7 +159,7 @@
 
   ;; Set signal-handler and *history* for non-tty streams
   (unless (unix:isatty *standard-input*)
-    (unix:signal unix::sigint 'slime::slime-sigint-handler 2)
+    (install-handler interruption 'slime::slime-sigint-handler)
     (when (fboundp 'unix:tcgets)
       (setq *tc* (unix:tcgets *standard-input*))
       (new-history *history-max*)))

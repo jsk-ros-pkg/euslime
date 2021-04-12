@@ -251,7 +251,7 @@ class EuslispProcess(Process):
             return command, data
         return None, None
 
-    def get_socket_response(self, connection, recursive=False):
+    def get_socket_response(self, connection):
         command, data = self.recv_socket_data(connection)
         log.debug('Socket Request Type: %s' % command)
         if command == 'result':
@@ -268,11 +268,8 @@ class EuslispProcess(Process):
             self.read_mode = True
             return [Symbol(":read-string"), 0, 1]
         if command == 'error':
-            if recursive:
-                log.debug('Waiting for repl output...')
-                self.finished_output.wait()
-                return
             msg = loads(data)
+            msg = no_color(msg)  # Color not allowed in sldb
             stack = self.get_callstack()
             if connection == self.euslime_internal_connection:
                 raise EuslispInternalError(msg, stack)
@@ -316,33 +313,11 @@ class EuslispProcess(Process):
             log.debug("Ignoring: [%s] %s" % (command, msg))
 
     def get_callstack(self, end=10):
-        self.output = []
-        self.finished_output.clear()
-        self.accumulate_output = True
-        self.clear_socket_stack(self.euslime_connection)
-        cmd_str = '(slime:print-callstack {})'.format(end + 4)
-        log.info('exec: %s' % cmd_str)
-        self.euslime_connection.send(cmd_str + self.delim)
-        self.get_socket_response(self.euslime_connection, recursive=True)
-        self.accumulate_output = False
-        stack = gen_to_string(self.output)
-        stack = [x.strip() for x in stack.split(self.delim)]
-        # Remove 'Call Stack' and dummy error messages
-        #  'Call Stack (max depth: 10):',
-        #  '0: at (slime:print-callstack 10)',
-        #  '1: at slime:slime-error',
-        #  '2: at slime:slime-error'
-        stack = stack[4:]
-        strace = []
-        for i, line in enumerate(stack):
-            split_line = line.split(": at ", 1)
-            if len(split_line) == 2:
-                strace.append(
-                    [i, split_line[1], [Symbol(":restartable"), False]])
-            else:
-                break
-        self.euslime_connection.send(
-            '(lisp:reset lisp:*replevel*)' + self.delim)
+        cmd = '(slime::list-callstack {})'.format(end + 4)
+        stack = self.exec_internal(cmd, force_repl_socket=True)
+        stack = stack[2:]
+        restartable = [Symbol(":restartable"), False]
+        strace = [[i, line, restartable] for i,line in enumerate(stack)]
         return strace
 
     def exec_internal(self, cmd_str, force_repl_socket=False):

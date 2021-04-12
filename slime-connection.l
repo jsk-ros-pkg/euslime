@@ -24,7 +24,7 @@
 (eval-when (load eval)
 
 (export '(*slime-stream* *slime-internal-stream* slime-connect-socket socket-request socket-eval
-          slime-input-stream slime-sigint-handler slime-error slimetop print-callstack))
+          slime-input-stream slime-sigint-handler slime-error slimetop))
 
 (defvar *slime-stream*)
 (defvar *slime-internal-stream*)
@@ -103,31 +103,23 @@
           (delete-if #'(lambda (val) (string= val (format nil "--port~A=" num) :end1 8))
                      lisp::*eustop-argument* :count 1))))
 
-(defun slime-sigint-handler (sig code)
-  (if (fboundp 'unix:ualarm)
-      (unix:ualarm 0 0)
-      (unix:alarm 0))
+(defun slime-sigint-handler (c)
   (slime::socket-request slime::*slime-stream* "abort" "Keyboard Interrupt")
-  (let* ((*replevel* (1+ *replevel*))
-         (*reptype* "B"))
-    (catch *replevel* (reploop #'toplevel-prompt))))
+  (invoke-next-handler c 1))
 
-(defun format-error-message (msg1 form &optional msg2)
-  (if (and msg2 (zerop (length msg1))) (setq msg1 msg2 msg2 nil))
-  (with-output-to-string (s)
-    (format s "~a" msg1)
-    (if msg2 (format s " ~a" msg2))
-    (if form (format s " in ~s" form))))
+(defun slime-error (err)
+  (socket-request *slime-stream* "error"
+     (with-output-to-string (s)
+       (lisp::print-error-message err s)))
+  (send err :set-val 'message nil)
+  (send err :set-val 'callstack nil)
+  ;; skip itself and call default euserror handling
+  (invoke-next-handler err 1))
 
-(defun slime-error (code msg1 form &optional (msg2))
-  (socket-request *slime-stream* "error" (format-error-message msg1 form msg2))
-  (let ((*replevel* (1+ *replevel*))
-        (*reptype* "E"))
-    (while (catch *replevel* (reploop #'toplevel-prompt))))
-  (throw *replevel* t))
-
-(defun slime-internal-error (code msg1 form &optional (msg2))
-  (socket-request *slime-internal-stream* "error" (format-error-message msg1 form msg2))
+(defun slime-internal-error (err)
+  (socket-request *slime-internal-stream* "error"
+     (with-output-to-string (s)
+       (lisp::print-error-message err s)))
   (throw 0 nil))
 
 (defun slime-finish-output (strm)
@@ -145,12 +137,12 @@
 
 (defun slimetop ()
   (clean-eustop)
-  (lisp::install-error-handler 'slime::slime-error)
+  (install-handler error 'slime::slime-error)
   (setq lisp::*max-callstack-depth* 0)
   (sys::make-thread 1)
   (sys::thread 'eval
     `(progn
-       (lisp::install-error-handler 'slime::slime-internal-error)
+       (install-handler error 'slime::slime-internal-error)
        (while t
          (catch 0 (slime::socket-eval slime::*slime-internal-stream*)))))
   (catch :eusexit
@@ -167,7 +159,7 @@
         )))
   (throw :eusexit nil))
 
-(defun print-callstack (n)
-  (let ((lisp::*max-callstack-depth* n))
-    (error "print-callstack")))
+(defun list-callstack (n)
+  (mapcar #'(lambda (x) (format nil "~S" x))
+          (cdddr (sys:list-callstack n))))
 )
