@@ -54,72 +54,74 @@
   (let* ((eof (cons nil nil))
 	 (command (read input nil eof))
 	 (arglist) (arg) result)
-    (cond	((eq command eof) )
-                ((symbolp command)
-                 ;;	 (if *history* (add-history (input . buffer)))
-                 (cond ((fboundp command)
-                        (setq arglist nil)
-                        (while (not (eq (setq arg (read input nil eof)) eof))
-                          (push arg arglist))
-                        (setq - (cons command (nreverse arglist)))
-                        (setq result (eval -)))
-                       ((and (boundp command)
-                             (eq (read input nil eof) eof))
-                        (setq - command)
-                        (setq result (eval command)))
-                       ((find-package (string command)) (in-package (string command)))
-                       (*try-unix*
-                        (setq - (list 'unix:system (input . buffer)))
-                        (setq result (unix:system (input . buffer)) ) )
-                       (t (warn "?~%")) ))
-                (t
-                 ;;	 (if *history* (add-history (input . buffer)))
-                 (setq - command)
-                 (setq result (eval command)) ))
-    result))
+    (flet ((normal-eval (comm)
+             (setq - comm)
+             (setq result (eval comm))))
+      (cond
+	((eq command eof) )
+	((symbolp command)
+;;	 (if *history* (add-history (input . buffer)))
+	 (cond ((fboundp command)
+		(setq arglist nil)
+		(while (not (eq (setq arg (read input nil eof)) eof))
+		    (push arg arglist))
+		(if (and (null arglist) (boundp command))
+                    (normal-eval command) ;; eval symbol if bound and w/o args
+                    (normal-eval (cons command (nreverse arglist)))))
+	       ((boundp command)
+                (normal-eval command))
+	       ((find-package (string command)) (in-package (string command)))
+	       ((and *try-unix*
+		  ;; try normal-eval when unix command is not found (errno 127)
+		  (not (equal (normal-eval (list 'unix:system (input . buffer))) #x7f00))))
+	       (t (normal-eval command)) ))
+        (t
+;;	 (if *history* (add-history (input . buffer)))
+	 (normal-eval command) )))
+   result))
 
 ;; Recompile with new evaluate-stream
 (defun rep1 (repstream eof local-bindings &optional (ttyp t))
-  (let ((input (read-list-from-line repstream eof)) result)
-    (if (eq input eof) (return-from rep1 eof))
-    (when (and input (or (not (streamp input))
-                         (> (length (send input :buffer)) 0)))
-      (when *history*
-        (add-history 
-         (cond ((consp input) (format nil "~s" input))
-               ((streamp input) (send input :buffer))
-               (t (string input)))) )
-      ;; if something is going to be put in the history buffer,
-      ;; it certainly has some value to be processed by the hook.
-      (if *toplevel-hook* (funcall *toplevel-hook*))
-      )
-    (cond
-      ((null input) nil)
-      ((symbolp input)
-       ;;	 (if *history*	 (add-history (string input)))
-       (setq - input
-             result
-             (cond
-               ((> *replevel* 0)
-                (eval-dynamic input local-bindings))
-               ((boundp input) (eval input))
-               (t '*unbound*)))
-       ;;	 (if ttyp (print result repstream))
-       (print result repstream)
-       )
-      ((or (null (streamp input)) (listp input))
-       ;;	 (if *history* (add-history (format nil "~s" input)))
-       (setq - input)
-       (setq result (eval input))
-       ;;(if ttyp (print result  repstream)))
-       (print result  repstream))
-      ((streamp input)
-       (setq result (evaluate-stream input) )
-       ;;(if ttyp  (print result repstream ))
-       (print result repstream ))
-      (t (print "?" repstream)))
-    (setq +++ ++ ++ + + -)
-    (setq *** ** ** * * result)))
+   (let ((input (read-list-from-line repstream eof)) result)
+      (if (eq input eof) (return-from rep1 eof))
+      (when (and input (or (not (streamp input))
+			   (> (length (send input :buffer)) 0)))
+	 (when *history*
+	    (add-history
+	       (cond ((consp input) (format nil "~s" input))
+		     ((streamp input) (send input :buffer))
+		     (t (string input)))) )
+	 ;; if something is going to be put in the history buffer,
+	 ;; it certainly has some value to be processed by the hook.
+	 (if *toplevel-hook* (funcall *toplevel-hook*))
+	 )
+      (cond
+	((null input) nil)
+	((symbolp input)
+;;	 (if *history*	 (add-history (string input)))
+	 (setq - input
+	       result
+	       (cond
+		   ((> *replevel* 0)
+			(eval-dynamic input local-bindings))
+		   ((boundp input) (eval input))
+		   (t '*unbound*)))
+;;	 (if ttyp (print result repstream))
+	 (print result repstream)
+         )
+	((or (null (streamp input)) (listp input))
+;;	 (if *history* (add-history (format nil "~s" input)))
+	 (setq - input)
+	 (setq result (eval input))
+	 ;;(if ttyp (print result  repstream)))
+         (print result  repstream))
+	((streamp input)
+	 (setq result (evaluate-stream input) )
+	 ;;(if ttyp  (print result repstream ))
+         (print result repstream ))
+        (t (print "?" repstream)))
+      (setq +++ ++ ++ + + -)
+     (setq *** ** ** * * result)))
 
 (defun toplevel-prompt (strm)
   ;; Do not print the history number and the '$' sign in the end
