@@ -269,7 +269,7 @@ class EuslispProcess(Process):
             return [Symbol(":read-string"), 0, 1]
         if command == 'error':
             msg = loads(data)
-            msg = no_color(msg)  # Color not allowed in sldb
+            msg = no_color(msg.strip())  # Color not allowed in sldb
             stack = self.get_callstack()
             if connection == self.euslime_internal_connection:
                 raise EuslispInternalError(msg, stack)
@@ -317,7 +317,7 @@ class EuslispProcess(Process):
         stack = self.exec_internal(cmd, force_repl_socket=True)
         stack = stack[2:]
         restartable = [Symbol(":restartable"), False]
-        strace = [[i, line, restartable] for i,line in enumerate(stack)]
+        strace = [[i, line, restartable] for i, line in enumerate(stack)]
         return strace
 
     def exec_internal(self, cmd_str, force_repl_socket=False):
