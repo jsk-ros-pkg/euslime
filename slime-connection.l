@@ -105,7 +105,7 @@
 
 (defun slime-sigint-handler (c)
   (slime::socket-request slime::*slime-stream* "abort" "Keyboard Interrupt")
-  (invoke-next-handler c 1))
+  (invoke-next-handler c))
 
 (defun slime-error (err)
   (socket-request *slime-stream* "error"
@@ -114,7 +114,7 @@
   (send err :set-val 'message nil)
   (send err :set-val 'callstack nil)
   ;; skip itself and call default euserror handling
-  (invoke-next-handler err 1))
+  (invoke-next-handler err))
 
 (defun slime-internal-error (err)
   (socket-request *slime-internal-stream* "error"
