@@ -30,6 +30,9 @@
   "Directory containing the Euslisp SLIME package.")
 (setq euslime-path (file-name-directory load-file-name))
 
+(defvar euslime-session-tag-path nil
+  "Stores the name of the generated session-specific tag files")
+
 (defcustom euslime-compile-path (expand-file-name "~/.euslime/")
   "Path to Euslisp SLIME compiled files."
   :type 'string)
@@ -128,11 +131,11 @@
         (rostag (format "%s/ROSEUSTAGS" euslime-compile-path)))
     (euslime-maybe-generate-tag
      eustag "eus"
-     (format "%s/lisp" eusdir)
-     t "l" "c")
+     (format "%s/lisp/l/*.l" eusdir)
+     (format "%s/lisp/c/*.c" eusdir))
     (euslime-maybe-generate-tag
      irttag "\\(irteus\\|roseus\\)"
-     (format "%s/irteus" eusdir))
+     (format "%s/irteus/*.l" eusdir))
     ;; TODO: Use rosemacs to probe/find roseus package
     (let ((rosdir (if (= (shell-command "rospack find roseus") 0)
                       (replace-regexp-in-string "\n$" ""
@@ -140,26 +143,39 @@
       (when rosdir
         (euslime-maybe-generate-tag
          rostag "roseus"
-         (format "%s" rosdir)
-         t "euslisp" "")))))
+         (format "%s/euslisp/*.l" rosdir)
+         (format "%s/*.cpp" rosdir))))))
 
-(defun euslime-maybe-generate-tag (tag-file match-str src-dir &optional ctags ldir cdir)
+(defun euslime-maybe-generate-tag (tag-file match-str lfiles &optional cfiles)
   (when (string-match-p match-str inferior-euslisp-program)
-    (when (file-newer-than-file-p src-dir tag-file)
+    (when (or (file-newer-than-file-p (file-name-directory lfiles) tag-file)
+              (and cfiles (file-newer-than-file-p (file-name-directory cfiles) tag-file)))
       (message (format "Generating %s file..." tag-file))
       (shell-command
        ;; Include `(:methods' in l files
-       (format "etags --regex='/[ \\t]*(:[^ \\t\\$\\(]*/' %s/*.l %s-o %s"
-               (expand-file-name (or ldir "") src-dir)
+       (format "etags --regex='/[ \\t]*(:[^ \\t\\$\\(]*/' %s %s -o %s"
+               (expand-file-name lfiles)
                ;; Include `pointer FUNCTIONS' in c files
-               (if ctags
+               (if cfiles
                    ;; TODO: ignore .old.c files
-                   (let ((dir (expand-file-name (or cdir "") src-dir)))
-                     (format "-l none -R --regex='/pointer [A-Z_0-9]+[ ]*(/' --no-globals %s/*.c %s/*.cpp "
-                             dir dir))
+                   (format "-l none -R --regex='/pointer [A-Z_0-9]+[ ]*(/' --no-globals %s"
+                           (expand-file-name cfiles))
                  "")
                tag-file)))
     (cl-pushnew tag-file tags-table-list)))
+
+(defun euslime-load-tags (filename)
+  (interactive (list (read-file-name "File: ")))
+  ;; make a separate directory for each session
+  (unless euslime-session-tag-path
+    (setq-local euslime-session-tag-path (make-temp-file "euslime-session-tag" t)))
+  ;; hash filenames so that they can be safely overwritten on repeated loads
+  (let ((tag-file
+         (format "%s/%s-%s"
+                 euslime-session-tag-path
+                 (file-name-base filename)
+                 (sxhash filename))))
+    (euslime-maybe-generate-tag tag-file inferior-euslisp-program filename)))
 
 (defun etags-class-of-tag ()
   (save-excursion
