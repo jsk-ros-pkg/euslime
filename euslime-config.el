@@ -177,6 +177,12 @@
                  (sxhash filename))))
     (euslime-maybe-generate-tag tag-file inferior-euslisp-program filename)))
 
+(defun euslime-load-tags-from-compilation-result (notes)
+  (with-struct (slime-compilation-result. notes duration successp
+                                          loadp faslfile) slime-last-compilation-result
+    (when (and slime-euslisp-mode loadp successp)
+      (euslime-load-tags faslfile))))
+
 (defun etags-class-of-tag ()
   (save-excursion
     (re-search-backward "\n\\(\(defmethod [^\n\t ]*\\)[ \t]*\177[0-9]*,[0-9]*\n")
