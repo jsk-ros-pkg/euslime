@@ -246,6 +246,7 @@ current buffer."
   ;; Remove unsupported ASDF commands
   (setq-local slime-repl-shortcut-table (remove-asdf-system-shortcuts))
   ;; Add tags after loading files
+  (setq-local tags-revert-without-query t)
   (add-hook 'slime-compilation-finished-hook 'euslime-load-tags-from-compilation-result)
   ;; Keep history record in a different file
   (setq-local slime-repl-history-file "~/.euslime-history.eld")
