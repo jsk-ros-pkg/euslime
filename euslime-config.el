@@ -151,17 +151,18 @@
     (when (or (file-newer-than-file-p (file-name-directory lfiles) tag-file)
               (and cfiles (file-newer-than-file-p (file-name-directory cfiles) tag-file)))
       (message (format "Generating %s file..." tag-file))
-      (shell-command
-       ;; Include `(:methods' in l files
-       (format "etags --regex='/[ \\t]*(:[^ \\t\\$\\(]*/' %s %s -o %s"
-               (expand-file-name lfiles)
-               ;; Include `pointer FUNCTIONS' in c files
-               (if cfiles
-                   ;; TODO: ignore .old.c files
-                   (format "-l none -R --regex='/pointer [A-Z_0-9]+[ ]*(/' --no-globals %s"
-                           (expand-file-name cfiles))
-                 "")
-               tag-file)))
+      (let ((inhibit-message t))
+        (shell-command
+         ;; Include `(:methods' in l files
+         (format "etags --regex='/[ \\t]*(:[^ \\t\\$\\(]*/' %s %s -o %s"
+                 (expand-file-name lfiles)
+                 ;; Include `pointer FUNCTIONS' in c files
+                 (if cfiles
+                     ;; TODO: ignore .old.c files
+                     (format "-l none -R --regex='/pointer [A-Z_0-9]+[ ]*(/' --no-globals %s"
+                             (expand-file-name cfiles))
+                   "")
+                 tag-file))))
     (add-to-list 'tags-table-list tag-file)))
 
 (defun euslime-load-tags (filename)
