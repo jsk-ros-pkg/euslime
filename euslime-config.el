@@ -162,7 +162,7 @@
                            (expand-file-name cfiles))
                  "")
                tag-file)))
-    (cl-pushnew tag-file tags-table-list)))
+    (add-to-list 'tags-table-list tag-file)))
 
 (defun euslime-load-tags (filename)
   (interactive (list (read-file-name "File: ")))
