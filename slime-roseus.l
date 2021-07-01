@@ -9,12 +9,10 @@
   (let (load-hooks)
     (funcall roseus-add-files-org pkg type)))
 
+;; Recompile with new ros::roseus-add-files
 (defun get-recursive-load-notes (filename)
   (let* ((acc nil)
-         (hook-fn #'(lambda (name)
-                      (when (substringp "package://" name)
-                        (setq name (ros::resolve-ros-path name)))
-                      (push name acc)))
+         (hook-fn #'(lambda (name) (aif (true-filename name) (push it acc))))
          (load-hooks (cons hook-fn load-hooks)))
     (load filename)
     acc))

@@ -34,6 +34,24 @@
 	((null (cdr args)) (car args))
 	(t `(aif ,(car args) (aand ,@(cdr args))))))
 
+;; File related
+(defun true-filename (fname)
+  (flet ((check-name (name)
+           (if (eql (probe-file name) :file) name)))
+    (cond
+      ((and (stringp fname) (substringp "package://" fname))
+       ;; avoid using package notation to be safe for other eus executables
+       (unless (find-package "ROS") (error "no such package ROS"))
+       (check-name (funcall (find-symbol "RESOLVE-ROS-PATH" "ROS") fname)))
+      ((aand (pathname-directory (pathname fname))
+             (eql (car it) :root))
+       (check-name (namestring fname)))
+      (t
+       (dolist (p (union *loader-current-directory* *load-path*
+                         :test #'string=))
+         (aif (check-name (concatenate-pathnames p fname))
+              (return-from true-filename (namestring it))))))))
+
 ;; Symbol related
 (defun split-package (name)
   ;; TODO: read |escaped\|forms|
@@ -451,7 +469,7 @@
 ;; SWANK-COMPILE-FILE-FOR-EMACS
 (defun get-recursive-load-notes (filename)
   (let* ((acc nil)
-         (hook-fn #'(lambda (name) (push name acc)))
+         (hook-fn #'(lambda (name) (aif (true-filename name) (push it acc))))
          (load-hooks (cons hook-fn load-hooks)))
     (load filename)
     acc))
