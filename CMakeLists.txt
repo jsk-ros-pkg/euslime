@@ -20,6 +20,7 @@ install(FILES
   requirements.txt
 # EusLisp files
   slime-connection.l
+  slime-roseus.l
   slime-toplevel.l
   slime-util.l
 # Emacs Lisp files

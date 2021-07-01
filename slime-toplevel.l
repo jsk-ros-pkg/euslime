@@ -9,6 +9,13 @@
 
 (eval-when (load eval)
 
+;; Recursive load tags
+(defun load (fname &rest args)
+  (when slime::load-hooks
+    (dolist (fn slime::load-hooks)
+      (funcall fn fname)))
+  (apply slime::load-org-for-slime fname args))
+
 ;; Handle unix sub processes
 (defun unix:system (&optional command)
   (slime::socket-request slime::*slime-stream* "read-mode" t)

@@ -88,13 +88,17 @@
            (format "(load %S :package %S)\n"
                    (expand-file-name "slime-connection" euslime-compile-path)
                    "SLIME")
+           (format "#+:ros (load %S :package %S)\n"
+                   (expand-file-name "slime-roseus" euslime-compile-path)
+                   "SLIME")
            (format "(load %S :package %S)\n"
                    (expand-file-name "slime-toplevel" euslime-compile-path)
                    "LISP"))
           nil file)))
 
     (let* ((loader (expand-file-name "slime-loader.l" euslime-compile-path))
-           (files (cl-mapcan #'needs-compile (list "slime-util" "slime-connection" "slime-toplevel")))
+           (files (cl-mapcan #'needs-compile
+                    (list "slime-util" "slime-connection" "slime-roseus" "slime-toplevel")))
            (res (apply #'euslime-compile-files files)))
       (cond
        ((null res) ;; FILES UP-TO-DATE
@@ -117,7 +121,7 @@
         (push (format " (compiler:compile-file %S :o %S) " file euslime-compile-path)
               cmd-lst))
       ;; Compile files
-      (let ((cmd-str (concat "eus '(unwind-protect t"
+      (let ((cmd-str (concat "roseus '(unwind-protect t"
                              (apply #'concat (nreverse cmd-lst))
                              "(exit))'")))
         (print (format "Executing shell command: %s" cmd-str))

@@ -1,6 +1,15 @@
 (unless (find-package "SLIME") (make-package "SLIME"))
 (in-package "SLIME")
 
+
+;;;;;;;;;;;;;;;;;;;;;;
+;; Recursive Load Tags
+;;;;;;;;;;;;;;;;;;;;;;
+
+(defvar load-hooks nil)
+(defvar load-org-for-slime (symbol-function 'load))
+
+
 ;;;;;;;;;;;;;;;;;;;;
 ;; Socket Connection
 ;;;;;;;;;;;;;;;;;;;;
