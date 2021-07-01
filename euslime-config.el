@@ -166,7 +166,6 @@
     (add-to-list 'tags-table-list tag-file)))
 
 (defun euslime-load-tags (filename)
-  (interactive (list (read-file-name "File: ")))
   ;; make a separate directory for each session
   (unless euslime-session-tag-path
     (setq-local euslime-session-tag-path (make-temp-file "euslime-session-tag" t)))

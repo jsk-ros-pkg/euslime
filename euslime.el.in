@@ -64,6 +64,20 @@
   (sleep-for 0.1)
   (slime-repl-set-package ""))
 
+;; LOAD FILE
+;; Mostly equal to slime-load-file, but also generate and load tags
+(defun euslime-load-file (filename)
+  "Load the EusLisp file FILENAME."
+  (interactive (list
+		(read-file-name "Load file: " nil nil
+				nil (if (buffer-file-name)
+                                        (file-name-nondirectory
+                                         (buffer-file-name))))))
+  (let ((lisp-filename (slime-to-lisp-filename (expand-file-name filename))))
+    (prog1
+        (slime-eval-with-transcript `(swank:load-file ,lisp-filename))
+      (euslime-load-tags lisp-filename))))
+
 ;; SHORTCUT COMMANDS
 ;; Overrite to inherit the buffer-local `slime-repl-shortcut-table'
 (defun slime-list-repl-short-cuts ()
@@ -221,7 +235,8 @@ current buffer."
   :lighter " eus"
   :keymap (let ((prefix (slime-euslisp--doc-map-prefix)))
             `((,(concat prefix (kbd "C-p")) . slime-apropos-symbol-package)
-              (,(concat prefix "p") . slime-apropos-symbol-package)))
+              (,(concat prefix "p") . slime-apropos-symbol-package)
+              (,(concat (kbd "C-c") (kbd "C-l")) . euslime-load-file)))
               ;; (,(kbd "M-,") . tags-loop-continue)
               ;; (,(kbd "M-.") . find-tag)))
   ;; Use simple-completions rather than fuzzy-completions
