@@ -89,6 +89,8 @@
          args))
 
 (defun euslime-load-file-and-tags-with-transcript (filename)
+  (slime-repl-add-to-input-history
+   (prin1-to-string `(slime::load-file-and-tags ,filename)))
   (run-hooks 'slime-transcript-start-hook)
   (slime-rex () (`(swank:load-file ,filename))
     ((:ok value)
@@ -108,8 +110,6 @@
                 (euslime-read-euslisp-file-name
                  "Load file: " nil nil nil
                  (if (buffer-file-name) (file-name-nondirectory (buffer-file-name))))))
-  (slime-repl-add-to-input-history
-   (prin1-to-string `(slime::load-file-and-tags ,filename)))
   (euslime-load-file-and-tags-with-transcript filename))
 
 
