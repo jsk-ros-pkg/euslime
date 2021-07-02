@@ -503,12 +503,22 @@ class EuslimeHandler(object):
         lock.acquire()
         yield [Symbol(":write-string"), "Loading file: %s ...\n" % filename]
         try:
-            cmd = '(lisp:load "{0}")'.format(qstr(filename))
+            cmd = '(slime::load-file-and-tags "{0}")'.format(qstr(filename))
+            output_str = ''
+
             for r in self.euslisp.eval(cmd):
                 if isinstance(r, list):
+                    # read-string
                     yield r
+                if isinstance(r, str):
+                    output_str += r
+
+            res = loads(output_str, nil=None)
+            if res == Symbol("lisp:nil") or res == Symbol("nil"):
+                res = None
+
             yield [Symbol(":write-string"), "Loaded.\n"]
-            yield EuslispResult(True)
+            yield EuslispResult(res)
             lock.release()
         except AbortEvaluation as e:
             if lock.locked():

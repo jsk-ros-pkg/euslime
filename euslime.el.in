@@ -65,7 +65,20 @@
   (slime-repl-set-package ""))
 
 ;; LOAD FILE
-;; Mostly equal to slime-load-file, but also generate and load tags
+(defun euslime-load-file-and-tags-with-transcript (filename)
+  (run-hooks 'slime-transcript-start-hook)
+  (slime-rex () (`(swank:load-file ,filename))
+    ((:ok value)
+     (run-hooks 'slime-transcript-stop-hook)
+     (when (consp value)
+       (let ((inhibit-message t))
+         (dolist (val value)
+           (euslime-load-tags val))))
+     (slime-display-eval-result t))
+    ((:abort condition)
+     (run-hooks 'slime-transcript-stop-hook)
+     (message "Evaluation aborted on %s." condition))))
+
 (defun euslime-load-file (filename)
   "Load the EusLisp file FILENAME."
   (interactive (list
@@ -74,11 +87,25 @@
                                         (file-name-nondirectory
                                          (buffer-file-name))))))
   (let ((lisp-filename (slime-to-lisp-filename (expand-file-name filename))))
-    (prog1
-        (slime-eval-with-transcript `(swank:load-file ,lisp-filename))
-      (euslime-load-tags lisp-filename))))
+    (slime-repl-add-to-input-history
+     (prin1-to-string `(slime::load-file-and-tags ,lisp-filename)))
+    (euslime-load-file-and-tags-with-transcript lisp-filename)))
 
 ;; SHORTCUT COMMANDS
+;; Override to load tags as well
+(defslime-repl-shortcut slime-repl-compile-and-load ("compile-and-load" "load" "cl")
+  (:handler (lambda (filename)
+              (interactive (list (expand-file-name
+                                  (read-file-name "File: " nil nil nil nil))))
+              (slime-save-some-lisp-buffers)
+              (if slime-euslisp-mode
+                  (euslime-load-file-and-tags-with-transcript filename)
+                (slime-repl-shortcut-eval-async
+                 `(swank:compile-file-if-needed
+                   ,(slime-to-lisp-filename filename) t)
+                 #'slime-compilation-finished))))
+  (:one-liner "Compile (if neccessary) and load a lisp file."))
+
 ;; Overrite to inherit the buffer-local `slime-repl-shortcut-table'
 (defun slime-list-repl-short-cuts ()
   (interactive)
@@ -245,9 +272,8 @@ current buffer."
   (setq-local slime-complete-symbol*-fancy nil)
   ;; Remove unsupported ASDF commands
   (setq-local slime-repl-shortcut-table (remove-asdf-system-shortcuts))
-  ;; Add tags after loading files
-  (setq-local tags-revert-without-query t)
-  (add-hook 'slime-compilation-finished-hook 'euslime-load-tags-from-compilation-result)
+  ;; Inhibit queries when tags change
+  (setq tags-revert-without-query t)
   ;; Keep history record in a different file
   (setq-local slime-repl-history-file "~/.euslime-history.eld")
   (slime-repl-safe-load-history)

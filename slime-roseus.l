@@ -10,7 +10,7 @@
     (funcall roseus-add-files-org pkg type)))
 
 ;; Recompile with new ros::roseus-add-files
-(defun get-recursive-load-notes (filename)
+(defun load-file-and-tags (filename)
   (let* ((acc nil)
          (hook-fn #'(lambda (name) (aif (true-filename name) (push it acc))))
          (load-hooks (cons hook-fn load-hooks)))

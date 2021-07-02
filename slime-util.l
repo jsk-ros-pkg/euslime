@@ -466,8 +466,8 @@
           (list cname)
           (list-possible-symbol-names sym)))))
 
-;; SWANK-COMPILE-FILE-FOR-EMACS
-(defun get-recursive-load-notes (filename)
+;; SWANK-LOAD-FILE-AND-TAGS
+(defun load-file-and-tags (filename)
   (let* ((acc nil)
          (hook-fn #'(lambda (name) (aif (true-filename name) (push it acc))))
          (load-hooks (cons hook-fn load-hooks)))
