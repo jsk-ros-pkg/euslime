@@ -106,7 +106,7 @@
                  #'slime-compilation-finished))))
   (:one-liner "Compile (if neccessary) and load a lisp file."))
 
-;; Overrite to inherit the buffer-local `slime-repl-shortcut-table'
+;; Override to inherit the buffer-local `slime-repl-shortcut-table'
 (defun slime-list-repl-short-cuts ()
   (interactive)
   (let ((mode (if slime-euslisp-mode 'slime-euslisp-mode)))
