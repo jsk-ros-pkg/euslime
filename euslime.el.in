@@ -65,6 +65,29 @@
   (slime-repl-set-package ""))
 
 ;; LOAD FILE
+(defcustom euslime-file-completion-function 'completing-read
+  "The completion function to be used for EusLisp file completion"
+  :type 'function)
+
+(setq euslime-file-completor
+  (lambda (str pred action)
+    (let* ((ros-file-prefix "package://")
+           (pos (string-match-p ros-file-prefix str)))
+      (if pos
+          (let* ((inhibit-message t)  ;; avoid unwanted advertising
+                 (ros-str (substring str (+ pos (length ros-file-prefix))))
+                 (res (funcall ros-package-completor ros-str pred action)))
+            (if (stringp res)
+                (concat ros-file-prefix res)
+              res))
+        (funcall 'read-file-name-internal str pred action)))))
+
+(defun euslime-read-euslisp-file-name (prompt &optional predicate require-match initial &rest args)
+  (apply euslime-file-completion-function
+         prompt euslime-file-completor
+         predicate require-match initial
+         args))
+
 (defun euslime-load-file-and-tags-with-transcript (filename)
   (run-hooks 'slime-transcript-start-hook)
   (slime-rex () (`(swank:load-file ,filename))
@@ -82,21 +105,19 @@
 (defun euslime-load-file (filename)
   "Load the EusLisp file FILENAME."
   (interactive (list
-		(read-file-name "Load file: " nil nil
-				nil (if (buffer-file-name)
-                                        (file-name-nondirectory
-                                         (buffer-file-name))))))
-  (let ((lisp-filename (slime-to-lisp-filename (expand-file-name filename))))
-    (slime-repl-add-to-input-history
-     (prin1-to-string `(slime::load-file-and-tags ,lisp-filename)))
-    (euslime-load-file-and-tags-with-transcript lisp-filename)))
+                (euslime-read-euslisp-file-name
+                 "Load file: " nil nil nil
+                 (if (buffer-file-name) (file-name-nondirectory (buffer-file-name))))))
+  (slime-repl-add-to-input-history
+   (prin1-to-string `(slime::load-file-and-tags ,filename)))
+  (euslime-load-file-and-tags-with-transcript filename))
+
 
 ;; SHORTCUT COMMANDS
 ;; Override to load tags as well
 (defslime-repl-shortcut slime-repl-compile-and-load ("compile-and-load" "load" "cl")
   (:handler (lambda (filename)
-              (interactive (list (expand-file-name
-                                  (read-file-name "File: " nil nil nil nil))))
+              (interactive (list (euslime-read-euslisp-file-name "Load file: ")))
               (slime-save-some-lisp-buffers)
               (if slime-euslisp-mode
                   (euslime-load-file-and-tags-with-transcript filename)
