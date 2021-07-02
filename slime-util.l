@@ -472,7 +472,7 @@
          (hook-fn #'(lambda (name) (aif (true-filename name) (push it acc))))
          (load-hooks (cons hook-fn load-hooks)))
     (load filename)
-    acc))
+    (nreverse acc)))
 
 ;; SWANK-SET-PACKAGE
 (defun set-package (name)
