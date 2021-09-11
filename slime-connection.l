@@ -113,8 +113,8 @@
        (lisp::print-error-message err s)))
   (send err :set-val 'message nil)
   (send err :set-val 'callstack nil)
-  ;; skip itself and call default euserror handling
-  (invoke-next-handler err))
+  ;; call default euserror handling
+  (euserror err))
 
 (defun slime-internal-error (err)
   (socket-request *slime-internal-stream* "error"
