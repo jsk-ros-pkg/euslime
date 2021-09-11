@@ -1477,8 +1477,22 @@ class eus(EuslimeTestCase):
         self.with_unwind_protect(
             (self.assertSocketPossibleResults,
              '(:emacs-rex (swank-repl:listener-eval "(quit)\n") "USER" :repl-thread 5)',
+
+             # eus irteusgl
              ['(:debug 0 1 ("Process exited with code 0 (SIG_DFL)" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))'],
-             ['(:debug 0 1 ("Socket connection closed" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))']),
+             ['(:debug 0 1 ("Socket connection closed" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))'],
+
+             # roseus
+             ['(:write-string "[ INFO]: cell* ROSEUS_EXIT(context*, int, cell**)\\n")',
+              '(:debug 0 1 ("Process exited with code 0 (SIG_DFL)" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))'],
+             ['(:write-string "[ INFO]: cell* ROSEUS_EXIT(context*, int, cell**)\\n")',
+              '(:debug 0 1 ("Socket connection closed" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))'],
+
+             # roseus_color
+             ['(:write-string "\x1b[0m[ INFO]: cell* ROSEUS_EXIT(context*, int, cell**)\x1b[0m\\n")',
+              '(:debug 0 1 ("Process exited with code 0 (SIG_DFL)" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))'],
+             ['(:write-string "\x1b[0m[ INFO]: cell* ROSEUS_EXIT(context*, int, cell**)\x1b[0m\\n")',
+              '(:debug 0 1 ("Socket connection closed" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))']),
             (self.assertSocketPossibleResults,
              '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 6)',
              ['(:return (:abort nil) 6)',
@@ -1494,8 +1508,22 @@ class eus(EuslimeTestCase):
         self.with_unwind_protect(
             (self.assertSocketPossibleResults,
              '(:emacs-rex (swank-repl:listener-eval "(exit -1)\n") "USER" :repl-thread 10)',
+
+             # eus irteusgl
              ['(:debug 0 1 ("Process exited with code 255" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))'],
-             ['(:debug 0 1 ("Socket connection closed" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))']),
+             ['(:debug 0 1 ("Socket connection closed" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))'],
+
+             # roseus
+             ['(:write-string "[ INFO]: cell* ROSEUS_EXIT(context*, int, cell**)\\n")',
+              '(:debug 0 1 ("Process exited with code 255" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))'],
+             ['(:write-string "[ INFO]: cell* ROSEUS_EXIT(context*, int, cell**)\\n")',
+              '(:debug 0 1 ("Socket connection closed" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))'],
+
+             # roseus_color
+             ['(:write-string "\x1b[0m[ INFO]: cell* ROSEUS_EXIT(context*, int, cell**)\x1b[0m\\n")',
+              '(:debug 0 1 ("Process exited with code 255" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))'],
+             ['(:write-string "\x1b[0m[ INFO]: cell* ROSEUS_EXIT(context*, int, cell**)\x1b[0m\\n")',
+              '(:debug 0 1 ("Socket connection closed" "" nil) (("RESTART" "Restart euslisp process")) nil (nil))']),
             (self.assertSocketPossibleResults,
              '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 11)',
              ['(:return (:abort nil) 11)',
@@ -1926,7 +1954,7 @@ class eus(EuslimeTestCase):
             (self.assertSocketIgnoreAddress,
              '(:emacs-rex (swank:load-file "{0}") "USER" :repl-thread 6)'.format(file),
              '(:write-string "Loading file: {0} ...\\n")'.format(file),
-             '(:debug 0 1 ("File #P\\"{0}\\" not found in (load \\"{0}\\")" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(load \\"{0}\\")" (:restartable nil)) (1 "(slime:slimetop)" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "#<compiled-code #X48c80f0>" (:restartable nil))) (nil))'.format(file)),
+             '(:debug 0 1 ("File #P\\"{0}\\" not found in (load \\"{0}\\")" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(load \\"{0}\\")" (:restartable nil)) (1 "(load \\"{0}\\")" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "(slime:slimetop)" (:restartable nil)) (4 "#<compiled-code #X48c80f0>" (:restartable nil))) (nil))'.format(file)),
             (self.assertSocket,
              '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 7)',
              '(:return (:abort nil) 7)',
