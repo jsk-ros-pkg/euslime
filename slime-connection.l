@@ -160,6 +160,7 @@
   (throw :eusexit nil))
 
 (defun list-callstack (n)
+  ;; account for callstack after compiled
   (mapcar #'(lambda (x) (format nil "~S" x))
-          (cdddr (sys:list-callstack n))))
+          (cdr (sys:list-callstack n))))
 )

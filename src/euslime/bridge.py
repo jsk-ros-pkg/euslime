@@ -315,7 +315,7 @@ class EuslispProcess(Process):
     def get_callstack(self, end=10):
         cmd = '(slime::list-callstack {})'.format(end + 4)
         stack = self.exec_internal(cmd, force_repl_socket=True)
-        stack = stack[2:]
+        stack = stack[3:]  # Remove error handler related stack
         restartable = [Symbol(":restartable"), False]
         strace = [[i, line, restartable] for i, line in enumerate(stack)]
         return strace
