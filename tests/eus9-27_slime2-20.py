@@ -295,7 +295,7 @@ class eus(EuslimeTestCase):
              '(:write-string "start\\n")',
              '(:write-string "end\\n")',
              '(:write-string "Loaded.\\n")',
-             '(:return (:ok t) 9)'])
+             '(:return (:ok ("{}/test_async_3.l")) 9)'.format(os.getcwd())])
 
     def test_async_4(self):
         self.with_unwind_protect(
@@ -1910,7 +1910,7 @@ class eus(EuslimeTestCase):
              '(:emacs-rex (swank:load-file "{}/test_load_file_1.l") "USER" :repl-thread 6)'.format(os.getcwd()),
              '(:write-string "Loading file: {}/test_load_file_1.l ...\\n")'.format(os.getcwd()),
              '(:write-string "Loaded.\\n")',
-             '(:return (:ok t) 6)'),
+             '(:return (:ok ("{}/test_load_file_1.l")) 6)'.format(os.getcwd())),
             (self.assertSocket,
              '(:emacs-rex (swank-repl:listener-eval "(and (boundp \'test-load-var) test-load-var)\n") "USER" :repl-thread 11)',
              '(:write-string "10" :repl-result)',
@@ -1933,7 +1933,7 @@ class eus(EuslimeTestCase):
              '(:emacs-rex (swank:load-file "/tmp/test_load_file_1.so") "USER" :repl-thread 6)',
              '(:write-string "Loading file: /tmp/test_load_file_1.so ...\\n")',
              '(:write-string "Loaded.\\n")',
-             '(:return (:ok t) 6)'),
+             '(:return (:ok ("/tmp/test_load_file_1.so")) 6)'),
             (self.assertSocket,
              '(:emacs-rex (swank-repl:listener-eval "(and (boundp \'test-load-var) test-load-var)\n") "USER" :repl-thread 11)',
              '(:write-string "10" :repl-result)',
@@ -1954,12 +1954,49 @@ class eus(EuslimeTestCase):
             (self.assertSocketIgnoreAddress,
              '(:emacs-rex (swank:load-file "{0}") "USER" :repl-thread 6)'.format(file),
              '(:write-string "Loading file: {0} ...\\n")'.format(file),
-             '(:debug 0 1 ("File #P\\"{0}\\" not found in (load \\"{0}\\")" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(load \\"{0}\\")" (:restartable nil)) (1 "(load \\"{0}\\")" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "(slime:slimetop)" (:restartable nil)) (4 "#<compiled-code #X48c80f0>" (:restartable nil))) (nil))'.format(file)),
+             '(:debug 0 1 ("File #P\\"{0}\\" not found in (slime::load-file-and-tags \\"{0}\\")" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(slime::load-file-and-tags \\"{0}\\")" (:restartable nil)) (1 "(slime::load-file-and-tags \\"{0}\\")" (:restartable nil)) (2 "(slime:slimetop)" (:restartable nil)) (3 "(slime:slimetop)" (:restartable nil)) (4 "#<compiled-code #X48c80f0>" (:restartable nil))) (nil))'.format(file)),
             (self.assertSocket,
              '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 7)',
              '(:return (:abort nil) 7)',
              '(:debug-return 0 1 nil)',
              '(:return (:abort "\'File #P\\"{0}\\" not found\'") 6)'.format(file)))
+
+    def test_load_file_4(self):
+        self.with_unwind_protect(
+            (self.assertSocket,
+             '(:emacs-rex (swank:load-file "{}/test_load_file_4.l") "USER" :repl-thread 6)'.format(os.getcwd()),
+             '(:write-string "Loading file: {}/test_load_file_4.l ...\\n")'.format(os.getcwd()),
+             '(:write-string "Loaded.\\n")',
+             '(:return (:ok ("{0}/test_load_file_4.l" "{0}/test_load_file_1.l")) 6)'.format(os.getcwd())),
+            (self.assertSocket,
+             '(:emacs-rex (swank-repl:listener-eval "(and (boundp \'test-load-var) test-load-var)\n") "USER" :repl-thread 11)',
+             '(:write-string "10" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:return (:ok nil) 11)'),
+            (self.assertSocket,
+             '(:emacs-rex (swank-repl:listener-eval "(makunbound \'test-load-var)\n") "USER" :repl-thread 13)',
+             '(:write-string "t" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:return (:ok nil) 13)'))
+
+    def test_load_file_5(self):
+        # test loading without the implicit ".l"
+        self.with_unwind_protect(
+            (self.assertSocket,
+             '(:emacs-rex (swank:load-file "{}/test_load_file_4") "USER" :repl-thread 6)'.format(os.getcwd()),
+             '(:write-string "Loading file: {}/test_load_file_4 ...\\n")'.format(os.getcwd()),
+             '(:write-string "Loaded.\\n")',
+             '(:return (:ok ("{0}/test_load_file_4.l" "{0}/test_load_file_1.l")) 6)'.format(os.getcwd())),
+            (self.assertSocket,
+             '(:emacs-rex (swank-repl:listener-eval "(and (boundp \'test-load-var) test-load-var)\n") "USER" :repl-thread 11)',
+             '(:write-string "10" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:return (:ok nil) 11)'),
+            (self.assertSocket,
+             '(:emacs-rex (swank-repl:listener-eval "(makunbound \'test-load-var)\n") "USER" :repl-thread 13)',
+             '(:write-string "t" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:return (:ok nil) 13)'))
 
     # MACRO EXPAND
     def test_macro_expand_1(self):
