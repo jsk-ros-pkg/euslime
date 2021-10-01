@@ -150,7 +150,8 @@ class EuslispError(Exception):
     def __init__(self, message, stack=None):
         self.stack = stack
         # capitalize() converts the rest of the string to downcase
-        message = message[0].upper() + message[1:]
+        if len(message) > 0:
+            message = message[0].upper() + message[1:]
         super(EuslispError, self).__init__(message)
 
 
