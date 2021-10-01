@@ -36,8 +36,11 @@
 
 ;; File related
 (defun true-filename (fname)
-  (flet ((check-name (name)
-           (if (eql (probe-file name) :file) name)))
+  (labels ((check-file (name)
+             (if (eql (probe-file name) :file) name))
+           (check-name (name)
+             (or (check-file name)
+                 (check-file (namestring (merge-pathnames ".l" name))))))
     (cond
       ((and (stringp fname) (substringp "package://" fname))
        ;; avoid using package notation to be safe for other eus executables
