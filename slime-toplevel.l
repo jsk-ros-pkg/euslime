@@ -22,9 +22,15 @@
   (funcall slime::*old-unix-system-fn* command))
 
 ;; Remap old *standard-input*
-(defun piped-fork (&optional (exec) &rest args)
-  (let ((*standard-input* (send slime::*old-terminal-io* :instream)))
-      (apply slime::*old-piped-fork-fn* exec args)))
+;; don't compile to override the reploop reference when exec command is null
+(setf (symbol-function 'piped-fork)
+      '(lambda-closure piped-fork 0 0 (&optional (exec) &rest args)
+        (flet ((reploop (&rest reploop-args)
+                 (apply slime::*old-reploop-fn* reploop-args)))
+          (let ((*standard-input* (send slime::*old-terminal-io* :instream))
+                (*use-top-selector* nil))
+            (apply slime::*old-piped-fork-fn* exec args)))))
+
 
 ;; Recompile with new unix:system
 (defun evaluate-stream (input)
