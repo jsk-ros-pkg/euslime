@@ -263,6 +263,98 @@ class eus(EuslimeTestCase):
              '(:write-string "\\n" :repl-result)',
              '(:return (:ok nil) 47)'])
 
+    def test_unix_system_1(self):
+        self.assertSocketPossibleResults(
+            '(:emacs-rex (swank-repl:listener-eval "(unix:system \\"pwd\\")\n") "USER" :repl-thread 8)',
+            ['(:read-string 0 1)',
+             '(:write-string "{}\\n")'.format(os.getcwd()),
+             '(:write-string "0" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:read-aborted 0 1)',
+             '(:return (:ok nil) 8)'],
+            ['(:write-string "{}\\n")'.format(os.getcwd()),
+             '(:read-string 0 1)',
+             '(:write-string "0" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:read-aborted 0 1)',
+             '(:return (:ok nil) 8)'])
+
+    def test_unix_system_2(self):
+        self.assertAsyncRequest(
+            ['(:emacs-rex (swank-repl:listener-eval "(unix:system \\"eus\\")\n") "USER" :repl-thread 6)',
+             '(:emacs-return-string 0 1 "(1+ 1)\n")',
+             '(:emacs-return-string 0 1 "(quit)\n")'],
+            ['(:read-string 0 1)',
+             '(:read-string 0 1)',
+             '(:write-string "2\\n")',
+             '(:read-string 0 1)',
+             '(:write-string "0" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:read-aborted 0 1)',
+             '(:return (:ok nil) 6)'],
+            rate_send=0.1)
+
+    def test_piped_fork_1(self):
+        self.with_unwind_protect(
+            (self.assertSocketIgnoreAddress,
+             '(:emacs-rex (swank-repl:listener-eval "(setq s (piped-fork \\"pwd\\"))\n") "USER" :repl-thread 27)',
+             '(:write-string "#<io-stream #X55db3aadc4a0>" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:return (:ok nil) 27)'),
+            (self.assertSocket,
+             '(:emacs-rex (swank-repl:listener-eval "(read s nil)\n") "USER" :repl-thread 30)',
+             '(:write-string "{}" :repl-result)'.format(os.getcwd()),
+             '(:write-string "\\n" :repl-result)',
+             '(:return (:ok nil) 30)'),
+            (self.assertSocket,
+             '(:emacs-rex (swank-repl:listener-eval "(read s nil)\n") "USER" :repl-thread 31)',
+             '(:write-string "nil" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:return (:ok nil) 31)'),
+            (self.assertSocket,
+             '(:emacs-rex (swank-repl:listener-eval "(close s)\n") "USER" :repl-thread 33)',
+             '(:write-string "t" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:return (:ok nil) 33)'),
+            (self.assertSocket,
+             '(:emacs-rex (swank-repl:listener-eval "(makunbound \'s)\n") "USER" :repl-thread 38)',
+             '(:write-string "t" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:return (:ok nil) 38)'))
+
+    def test_piped_fork_2(self):
+        self.with_unwind_protect(
+            (self.assertSocketIgnoreAddress,
+             '(:emacs-rex (swank-repl:listener-eval "(setq s (piped-fork))\n") "USER" :repl-thread 27)',
+             '(:write-string "#<io-stream #X55db3aadc4a0>" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:return (:ok nil) 27)'),
+            (self.assertSocket,
+             '(:emacs-rex (swank-repl:listener-eval "(format s \\"(1+ 1)~%\\")\n") "USER" :repl-thread 30)',
+             '(:write-string "nil" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:return (:ok nil) 30)'),
+            (self.assertSocket,
+             '(:emacs-rex (swank-repl:listener-eval "(read s nil)~%") "USER" :repl-thread 31)',
+             '(:write-string "2" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:return (:ok nil) 31)'),
+            (self.assertSocket,
+             '(:emacs-rex (swank-repl:listener-eval "(format s \\"(quit)~%\\")\n") "USER" :repl-thread 32)',
+             '(:write-string "nil" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:return (:ok nil) 32)'),
+            (self.assertSocket,
+             '(:emacs-rex (swank-repl:listener-eval "(close s)\n") "USER" :repl-thread 33)',
+             '(:write-string "t" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:return (:ok nil) 33)'),
+            (self.assertSocket,
+             '(:emacs-rex (swank-repl:listener-eval "(makunbound \'s)\n") "USER" :repl-thread 38)',
+             '(:write-string "t" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:return (:ok nil) 38)'))
+
     # SIMULTANEOUS REQUESTS
     def test_async_1(self):
         self.assertAsyncRequest(
