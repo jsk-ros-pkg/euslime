@@ -21,6 +21,11 @@
   (slime::socket-request slime::*slime-stream* "read-mode" t)
   (funcall slime::*old-unix-system-fn* command))
 
+;; Remap old *standard-input*
+(defun piped-fork (&optional (exec) &rest args)
+  (let ((*standard-input* (send slime::*old-terminal-io* :instream)))
+      (apply slime::*old-piped-fork-fn* exec args)))
+
 ;; Recompile with new unix:system
 (defun evaluate-stream (input)
   (let* ((eof (cons nil nil))

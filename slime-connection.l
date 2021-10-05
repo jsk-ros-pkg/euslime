@@ -31,6 +31,7 @@
 (defvar *slime-input-stream*)
 (defvar *old-terminal-io* *terminal-io*)
 (defvar *old-unix-system-fn* #'unix::system)
+(defvar *old-piped-fork-fn* #'piped-fork)
 
 (defun slime-connect-socket (port)
   (flet ((try-connect (&optional (timeout 5))
