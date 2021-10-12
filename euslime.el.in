@@ -272,6 +272,14 @@ current buffer."
                         ;; (recenter -1)
                         ))))))))
 
+;; Use `eulsime-load-file' on slime-mode when connected to euslisp
+(add-hook 'slime-connected-hook
+          (lambda ()
+            (let ((conn (slime-current-connection)))
+              (if (equal "euslisp" (ignore-errors (slime-connection-name conn)))
+                  (define-key slime-mode-map (concat (kbd "C-c") (kbd "C-l"))
+                    'euslime-load-file)))))
+
 ;; DEFINE MINOR MODE
 (defun slime-euslisp--doc-map-prefix ()
   (concat
