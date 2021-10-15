@@ -2140,7 +2140,7 @@ class eus(EuslimeTestCase):
     def test_macro_expand_4(self):
         self.assertSocket(
             '(:emacs-rex (swank:swank-expand-1 "(unless t\n       (print \\"HERE\\"))") "USER" :repl-thread 10)',
-            '(:return (:ok "(if (not t) (progn (print \\"HERE\\")))\\n") 10)')
+            '(:return (:ok "(when (not t) (print \\"HERE\\"))\\n") 10)')
 
     # ENCODING
     def test_encoding_1(self):
@@ -2161,7 +2161,7 @@ class eus(EuslimeTestCase):
     def test_encoding_3(self):
         self.assertSocket(
             '(:emacs-rex (swank:swank-expand-1 "(unless t\n\t(print \\"\xe3\x81\x82\xe3\x81\x82\xe3\x81\x82\\"))") "USER" :repl-thread 8)',
-            '(:return (:ok "(if (not t) (progn (print \\"\xe3\x81\x82\xe3\x81\x82\xe3\x81\x82\\")))\\n") 8)')
+            '(:return (:ok "(when (not t) (print \\"\xe3\x81\x82\xe3\x81\x82\xe3\x81\x82\\"))\\n") 8)')
 
     # DEFAULT-DIRECTORY
     def test_default_directory_1(self):

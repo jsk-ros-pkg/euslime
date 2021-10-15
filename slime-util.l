@@ -411,7 +411,7 @@
 (defun slime-macroexpand (form &optional package)
   (let ((*package* (or (find-package package) *package*)))
     (with-output-to-string (s)
-      (pprint (macroexpand (read-from-string form)) s))))
+      (pprint (macroexpand2 (read-from-string form)) s))))
 
 
 ;; SWANK-LIST-ALL-PACKAGE-NAMES
