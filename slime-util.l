@@ -473,7 +473,7 @@
 (defun load-file-and-tags (filename)
   (let* ((acc nil)
          (hook-fn #'(lambda (name) (aif (true-filename name) (push it acc))))
-         (load-hooks (cons hook-fn load-hooks)))
+         (*load-hooks* (cons hook-fn *load-hooks*)))
     (load filename)
     (nreverse acc)))
 

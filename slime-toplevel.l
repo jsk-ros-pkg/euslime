@@ -11,8 +11,8 @@
 
 ;; Recursive load tags
 (defun load (fname &rest args)
-  (when slime::load-hooks
-    (dolist (fn slime::load-hooks)
+  (when slime::*load-hooks*
+    (dolist (fn slime::*load-hooks*)
       (funcall fn fname)))
   (apply slime::load-org-for-slime fname args))
 

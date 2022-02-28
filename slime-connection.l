@@ -6,7 +6,7 @@
 ;; Recursive Load Tags
 ;;;;;;;;;;;;;;;;;;;;;;
 
-(defvar load-hooks nil)
+(defvar *load-hooks* nil)
 (defvar load-org-for-slime (symbol-function 'load))
 
 
