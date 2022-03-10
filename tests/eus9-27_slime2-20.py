@@ -2059,6 +2059,7 @@ class eus(EuslimeTestCase):
              '(:return (:abort "\'File #P\\"{0}\\" not found\'") 6)'.format(file)))
 
     def test_load_file_4(self):
+        # test recursive loading
         self.with_unwind_protect(
             (self.assertSocket,
              '(:emacs-rex (swank:load-file "{}/test_load_file_4.l") "USER" :repl-thread 6)'.format(os.getcwd()),
