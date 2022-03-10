@@ -2,8 +2,8 @@
 Changelog for package euslime
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.1.1 (2022-03-10)
+------------------
 * Add recursive load tags
 * Support method description
 * Enable piped-fork function
