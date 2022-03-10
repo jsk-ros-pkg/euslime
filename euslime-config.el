@@ -131,12 +131,20 @@
 (defun euslime-prepare-tags ()
   (let ((eusdir (getenv "EUSDIR"))
         (eustag (format "%s/EUSTAGS" euslime-compile-path))
+        (euscomptag (format "%s/EUSCOMPTAGS" euslime-compile-path))
+        (eusgeotag (format "%s/EUSGEOTAGS" euslime-compile-path))
         (irttag (format "%s/IRTEUSTAGS" euslime-compile-path))
         (rostag (format "%s/ROSEUSTAGS" euslime-compile-path)))
     (euslime-maybe-generate-tag
      eustag "eus"
      (format "%s/lisp/l/*.l" eusdir)
      (format "%s/lisp/c/*.c" eusdir))
+    (euslime-maybe-generate-tag
+     euscomptag "eus"
+     (format "%s/lisp/comp/*.l" eusdir))
+    (euslime-maybe-generate-tag
+     eusgeotag "\\(g\\|x\\|comp\\|roseus\\)"  ;; eusstart.l:146
+     (format "%s/lisp/geo/*.l" eusdir))
     (euslime-maybe-generate-tag
      irttag "\\(irteus\\|roseus\\)"
      (format "%s/irteus/*.l" eusdir))
