@@ -189,6 +189,13 @@
           (aand (gethash name help::*help-hash*)
                 (read-item it))))))
 
+(defun get-help-method-list (name)
+  (let (acc)
+    (dotimes (i (length help::*method-list*))
+      (aif (gethash name (nth i help::*method-list*))
+          (push (help::help-item-clas it) acc)))
+    acc))
+
 ;; Properties list
 (defun lambda-list (name)
   (let ((sym (find-callable-symbol name)))
@@ -402,7 +409,13 @@
         (when (gethash help-name help::*help-hash*)
           (help help-name nil s)
           (terpri s)
-          (return)))
+          (return))
+        (dolist (mthd (get-help-method-list help-name))
+          (when (aand (gethash mthd help::*help-hash*)
+                      (gethash help-name (help::help-item-mhash it)))
+            (format s "-- ~A --~%~%" (string-upcase mthd))
+            (help help-name mthd s)
+            (terpri s))))
       (format s "PROPERTIES~%~%")
       (describe sym s))))
 
