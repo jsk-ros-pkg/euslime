@@ -547,6 +547,9 @@ class EuslimeHandler(object):
         return
 
     def swank_frame_locals_and_catch_tags(self, *args):
+        # [RET] on sldb Backtrace entry
+        # Display local bindings at the given frame
+        # e.g. (:return (:ok (((:name "NUMBER" :id 0 :value "NIL")) nil)) 7)
         return
 
     def swank_find_definitions_for_emacs(self, keyword):
