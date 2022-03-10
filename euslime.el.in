@@ -109,7 +109,7 @@
   (interactive (list
                 (euslime-read-euslisp-file-name
                  "Load file: " nil nil
-                 (if (buffer-file-name) (file-name-nondirectory (buffer-file-name))))))
+                 (if (buffer-file-name) (buffer-file-name)))))
   (euslime-load-file-and-tags-with-transcript filename))
 
 
