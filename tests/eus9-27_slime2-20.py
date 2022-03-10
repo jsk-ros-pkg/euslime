@@ -1995,6 +1995,11 @@ class eus(EuslimeTestCase):
              '(:debug-return 0 1 nil)',
              '(:return (:abort "\'Symbol not found\'") 22)'))
 
+    def test_describe_7(self):
+        self.assertSocketIgnoreAddress(
+            '(:emacs-rex (swank:describe-symbol ":slots") "USER" :repl-thread 5)',
+            '(:return (:ok "-- OBJECT --\\n\\nNAME\\n     :slots\\nTYPE\\n     method\\nCLASS\\n     object \\nSYNOPSIS\\n     :slots  \\nDESCRIPTION\\n     returns the list of variable-name and value pair of all the slots of the object. You can get the value of a specific slot by applying \x1b[1massoc\x1b[m to this list, although you cannot alter them. \\n\\n-- METACLASS --\\n\\nNAME\\n     :slots\\nTYPE\\n     method\\nCLASS\\n     metaclass \\nSYNOPSIS\\n     :slots  \\nDESCRIPTION\\n     returns the slot-name vector. \\n\\nPROPERTIES\\n\\nplist=((:method-documentation\\n        (#<metaclass metaclass> . \\"(self class)\\")\\n        (#<metaclass object> . \\"(self class)\\"))\\n       (:class #<metaclass metaclass> #<metaclass object>))\\nvalue=:slots\\nvtype=0\\nfunction=*unbound*\\npname=\\"SLOTS\\"\\nhomepkg=#<package KEYWORD>\\n") 5)')
+
     # LOAD FILE
     def test_load_file_1(self):
         self.with_unwind_protect(
