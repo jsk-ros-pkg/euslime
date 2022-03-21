@@ -93,6 +93,7 @@
   (:infd () fd)
   (:outfd () nil)
   (:fname () nil)
+  (:isatty () (unix:isatty fd))
   (:flag () (unix:fcntl fd F_GETFL 0)))
 
 ;; Slime Toplevel
