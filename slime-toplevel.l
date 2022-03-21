@@ -145,7 +145,8 @@
     (slime::socket-request slime::*slime-stream* "result" result)))
 
 (defun reploop (prompt &optional (repstream slime::*old-terminal-io*) (ttyp nil))
-  (let ((*prompt* prompt))
+  (let ((*prompt* prompt)
+        (*current-condition-handler* nil))
     (slime::slime-clear-stream repstream)
     (slime::slime-finish-output repstream)
     (slime::socket-request slime::*slime-stream* "abort" nil)
