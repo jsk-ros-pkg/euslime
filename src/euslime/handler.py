@@ -614,11 +614,15 @@ class EuslimeHandler(object):
             cmd = '(slime::set-package "{0}")'.format(qstr(name))
             res = self.euslisp.exec_internal(cmd, force_repl_socket=True)
             yield EuslispResult(res)
+        except AbortEvaluation:
+            # the abort signal sometimes comes earlier than the evaluation result
+            # for example when attaching a gdb instance and passing a SIGINT
+            # in such cases, retry the evaluation
+            log.info('AbortEvaluation received during swank_set_package. Retrying...')
+            res = self.euslisp.exec_internal(cmd, force_repl_socket=True)
+            yield EuslispResult(res)
+        finally:
             lock.release()
-        except Exception:
-            if lock.locked():
-                lock.release()
-            raise
 
     def swank_default_directory(self):
         cmd = '(lisp:pwd)'
