@@ -1989,6 +1989,35 @@ class eus(EuslimeTestCase):
              '(:write-string "\\n" :repl-result)',
              '(:return (:ok nil) 5)'])
 
+    def test_emacs_interrupt_9(self):
+        self.with_unwind_protect(
+            (self.assertAsyncRequest,
+             ['(:emacs-rex (swank-repl:listener-eval "(progn (unix:usleep 100000) t)\n") "USER" :repl-thread 11)',
+              '(:emacs-interrupt :repl-thread)',
+              '(:emacs-rex (swank:set-package "") "USER" :repl-thread 12)'],
+             ['(:write-string "INTERRUPTION: keyboard interrupt\\n")',
+              '(:new-package "USER" "B1-{}")'.format(self.EUSLISP_PROGRAM_NAME),
+              '(:return (:abort "\'Keyboard Interrupt\'") 11)',
+              '(:return (:ok ("USER" "B1-{}")) 12)'.format(self.EUSLISP_PROGRAM_NAME)]),
+            (self.assertSocket,
+             '(:emacs-rex (swank-repl:listener-eval "(reset 1)\n") "USER" :repl-thread 13)',
+             '(:write-string "t" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+             '(:return (:ok nil) 13)'))
+
+    def test_emacs_interrupt_10(self):
+        self.with_unwind_protect(
+            (self.assertAsyncRequest,
+             ['(:emacs-interrupt :repl-thread)',
+              '(:emacs-rex (swank:set-package "") "USER" :repl-thread 5)'],
+             ['(:write-string "INTERRUPTION: keyboard interrupt\\n")',
+              '(:return (:ok ("USER" "B1-{}")) 5)'.format(self.EUSLISP_PROGRAM_NAME)]),
+            (self.assertSocket,
+             '(:emacs-rex (swank-repl:listener-eval "(reset 1)\n") "USER" :repl-thread 6)',
+             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+             '(:return (:ok nil) 6)'))
+
     # SET PACKAGE
     def test_set_package_1(self):
         self.with_unwind_protect(
