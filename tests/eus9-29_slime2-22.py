@@ -1303,7 +1303,7 @@ class eus(EuslimeTestCase):
     def test_completions_package_3(self):
         self.assertSocket(
             '(:emacs-rex (swank:completions "unix:sigin" \'"USER") "USER" :repl-thread 5)',
-            '(:return (:ok (("unix::sigint" "unix::sigint-received" "unix::sigint-signalize-condition") "unix::sigint")) 5)')
+            '(:return (:ok (("unix::sigint" "unix::sigint-received") "unix::sigint")) 5)')
 
     def test_completions_package_4(self):
         self.assertSocket(
