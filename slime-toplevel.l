@@ -21,6 +21,23 @@
   (slime::socket-request slime::*slime-stream* "read-mode" t)
   (funcall slime::*old-unix-system-fn* command))
 
+;; Send :read command to emacs server
+(defun select-stream (stream-list &optional (timeout 0.0))
+  (if (some #'(lambda (s) (derivedp s slime::slime-input-stream)) stream-list)
+      (slime::socket-request slime::*slime-stream* "read" nil))
+  (funcall slime::*old-select-stream* stream-list timeout))
+
+;; Only send :read once to avoid overflowing the emacs server
+(defmacro user::do-until-key-with-check (check &rest forms)
+  `(progn
+     (slime::socket-request slime::*slime-stream* "read" nil)
+     (prog1
+         (while (and (null (funcall slime::*old-select-stream* (list *standard-input*) 0.001))
+                     (eval ,check))
+           ,@forms)
+       (let ((strm (car (funcall slime::*old-select-stream* (list *standard-input*) 0.1))))
+         (if strm (read-line (send slime::*old-terminal-io* :instream) nil nil))))))
+
 ;; Remap old *standard-input*
 ;; don't compile to override the reploop reference when exec command is null
 (setf (symbol-function 'piped-fork)

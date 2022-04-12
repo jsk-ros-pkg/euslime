@@ -152,6 +152,9 @@ class EuslimeHandler(object):
 
     def _emacs_return_string(self, process, count, msg):
         self.euslisp.input(msg)
+        if self.euslisp.read_busy:
+            log.debug("Exitting read mode...")
+            self.euslisp.read_busy = False
         if len(msg) % 128 == 0:
             # communicate when the message ends exactly at buffer end
             cmd = '(send slime::*slime-input-stream* :set-flag)'
@@ -168,6 +171,7 @@ class EuslimeHandler(object):
             self.euslisp.process.send_signal(signal.SIGINT)
         if isinstance(process, int):
             # during a :read-string call
+            self.euslisp.read_busy = False
             yield [Symbol(":read-aborted"), process, 1]
 
     def swank_connection_info(self):
@@ -227,9 +231,10 @@ class EuslimeHandler(object):
                            Symbol(":repl-result")]
                 else:
                     yield val
-            if self.euslisp.read_mode:
+            if self.euslisp.read_mode or self.euslisp.read_busy:
                 log.debug("Aborting read mode...")
                 self.euslisp.read_mode = False
+                self.euslisp.read_busy = False
                 yield [Symbol(":read-aborted"), 0, 1]
             for val in self.maybe_new_prompt():
                 yield val
@@ -251,9 +256,10 @@ class EuslimeHandler(object):
                 yield EuslispResult(None)
         except Exception as e:
             log.error(traceback.format_exc())
-            if self.euslisp.read_mode:
+            if self.euslisp.read_mode or self.euslisp.read_busy:
                 log.debug("Aborting read mode...")
                 self.euslisp.read_mode = False
+                self.euslisp.read_busy = False
                 yield [Symbol(":read-aborted"), 0, 1]
             if lock.locked():
                 lock.release()

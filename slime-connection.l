@@ -33,6 +33,7 @@
 (defvar *old-unix-system-fn* #'unix::system)
 (defvar *old-piped-fork-fn* #'piped-fork)
 (defvar *old-reploop-fn* #'reploop)
+(defvar *old-select-stream* #'select-stream)
 
 (defun slime-connect-socket (port)
   (flet ((try-connect (&optional (timeout 5))

@@ -53,6 +53,7 @@ class Process(object):
         self.delim = delim or DELIM
         self.output = []
         self.read_mode = False
+        self.read_busy = False
         self.accumulate_output = False
         self.finished_output = Event()
         self.process = None
@@ -257,6 +258,9 @@ class EuslispProcess(Process):
         # Process generator to avoid pendant messages
         data = gen_to_string(data)
         if command == 'read':
+            if self.read_busy:
+                return
+            self.read_busy = True
             return [Symbol(":read-string"), 0, 1]
         if command == 'read-mode':
             log.debug("Entering read mode...")
