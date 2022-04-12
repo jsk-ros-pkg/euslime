@@ -216,13 +216,9 @@ class EuslispProcess(Process):
         log.info("...Connected to euslime socket!")
         return conn
 
-    def recv_socket_length(self, connection, hex_len):
-        if hex_len == str():
-            # recv() returns null string on EOF
-            raise EuslispFatalError('Socket connection closed')
-        length = int(hex_len, 16)
+    def recv_socket_length(self, connection, length, *flags):
         while length > 0:
-            msg = connection.recv(length)
+            msg = connection.recv(length, *flags)
             log.debug("Socket Response: %s" % msg)
             length -= len(msg)
             yield msg
@@ -232,9 +228,13 @@ class EuslispProcess(Process):
         def recv_next(wait=True):
             while True:
                 try:
-                    head_data = connection.recv(
-                        HEADER_LENGTH, socket.MSG_DONTWAIT)
-                    return self.recv_socket_length(connection, head_data)
+                    head_data = ''.join(self.recv_socket_length(
+                        connection, HEADER_LENGTH, socket.MSG_DONTWAIT))
+                    if not head_data:
+                        # recv() returns null string on EOF
+                        raise EuslispFatalError('Socket connection closed')
+                    hex_len = int(head_data, 16)
+                    return self.recv_socket_length(connection, hex_len)
                 except socket.error:
                     if not wait:
                         return
