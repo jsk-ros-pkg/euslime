@@ -66,3 +66,49 @@ class irteusgl(eus):
             '(:write-string ":destroyed" :repl-result)',
             '(:write-string "\\n" :repl-result)',
             '(:return (:ok nil) 95)')
+
+    def test_read_irt_1(self):
+        self.assertAsyncRequest(
+            ['(:emacs-rex (swank-repl:listener-eval "(do-until-key)\n") "USER" :repl-thread 47)',
+             '(:emacs-return-string 0 1 "\n")'],
+            ['(:read-string 0 1)',
+             '(:write-string "nil" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:return (:ok nil) 47)'],
+            rate_send=0.1)
+        self.assertAsyncRequest(
+            ['(:emacs-rex (swank-repl:listener-eval "(do-until-key)\n") "USER" :repl-thread 47)',
+             '(:emacs-return-string 0 1 "a\n")'],
+            ['(:read-string 0 1)',
+             '(:write-string "nil" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:return (:ok nil) 47)'],
+            rate_send=0.1)
+
+    def test_emacs_interrupt_irt_1(self):
+        self.with_unwind_protect(
+            (self.assertAsyncRequest,
+             ['(:emacs-rex (swank-repl:listener-eval "(do-until-key)\n") "USER" :repl-thread 24)',
+              '(:emacs-interrupt 0)'],
+             ['(:read-string 0 1)',
+              '(:read-aborted 0 1)',
+              '(:new-package "USER" "B1-{}")'.format(self.EUSLISP_PROGRAM_NAME),
+              '(:return (:abort "\'Keyboard Interrupt\'") 24)'],
+             0.1),
+            (self.assertSocket,
+             '(:emacs-rex (swank-repl:listener-eval "(reset)\n") "USER" :repl-thread 6)',
+             '(:new-package "USER" "{}")'.format(self.EUSLISP_PROGRAM_NAME),
+             '(:return (:ok nil) 6)'))
+
+    def test_sldb_irt_1(self):
+        self.with_unwind_protect(
+            (self.assertSocketIgnoreAddress,
+             '(:emacs-rex (swank-repl:listener-eval "(let ((i 0)) (do-until-key (if (> (incf i) 10) (+ i nil))))\n") "USER" :repl-thread 24)',
+             '(:read-string 0 1)',
+             '(:read-aborted 0 1)',
+             '(:debug 0 1 ("Number expected in (+ i nil)" "" nil) (("QUIT" "Quit to the SLIME top level") ("CONTINUE" "Ignore the error and continue in the same stack level") ("RESTART" "Restart euslisp process")) ((0 "(+ i nil)" (:restartable nil)) (1 "(if (> (incf i) 10) (+ i nil))" (:restartable nil)) (2 "(while (and (null (funcall slime::*old-select-stream* (list *standard-input*) 0.001)) (eval t)) (if (> (incf i) 10) (+ i nil)))" (:restartable nil)) (3 "(let ((#:prog1431 (while (and (null (funcall slime::*old-select-stream* (list *standard-input*) 0.001)) (eval t)) (if (> (incf i) 10) (+ i nil))))) (progn (let ((lisp::strm (car (funcall slime::*old-select-stream* (list *standard-input*) 0.1)))) (if lisp::strm (read-line (send slime::*old-terminal-io* :instream) nil nil)))) #:prog1431)" (:restartable nil)) (4 "(prog1 (while (and (null (funcall slime::*old-select-stream* (list *standard-input*) 0.001)) (eval t)) (if (> (incf i) 10) (+ i nil))) (let ((lisp::strm (car (funcall slime::*old-select-stream* (list *standard-input*) 0.1)))) (if lisp::strm (read-line (send slime::*old-terminal-io* :instream) nil nil))))" (:restartable nil)) (5 "(progn (slime:socket-request slime:*slime-stream* \\"read\\" nil) (prog1 (while (and (null (funcall slime::*old-select-stream* (list *standard-input*) 0.001)) (eval t)) (if (> (incf i) 10) (+ i nil))) (let ((lisp::strm (car (funcall slime::*old-select-stream* (list *standard-input*) 0.1)))) (if lisp::strm (read-line (send slime::*old-terminal-io* :instream) nil nil)))))" (:restartable nil)) (6 "(do-until-key-with-check t (if (> (incf i) 10) (+ i nil)))" (:restartable nil)) (7 "(do-until-key (if (> (incf i) 10) (+ i nil)))" (:restartable nil)) (8 "(let ((i 0)) (do-until-key (if (> (incf i) 10) (+ i nil))))" (:restartable nil)) (9 "(slime:slimetop)" (:restartable nil))) (nil))'),
+            (self.assertSocket,
+             '(:emacs-rex (swank:invoke-nth-restart-for-emacs 1 0) "USER" 0 25)',
+             '(:return (:abort nil) 25)',
+             '(:debug-return 0 1 nil)',
+             '(:return (:abort "\'Number expected\'") 24)'))

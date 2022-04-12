@@ -263,6 +263,23 @@ class eus(EuslimeTestCase):
              '(:write-string "\\n" :repl-result)',
              '(:return (:ok nil) 47)'])
 
+    def test_read_9(self):
+        self.assertSocket(
+            '(:emacs-rex (swank-repl:listener-eval "(select-stream (list *standard-input*) 0.1)\n") "USER" :repl-thread 47)',
+            '(:read-string 0 1)',
+            '(:write-string "nil" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:read-aborted 0 1)',
+            '(:return (:ok nil) 47)')
+        self.assertAsyncRequest(
+            ['(:emacs-rex (swank-repl:listener-eval "(not (not (select-stream (list *standard-input*) 0.5)))\n") "USER" :repl-thread 47)',
+             '(:emacs-return-string 0 1 "\n")'],
+            ['(:read-string 0 1)',
+             '(:write-string "t" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:return (:ok nil) 47)'],
+            rate_send=0.1)
+
     def test_unix_system_1(self):
         self.assertSocketPossibleResults(
             '(:emacs-rex (swank-repl:listener-eval "(unix:system \\"pwd\\")\n") "USER" :repl-thread 8)',
