@@ -225,28 +225,29 @@ class EuslispProcess(Process):
             yield msg
         return
 
+    def recv_socket_next(self, connection, wait=True):
+        while True:
+            try:
+                head_data = gen_to_string(self.recv_socket_length(
+                    connection, HEADER_LENGTH, socket.MSG_DONTWAIT))
+                if not head_data:
+                    # recv() returns null string on EOF
+                    raise EuslispFatalError('Socket connection closed')
+                hex_len = int(head_data, 16)
+                return self.recv_socket_length(connection, hex_len)
+            except socket.error:
+                if not wait:
+                    return
+                time.sleep(self.rate)
+                self.check_poll()
+                continue
+
     def recv_socket_data(self, connection, wait=True):
-        def recv_next(wait=True):
-            while True:
-                try:
-                    head_data = ''.join(self.recv_socket_length(
-                        connection, HEADER_LENGTH, socket.MSG_DONTWAIT))
-                    if not head_data:
-                        # recv() returns null string on EOF
-                        raise EuslispFatalError('Socket connection closed')
-                    hex_len = int(head_data, 16)
-                    return self.recv_socket_length(connection, hex_len)
-                except socket.error:
-                    if not wait:
-                        return
-                    time.sleep(self.rate)
-                    self.check_poll()
-                    continue
-        command = recv_next(wait=wait)
+        command = self.recv_socket_next(connection, wait=wait)
         if command is not None:
             command = gen_to_string(command)
             log.debug('Waiting for socket data...')
-            data = recv_next(wait=True)
+            data = self.recv_socket_next(connection, wait=True)
             return command, data
         return None, None
 
