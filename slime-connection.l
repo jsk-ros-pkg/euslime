@@ -20,7 +20,6 @@
      ,@body))
 
 (defclass slime-input-stream :super stream :slots (fd read-flag))
-(defclass slime-port-selector :super port-selector)
 
 (eval-when (load eval)
 
@@ -97,33 +96,6 @@
   (:isatty () (unix:isatty fd))
   (:flag () (unix:fcntl fd F_GETFL 0)))
 
-
-;; Slime Port Selector
-
-;; overwrite to ensure that resetting from C-c on toplevel returns a new prompt
-;; e.g. C.c -> reset 1 -> goes back to reading (therefore no return value)
-(defmethod slime-port-selector
-  (:select (&optional (timeout 0.1))
-    (let (stat fun arg)
-      (replace lisp::ready-bits lisp::port-bits)
-      (setq stat
-            (handler-case
-                (unix:select lisp::ready-bits nil nil timeout)
-              (interruption (c)
-                (invoke-next-handler c)
-                (throw *replevel* t))))
-      (if (> stat 0)
-          (dotimes (j lisp::*max-port-fd* t)
-            (when (= (aref lisp::ready-bits j) 1)
-              (setq fun (aref lisp::streams j)
-                    arg (cddr fun)
-                    fun (cadr fun))
-              (if (functionp fun)
-                  (apply fun arg)
-                  (send* fun arg))))
-          nil))))
-
-
 ;; Slime Toplevel
 
 (defun clean-eustop ()
@@ -168,7 +140,6 @@
   (clean-eustop)
   (install-handler error 'slime::slime-error)
   (setq lisp::*max-callstack-depth* 0)
-  (setq lisp::*top-selector* (instance slime-port-selector :init))
   (sys::make-thread 1)
   (sys::thread 'eval
     `(progn
