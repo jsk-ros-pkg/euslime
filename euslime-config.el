@@ -207,7 +207,7 @@
   ;; e.g. (euslime-find-definitions "simple-action-server" "ros::simple-action-server")
   (let ((first-table t)
         result)
-    (flet ((etag>xref (file tag-info)
+    (cl-flet ((etag>xref (file tag-info)
              `(,(concat
                  (if (string-match-p "(:" (car tag-info)) ;; class method
                      ;; ignore-errors ?
