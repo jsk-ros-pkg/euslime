@@ -9,6 +9,7 @@ import traceback
 from threading import Thread
 
 from euslime.bridge import gen_to_string
+from euslime.bridge import HEADER_LENGTH
 from euslime.handler import EuslimeHandler
 from euslime.logger import get_logger
 from euslime.protocol import Protocol
@@ -18,7 +19,6 @@ ENCODINGS = {
     'iso-latin-1-unix': 'latin-1',
     'iso-utf-8-unix': 'utf-8'
 }
-HEADER_LENGTH = 6
 ERROR_STRING = """;; You are still in a signal handler.
 ;;Try reset or throw to upper level as soon as possible.
 """
@@ -76,9 +76,18 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
         log.debug("Entering handle loop...")
         while not self.swank.handler.close_request.is_set():
             try:
-                recv_data = gen_to_string(self.swank.handler.euslisp.
-                                          recv_socket_next(self.request))
-                log.debug('raw data: %s', recv_data)
+                head_data = self.swank.handler.euslisp.recv_socket_length(
+                    self.request, HEADER_LENGTH, socket.MSG_DONTWAIT)
+                head_data = gen_to_string(head_data)
+                if not head_data:
+                    log.error('Empty header received. Closing socket.')
+                    self.request.close()
+                    break
+                hex_len = int(head_data, 16)
+                recv_data = self.swank.handler.euslisp.recv_socket_length(
+                    self.request, hex_len)
+                recv_data = gen_to_string(recv_data)
+                log.debug('raw data: %s %s', head_data, recv_data)
                 recv_data = recv_data.decode(self.encoding)
                 Thread(target=self._process_data, args=(recv_data,)).start()
             except socket.timeout:
@@ -86,7 +95,7 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
                 break
             except socket.error:
                 try:
-                    time.sleep(0.01)
+                    time.sleep(self.swank.handler.euslisp.rate)
                 except KeyboardInterrupt:
                     log.info("server keyboard interrupt")
                 continue
