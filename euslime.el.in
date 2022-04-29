@@ -55,6 +55,13 @@
           (recenter-top-bottom)))
     (recenter-top-bottom)))
 
+(defun slime-swap-to-output-buffer ()
+  "Select the output buffer and display it as a full window."
+  (interactive)
+  (switch-to-buffer (slime-output-buffer))
+  (delete-other-windows)
+  (goto-char (point-max)))
+
 ;; INTERRUPT
 ;; Override to always dispatch and insert new prompt when needed
 (defun slime-interrupt ()
@@ -279,6 +286,15 @@ current buffer."
               (if (equal "euslisp" (ignore-errors (slime-connection-name conn)))
                   (define-key slime-mode-map (concat (kbd "C-c") (kbd "C-l"))
                     'euslime-load-file)))))
+
+;; Add `slime-switch-to-output-buffer' shortcuts
+(add-hook 'slime-connected-hook
+          (lambda ()
+            (let ((prefix (slime-euslisp--doc-map-prefix)))
+              (define-key slime-mode-map (concat prefix (kbd "C-o"))
+                'slime-switch-to-output-buffer)
+              (define-key slime-mode-map (concat prefix (kbd "o"))
+                'slime-swap-to-output-buffer))))
 
 ;; DEFINE MINOR MODE
 (defun slime-euslisp--doc-map-prefix ()

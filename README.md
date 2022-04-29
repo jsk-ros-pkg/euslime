@@ -112,6 +112,7 @@ tests/euslime_tests.py *.test_eval_1
 | C-c TAB | completion |
 | C-c C-c | load expression |
 | C-c C-l | load-file |
+| C-c C-d o |  go back to repl buffer |
 
 | On other slime buffers | |
 | --- | --- |
