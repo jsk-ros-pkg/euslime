@@ -96,7 +96,8 @@
                    "LISP"))
           nil file)))
 
-    (let* ((loader (expand-file-name "slime-loader.l" euslime-compile-path))
+    (let* ((euslime-compile-path (file-name-as-directory (expand-file-name euslime-compile-path)))
+           (loader (expand-file-name "slime-loader.l" euslime-compile-path))
            (files (cl-mapcan #'needs-compile
                     (list "slime-util" "slime-connection" "slime-roseus" "slime-toplevel")))
            (res (apply #'euslime-compile-files files)))
