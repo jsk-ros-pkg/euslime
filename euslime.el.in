@@ -62,14 +62,20 @@
   (delete-other-windows)
   (goto-char (point-max)))
 
+(defun euslime-maybe-set-package ()
+  (with-current-buffer (slime-output-buffer)
+    (if (slime-repl-shortcut-eval `(swank:set-package ""))
+        (slime-repl-set-package ""))))
+
 ;; INTERRUPT
 ;; Override to always dispatch and insert new prompt when needed
 (defun slime-interrupt ()
   "Interrupt Lisp."
   (interactive)
   (slime-dispatch-event `(:emacs-interrupt ,slime-current-thread))
-  (sleep-for 0.1)
-  (slime-repl-set-package ""))
+  (sleep-for 0.1)  ;; wait for emacs :set-package response
+  (euslime-maybe-set-package)
+  (message nil))
 
 ;; LOAD FILE
 (defcustom euslime-file-completion-function 'completing-read

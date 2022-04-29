@@ -5,6 +5,7 @@ import platform
 import re
 import signal
 import traceback
+import time
 from sexpdata import dumps, loads, Symbol, Quoted
 from threading import Event
 
@@ -613,8 +614,22 @@ class EuslimeHandler(object):
         return
 
     def swank_set_package(self, name):
+        def check_lock(lock, timeout):
+            # lock.acquire(timeout=timeout) available from python3
+            start = time.time()
+            while lock.locked() and (time.time() - start) < timeout:
+                time.sleep(0.01)
+            return not lock.locked()
+
         lock = self.euslisp.euslime_connection_lock
         log.debug('Acquiring lock: %s' % lock)
+
+        if not check_lock(lock, 0.5):
+            log.error("Could not acquire lock!")
+            yield [Symbol(":write-string"), "; No responses from inferior process\n"]
+            yield EuslispResult(False)
+            return
+
         lock.acquire()
         try:
             cmd = '(slime::set-package "{0}")'.format(qstr(name))
@@ -628,7 +643,8 @@ class EuslimeHandler(object):
             res = self.euslisp.exec_internal(cmd, force_repl_socket=True)
             yield EuslispResult(res)
         finally:
-            lock.release()
+            if lock.locked():
+                lock.release()
 
     def swank_default_directory(self):
         cmd = '(lisp:pwd)'
