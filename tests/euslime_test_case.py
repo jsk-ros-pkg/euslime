@@ -14,7 +14,7 @@ from threading import Thread
 
 HEADER_LENGTH = 6
 REGEX_ADDR = re.compile(r' #X[0-9a-f]*')
-REGEX_C_ADDR = re.compile(r'-?[0-9a-f]{6,10}')
+REGEX_C_ADDR = re.compile(r'-?[0-9a-f]{6,12}')
 REGEX_GENSYM = re.compile(r'#:[^ )]*')
 
 log = get_logger(__name__)
@@ -161,6 +161,7 @@ class EuslimeTestCase(unittest.TestCase):
                 else:
                     fn(*args)
             except AssertionError as e:
+                # print(traceback.format_exc())
                 traceback.print_exception(type(e), e, None)
                 if error is None:
                     error = e
