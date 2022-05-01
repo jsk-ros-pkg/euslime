@@ -473,6 +473,24 @@ class eus(EuslimeTestCase):
              '(:write-string "\\n" :repl-result)',
              '(:return (:ok nil) 6)'])
 
+    def test_async_8(self):
+        self.assertAsyncRequest(
+            ['(:emacs-rex (swank-repl:listener-eval "(unix:usleep 200000)\n") "USER" :repl-thread 5)',
+             '(:emacs-rex (swank-repl:clear-repl-variables) "USER" :repl-thread 6)'],
+            ['(:return (:abort "\'Process busy\'") 6)',
+             '(:write-string "t" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:return (:ok nil) 5)'])
+
+    def test_async_9(self):
+        self.assertAsyncRequest(
+            ['(:emacs-rex (swank-repl:listener-eval "(unix:usleep 200000)\n") "USER" :repl-thread 5)',
+             '(:emacs-rex (swank:completions-for-keyword ":st" \'("position" "" swank::%cursor-marker%)) "USER" t 6)'],
+            ['(:return (:ok ((":start") ":start")) 6)',
+             '(:write-string "t" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:return (:ok nil) 5)'])
+
     # COMPILE REGION
     def test_compile_region_1(self):
         self.assertSocket(
@@ -1921,6 +1939,18 @@ class eus(EuslimeTestCase):
                 unordered_output=True)
         finally:
             signal.signal(signal.SIGINT, fn)
+
+    def test_emacs_interrupt_8(self):
+        self.assertAsyncRequest(
+            ['(:emacs-rex (swank-repl:listener-eval "(let ((f (unix:signal 2 nil))) (dotimes (i 1000) (unix:usleep 1000)) (unix:signal 2 f))\n)") "USER" :repl-thread 5)',
+             '(:emacs-interrupt :repl-thread)',
+             '(:emacs-rex (swank:set-package "") "USER" :repl-thread 6)'],
+            ['(:write-string "signal=2 to thread 0, \\n")',
+             '(:write-string "; No responses from inferior process\\n")',
+             '(:return (:abort nil) 6)',
+             '(:write-string "nil" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:return (:ok nil) 5)'])
 
     # SET PACKAGE
     def test_set_package_1(self):
