@@ -288,8 +288,13 @@ class EuslispProcess(Process):
     def get_socket_result(self, connection, wait=False):
         while True:
             gen = self.get_socket_response(connection)
-            if isinstance(gen, list):
-                # read-string
+            if isinstance(gen, list):  # read-string
+                # Don't notify read-mode to avoid cluttering the output of
+                # instantaneous bash commands, such as ls, pwd, etc
+                # if self.read_mode:
+                #     yield [Symbol(":write-string"), "Entering read mode...\n",
+                #            Symbol(":repl-result")]
+                #     yield [Symbol(":write-string"), "$ ", Symbol(":repl-result")]
                 yield gen
             elif gen is not None:
                 # Wait until output is finished
