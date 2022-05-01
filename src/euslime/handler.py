@@ -66,6 +66,14 @@ def dumps_vec(s):
     return REGEX_LISP_VECTOR.sub(r' \1(', dumps(s))
 
 
+def check_lock(lock, timeout):
+    # lock.acquire(timeout=timeout) available from python3
+    start = time.time()
+    while lock.locked() and (time.time() - start) < timeout:
+        time.sleep(0.01)
+    return not lock.locked()
+
+
 class DebuggerHandler(object):
     restarts = [
         ["QUIT", "Quit to the SLIME top level"],
@@ -205,10 +213,17 @@ class EuslimeHandler(object):
         yield EuslispResult(res)
 
     def swank_create_repl(self, sexp):
+        lock = self.euslisp.euslime_connection_lock
+        log.debug('Acquiring lock: %s' % lock)
+        lock.acquire()
         cmd = '(slime::slime-prompt)'
-        res = self.euslisp.exec_internal(cmd, force_repl_socket=True)
-        self.euslisp.accumulate_output = False
-        yield EuslispResult(res)
+        try:
+            res = self.euslisp.exec_internal(cmd, force_repl_socket=True)
+            self.euslisp.accumulate_output = False
+            yield EuslispResult(res)
+        finally:
+            if lock.locked():
+                lock.release()
 
     def swank_repl_create_repl(self, *sexp):
         return self.swank_create_repl(sexp)
@@ -294,6 +309,12 @@ class EuslimeHandler(object):
      (prompt quicklisp-client:*quickload-prompt*) explain &allow-other-keys)"
    t))
  19)
+
+  from swank-arglists.lisp:
+Return a list of two elements.
+First, a string representing the arglist for the deepest subform in
+RAW-FORM that does have an arglist.
+Second, a boolean value telling whether the returned string can be cached.
         """
         try:
             sexp = unquote(sexp)
@@ -354,14 +375,30 @@ class EuslimeHandler(object):
                 scope = scope[:-1]  # remove marker
                 if scope[-1] in ['', u'']:  # remove null string
                     scope = scope[:-1]
-
         else:
             scope = None
+
+        # Try to eval from repl_socket to cope with thread special symbols
+        lock = self.euslisp.euslime_connection_lock
+        force_repl = True
+
+        # But use internal_socket when repl is not available
+        if lock.locked():
+            log.warning('Euslisp process is busy! Calculating completions on internal process instead...')
+            lock = self.euslisp.euslime_internal_connection_lock
+            force_repl = False
+        else:
+            log.debug('Acquiring lock: %s' % lock)
+            lock.acquire()
+
         cmd = '(slime::slime-find-keyword "{}" (lisp:quote {}) "{}")'.format(
             qstr(start), dumps_lisp(scope), qstr(self.package))
-        # Eval from repl_socket to cope with thread special symbols
-        result = self.euslisp.exec_internal(cmd, force_repl_socket=True)
-        yield EuslispResult(result)
+        try:
+            result = self.euslisp.exec_internal(cmd, force_repl_socket=force_repl)
+            yield EuslispResult(result)
+        finally:
+            if force_repl and lock.locked():
+                lock.release()
 
     def swank_completions_for_character(self, start):
         cmd = '(slime::slime-find-character "{0}")'.format(qstr(start))
@@ -599,35 +636,33 @@ class EuslimeHandler(object):
     def swank_repl_clear_repl_variables(self):
         lock = self.euslisp.euslime_connection_lock
         log.debug('Acquiring lock: %s' % lock)
+
+        if lock.locked():
+            log.error('Could not acquire lock: %s' % lock)
+            yield EuslispResult("'Process busy'", response_type='abort')
+            return
+
         lock.acquire()
         try:
             cmd = '(slime::clear-repl-variables)'
             res = self.euslisp.exec_internal(cmd, force_repl_socket=True)
             yield EuslispResult(res)
             lock.release()
-        except Exception:
+        finally:
             if lock.locked():
                 lock.release()
-            raise
 
     def swank_clear_repl_results(self):
         return
 
     def swank_set_package(self, name):
-        def check_lock(lock, timeout):
-            # lock.acquire(timeout=timeout) available from python3
-            start = time.time()
-            while lock.locked() and (time.time() - start) < timeout:
-                time.sleep(0.01)
-            return not lock.locked()
-
         lock = self.euslisp.euslime_connection_lock
         log.debug('Acquiring lock: %s' % lock)
 
         if not check_lock(lock, 0.5):
-            log.error("Could not acquire lock!")
+            log.error('Could not acquire lock: %s' % lock)
             yield [Symbol(":write-string"), "; No responses from inferior process\n"]
-            yield EuslispResult(False)
+            yield EuslispResult(False, response_type='abort')
             return
 
         lock.acquire()
