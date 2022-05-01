@@ -169,7 +169,7 @@ class EuslimeHandler(object):
             cmd = '(send slime::*slime-input-stream* :set-flag)'
             self.euslisp.exec_internal(cmd)
         if self.euslisp.read_mode:
-            yield [Symbol(":read-string"), 0, 1]
+            yield [Symbol(":read-string"), process, 1]
 
     def _emacs_interrupt(self, process):
         if self.euslisp.read_mode:
