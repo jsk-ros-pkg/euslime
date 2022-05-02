@@ -2,6 +2,15 @@
 Changelog for package euslime
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Enable do-until-key function
+* Improve read socket stability
+* Avoid emacs crashes when the process is not responsive
+* Add slime-switch-to-output-buffer shortcuts
+* Bugfix
+* Contributors: Guilherme Affonso
+
 1.1.1 (2022-03-10)
 ------------------
 * Add recursive load tags
