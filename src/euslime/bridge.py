@@ -292,9 +292,11 @@ class EuslispProcess(Process):
                 # Don't notify read-mode to avoid cluttering the output of
                 # instantaneous bash commands, such as ls, pwd, etc
                 # if self.read_mode:
-                #     yield [Symbol(":write-string"), "Entering read mode...\n",
+                #     yield [Symbol(":write-string"),
+                #            "Entering read mode...\n",
                 #            Symbol(":repl-result")]
-                #     yield [Symbol(":write-string"), "$ ", Symbol(":repl-result")]
+                #     yield [Symbol(":write-string"), "$ ",
+                #            Symbol(":repl-result")]
                 yield gen
             elif gen is not None:
                 # Wait until output is finished

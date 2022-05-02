@@ -58,7 +58,8 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
             # self.send_data([Symbol(":write-string"), "Fatal: "])
             self.send_data([Symbol(":write-string"), "Entering read mode...\n",
                             Symbol(":repl-result")])
-            self.send_data([Symbol(":write-string"), "$ ", Symbol(":repl-result")])
+            self.send_data([Symbol(":write-string"), "$ ",
+                            Symbol(":repl-result")])
             self.send_data([Symbol(":read-string"), 0, 1])
 
     def send_data(self, data):

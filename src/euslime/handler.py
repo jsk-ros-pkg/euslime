@@ -384,7 +384,8 @@ Second, a boolean value telling whether the returned string can be cached.
 
         # But use internal_socket when repl is not available
         if lock.locked():
-            log.warning('Euslisp process is busy! Calculating completions on internal process instead...')
+            log.warning('Euslisp process is busy! ' +
+                        'Calculating completions on internal process instead')
             lock = self.euslisp.euslime_internal_connection_lock
             force_repl = False
         else:
@@ -394,7 +395,8 @@ Second, a boolean value telling whether the returned string can be cached.
         cmd = '(slime::slime-find-keyword "{}" (lisp:quote {}) "{}")'.format(
             qstr(start), dumps_lisp(scope), qstr(self.package))
         try:
-            result = self.euslisp.exec_internal(cmd, force_repl_socket=force_repl)
+            result = self.euslisp.exec_internal(
+                cmd, force_repl_socket=force_repl)
             yield EuslispResult(result)
         finally:
             if force_repl and lock.locked():
@@ -661,7 +663,8 @@ Second, a boolean value telling whether the returned string can be cached.
 
         if not check_lock(lock, 0.5):
             log.error('Could not acquire lock: %s' % lock)
-            yield [Symbol(":write-string"), "; No responses from inferior process\n"]
+            yield [Symbol(":write-string"),
+                   "; No responses from inferior process\n"]
             yield EuslispResult(False, response_type='abort')
             return
 
@@ -671,10 +674,12 @@ Second, a boolean value telling whether the returned string can be cached.
             res = self.euslisp.exec_internal(cmd, force_repl_socket=True)
             yield EuslispResult(res)
         except AbortEvaluation:
-            # the abort signal sometimes comes earlier than the evaluation result
-            # for example when attaching a gdb instance and passing a SIGINT
-            # in such cases, retry the evaluation
-            log.info('AbortEvaluation received during swank_set_package. Retrying...')
+            # the abort signal sometimes comes earlier than the
+            # evaluation result, for example when attaching a gdb
+            # instance and passing a SIGINT.
+            # Retry the evaluation in such cases
+            log.info('AbortEvaluation received during swank_set_package.' +
+                     ' Retrying...')
             res = self.euslisp.exec_internal(cmd, force_repl_socket=True)
             yield EuslispResult(res)
         finally:
