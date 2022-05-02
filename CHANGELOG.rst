@@ -2,8 +2,8 @@
 Changelog for package euslime
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.1.2 (2022-05-02)
+------------------
 * Enable do-until-key function
 * Improve read socket stability
 * Avoid emacs crashes when the process is not responsive
