@@ -2157,6 +2157,22 @@ class eus(EuslimeTestCase):
              '(:write-string "\\n" :repl-result)',
              '(:return (:ok nil) 13)'))
 
+    def test_load_file_6(self):
+        # test concurrent evaluations
+        self.with_unwind_protect(
+            (self.assertAsyncRequest,
+             ['(:emacs-rex (swank:load-file "{}/test_load_file_6.l") "USER" :repl-thread 6)'.format(os.getcwd()),
+              '(:emacs-rex (swank:find-tag-name-for-emacs "*test-load-file-6*" "USER") "USER" :repl-thread 7)'],
+             ['(:write-string "Loading file: {}/test_load_file_6.l ...\\n")'.format(os.getcwd()),
+              '(:write-string "Loaded.\\n")',
+              '(:return (:ok ("{0}/test_load_file_6.l")) 6)'.format(os.getcwd()),
+              '(:return (:ok ("*test-load-file-6*" "user::*test-load-file-6*")) 7)']),
+            (self.assertSocket,
+             '(:emacs-rex (swank-repl:listener-eval "(makunbound \'*test-load-file-6*)\n") "USER" :repl-thread 8)',
+             '(:write-string "t" :repl-result)',
+             '(:write-string "\\n" :repl-result)',
+             '(:return (:ok nil) 8)'))
+
     # MACRO EXPAND
     def test_macro_expand_1(self):
         self.assertSocket(
