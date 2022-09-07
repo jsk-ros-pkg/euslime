@@ -544,9 +544,14 @@ Second, a boolean value telling whether the returned string can be cached.
                              seconds, loadp, filename])
 
     def swank_load_file(self, filename):
+        # Block both streams while loading a file (issue #10)
+        # Maybe there are other alternatives?
         lock = self.euslisp.euslime_connection_lock
         log.debug('Acquiring lock: %s' % lock)
         lock.acquire()
+        internal_lock = self.euslisp.euslime_internal_connection_lock
+        log.debug('Acquiring lock: %s' % internal_lock)
+        internal_lock.acquire()
         yield [Symbol(":write-string"), "Loading file: %s ...\n" % filename]
         try:
             cmd = '(slime::load-file-and-tags "{0}")'.format(qstr(filename))
@@ -566,9 +571,12 @@ Second, a boolean value telling whether the returned string can be cached.
             yield [Symbol(":write-string"), "Loaded.\n"]
             yield EuslispResult(res)
             lock.release()
+            internal_lock.release()
         except AbortEvaluation as e:
             if lock.locked():
                 lock.release()
+            if internal_lock.locked():
+                internal_lock.release()
             log.info('Aborting evaluation...')
             # Force-print the message, which is
             # by default only displayed on the minibuffer
@@ -580,6 +588,8 @@ Second, a boolean value telling whether the returned string can be cached.
         except Exception:
             if lock.locked():
                 lock.release()
+            if internal_lock.locked():
+                internal_lock.release()
             raise
 
     def swank_inspect_current_condition(self):
