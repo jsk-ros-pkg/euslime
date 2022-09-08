@@ -46,6 +46,8 @@ For a quick guide to emacs try the following links:
 | C-c [RET] |  macroexpansion |
 | ,quit  |  quit session |
 | ,restart-inferior-lisp  |  restart session |
+| ,rossetip  |  set ros ip and hostname |
+| ,rossetmaster  |  set ros master uri |
 
 | On editing buffers | |
 | --- | --- |
