@@ -33,6 +33,7 @@
 (require 'slime-autoloads)
 (require 'slime-repl "contrib/slime-repl.el")
 (require 'slime-c-p-c "contrib/slime-c-p-c.el")
+(require 'subr-x)
 
 ;; AUXILIARY FUNCTIONS
 (defun remove-asdf-system-shortcuts ()
@@ -199,6 +200,25 @@
                 ;; set for future sessions
                 (ros-set-master-uri host port-number))))
   (:one-liner "Set ROS_MASTER_URI"))
+
+;; simplified version of the original script at
+;; https://github.com/jsk-ros-pkg/jsk_common/blob/master/jsk_tools/env-hooks/99.jsk_tools.sh
+;; don't test for connectivity with rosmaster; simply set the env variables
+(defslime-repl-shortcut slime-repl-rossetip ("rossetip")
+  (:handler (lambda (address)
+              (interactive (list
+                            (slime-read-from-minibuffer "Address: "
+                              (string-trim-right
+                               (shell-command-to-string
+                                "LANG=C ip -o -4 a | grep -E \"^[0-9]+: (eth|wl|en|lo)[0-9]*\" | tail -n1 | sed -e 's@^.*inet *\\([0-9\\.]*\\).*$@\\1@g'")))))
+              ;; set for current session
+              (insert "(slime::rossetip \"" address "\")")
+              (slime-repl-send-input t)
+              ;; set for future sessions
+              (setenv "ROS_IP" address)
+              (setenv "ROS_HOSTNAME" address)
+              (message (format "Set ROS_IP and ROS_HOSTNAME to %s" address))))
+  (:one-liner "Set ROS_IP and ROS_HOSTNAME"))
 
 
 ;; COMPLETION FUNCTIONS

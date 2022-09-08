@@ -513,3 +513,9 @@
 (defun rossetmaster (host port)
   (unix::putenv (format nil "ROS_MASTER_URI=http://~A:~D" host port))
   t)
+
+(defun rossetip (hostname)
+  (unix::putenv (format nil "ROS_IP=~A" hostname))
+  (unix::putenv (format nil "ROS_HOSTNAME=~A" hostname))
+  t)
+
