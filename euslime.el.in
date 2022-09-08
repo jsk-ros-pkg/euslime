@@ -185,6 +185,22 @@
               (slime-repl-send-input t)))
   (:one-liner "Resend the last form."))
 
+;; ROS shortcuts
+;; ros master and other environment variables are copied from the original terminal
+;; this shortcut is for changing the ros master after starting the euslime session
+(defslime-repl-shortcut slime-repl-rossetmaster ("rossetmaster")
+  (:handler (lambda (host port)
+              (interactive (list (slime-read-from-minibuffer "Host: " "localhost")
+                                 (slime-read-from-minibuffer "Port: " "11311")))
+              (let ((port-number (cl-parse-integer port)))
+                ;; set for current session
+                (insert "(slime::rossetmaster \"" host "\" " port ")")
+                (slime-repl-send-input t)
+                ;; set for future sessions
+                (ros-set-master-uri host port-number))))
+  (:one-liner "Set ROS_MASTER_URI"))
+
+
 ;; COMPLETION FUNCTIONS
 ;; Override to allow `package://' completion and avoid full paths
 (defun slime-maybe-complete-as-filename ()
