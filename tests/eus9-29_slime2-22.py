@@ -371,7 +371,7 @@ class eus(EuslimeTestCase):
              '(:write-string "\\n" :repl-result)',
              '(:return (:ok nil) 30)'),
             (self.assertSocket,
-             '(:emacs-rex (swank-repl:listener-eval "(read s nil)~%") "USER" :repl-thread 31)',
+             '(:emacs-rex (swank-repl:listener-eval "(read s nil)\n") "USER" :repl-thread 31)',
              '(:write-string "2" :repl-result)',
              '(:write-string "\\n" :repl-result)',
              '(:return (:ok nil) 31)'),
