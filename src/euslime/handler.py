@@ -6,7 +6,8 @@ import re
 import signal
 import traceback
 import time
-from sexpdata import dumps, loads, Symbol, Quoted
+from sexpdata import dumps, loads, parse
+from sexpdata import Symbol, Quoted
 from threading import Event
 
 from euslime.bridge import AbortEvaluation
@@ -290,6 +291,17 @@ class EuslimeHandler(object):
     def swank_repl_listener_eval(self, sexp):
         if self.debugger:
             return self.swank_throw_to_toplevel()
+        # quick fix for dealing with multiple s-expressions (#12)
+        try:
+            pexp = parse(sexp)
+            # anything that starts with an sexp and has some trailing part
+            if len(pexp) > 1 and type(pexp[0]) == list:
+                log.debug("Multiple s-expressions detected! Adding a `progn'...")
+                sexp = "(progn {})".format(sexp)
+        except Exception as e:
+            # catch any possible parsing exceptions; we want to evaluate it anyways
+            log.error(traceback.format_exc())
+
         return self.swank_eval(sexp)
 
     def swank_pprint_eval(self, sexp):
