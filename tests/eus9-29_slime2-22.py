@@ -156,6 +156,24 @@ class eus(EuslimeTestCase):
              '(:return (:ok nil) 5)'],
             unordered_output=True)
 
+    def test_eval_14(self):
+        # multiple s-expressions
+        self.assertSocketWriteString(
+            '(:emacs-rex (swank-repl:listener-eval "(print 1) (print 2)\n") "USER" :repl-thread 9)',
+            '(:write-string "1\\n2\\n")',
+            '(:write-string "2" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:return (:ok nil) 9)')
+
+    def test_eval_15(self):
+        # multiple s-expressions
+        self.assertSocketWriteString(
+            '(:emacs-rex (swank-repl:listener-eval "(print 1) 10\n") "USER" :repl-thread 9)',
+            '(:write-string "1\\n")',
+            '(:write-string "10" :repl-result)',
+            '(:write-string "\\n" :repl-result)',
+            '(:return (:ok nil) 9)')
+
     # READ
     def test_read_1(self):
         # Both with and without slime-input-stream the behavior of toplevel read is ustable
