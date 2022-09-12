@@ -296,10 +296,11 @@ class EuslimeHandler(object):
             pexp = parse(sexp)
             # anything that starts with an sexp and has some trailing part
             if len(pexp) > 1 and type(pexp[0]) == list:
-                log.debug("Multiple s-expressions detected! Adding a `progn'...")
+                log.debug("Multiple s-expressions detected! Wrapping in progn")
                 sexp = "(progn {})".format(sexp)
         except Exception as e:
-            # catch any possible parsing exceptions; we want to evaluate it anyways
+            # catch any possible parsing exceptions;
+            # we want to evaluate it anyways
             log.error(traceback.format_exc())
 
         return self.swank_eval(sexp)
