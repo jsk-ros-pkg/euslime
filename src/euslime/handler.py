@@ -298,7 +298,7 @@ class EuslimeHandler(object):
             if len(pexp) > 1 and type(pexp[0]) == list:
                 log.debug("Multiple s-expressions detected! Wrapping in progn")
                 sexp = "(progn {})".format(sexp)
-        except Exception as e:
+        except Exception:
             # catch any possible parsing exceptions;
             # we want to evaluate it anyways
             log.error(traceback.format_exc())
