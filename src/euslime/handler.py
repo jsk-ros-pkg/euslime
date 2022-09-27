@@ -499,22 +499,26 @@ Second, a boolean value telling whether the returned string can be cached.
         cmd = '(sys::unwind {} {})'.format(num + 4, value)
         for val in self.eval_repl_result(cmd):
             yield val
-
         yield EuslispResult(None)
-        db = self.debugger.pop()
-        yield [Symbol(':debug-return'), 0, db.level, Symbol('nil')]
-        yield [Symbol(':return'), [Symbol(':ok'), None], db.id]
+        while self.debugger:
+            db = self.debugger.pop()
+            db.message = None
+            for val in db.make_debug_return(
+                    response_type='ok', delim=self.euslisp.delim):
+                yield val
 
     def swank_restart_frame(self, num):
         # offset by 4 to account for the eus and euslime error handlers
         cmd = '(sys::unwind {})'.format(num + 4)
         for val in self.eval_repl_result(cmd):
             yield val
-
         yield EuslispResult(None)
-        db = self.debugger.pop()
-        yield [Symbol(':debug-return'), 0, db.level, Symbol('nil')]
-        yield [Symbol(':return'), [Symbol(':ok'), None], db.id]
+        while self.debugger:
+            db = self.debugger.pop()
+            db.message = None
+            for val in db.make_debug_return(
+                    response_type='ok', delim=self.euslisp.delim):
+                yield val
 
     def swank_swank_require(self, *sexp):
         return
