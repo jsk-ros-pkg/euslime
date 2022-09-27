@@ -18,6 +18,7 @@ from euslime.bridge import EuslispProcess
 from euslime.bridge import EuslispResult
 from euslime.bridge import no_color
 from euslime.logger import get_logger
+from euslime.bridge import DELIM
 
 log = get_logger(__name__)
 REGEX_LISP_VECTOR = re.compile(r' \\(#[0-9]*[a-zA-Z]*) \(')
@@ -116,6 +117,14 @@ class DebuggerHandler(object):
         ]
         return res
 
+    def make_debug_return(self, response_type='abort', delim=DELIM):
+        if self.message:
+            msg = self.message.split(delim)[0]
+            msg = repr(msg.rsplit(' in ', 1)[0])
+        else:
+            msg = None
+        yield [Symbol(':debug-return'), 0, self.level, Symbol('nil')]
+        yield [Symbol(':return'), {response_type: msg}, self.id]
 
 class EuslimeHandler(object):
     def __init__(self, *args, **kwargs):
@@ -449,12 +458,6 @@ Second, a boolean value telling whether the returned string can be cached.
         def check_key(key):
             return key in res_dict and num == res_dict[key]
 
-        def debug_return(db):
-            msg = db.message.split(self.euslisp.delim)[0]
-            msg = repr(msg.rsplit(' in ', 1)[0])
-            yield [Symbol(':debug-return'), 0, db.level, Symbol('nil')]
-            yield [Symbol(':return'), {'abort': msg}, db.id]
-
         if check_key('QUIT'):
             clear_stack = True
             self.euslisp.reset()
@@ -474,7 +477,7 @@ Second, a boolean value telling whether the returned string can be cached.
             for val in self.maybe_new_prompt():
                 yield val
             for db in reversed(self.debugger):
-                for val in debug_return(db):
+                for val in db.make_debug_return(delim=self.euslisp.delim):
                     yield val
             self.debugger = []
         else:
@@ -483,7 +486,7 @@ Second, a boolean value telling whether the returned string can be cached.
             if not self.debugger:
                 for val in self.maybe_new_prompt():
                     yield val
-            for val in debug_return(deb):
+            for val in deb.make_debug_return(delim=self.euslisp.delim):
                 yield val
             # Pop previous debugger, if any
             if self.debugger:
