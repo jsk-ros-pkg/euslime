@@ -160,6 +160,19 @@ class EuslimeHandler(object):
             return [dumps_vec(result), True]
         return None
 
+    def eval_repl_result(self, cmd):
+        for val in self.euslisp.eval(cmd):
+            if isinstance(val, str):
+                # Colors are not allowed in :repl-result formatting
+                yield [Symbol(":write-string"),
+                       no_color(val),
+                       Symbol(":repl-result")]
+                yield [Symbol(":write-string"),
+                       "\n",
+                       Symbol(":repl-result")]
+            else:
+                yield val
+
     def _emacs_return_string(self, process, count, msg):
         self.euslisp.input(msg)
         if self.euslisp.read_busy:
@@ -237,17 +250,8 @@ class EuslimeHandler(object):
         log.debug('Acquiring lock: %s' % lock)
         lock.acquire()
         try:
-            for val in self.euslisp.eval(sexp):
-                if isinstance(val, str):
-                    # Colors are not allowed in :repl-result formatting
-                    yield [Symbol(":write-string"),
-                           no_color(val),
-                           Symbol(":repl-result")]
-                    yield [Symbol(":write-string"),
-                           "\n",
-                           Symbol(":repl-result")]
-                else:
-                    yield val
+            for val in self.eval_repl_result(sexp):
+                yield val
             if self.euslisp.read_mode or self.euslisp.read_busy:
                 log.debug("Aborting read mode...")
                 self.euslisp.read_mode = False
