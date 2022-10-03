@@ -75,8 +75,6 @@ class EuslimeRequestHandler(S.BaseRequestHandler, object):
         e.g.) 000016(:return (:ok nil) 1)\n
         """
 
-        log.debug("Starting output handling loop...")
-        Thread(target=self._process_output).start()
         log.debug("Entering handle loop...")
         while not self.swank.handler.close_request.is_set():
             try:
