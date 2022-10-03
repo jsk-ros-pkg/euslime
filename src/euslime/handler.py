@@ -272,9 +272,10 @@ class EuslimeHandler(object):
             lock.release()
         except AbortEvaluation as e:
             log.info('Aborting evaluation...')
-            if self.euslisp.read_mode:
+            if self.euslisp.read_mode or self.euslisp.read_busy:
                 log.debug("Aborting read mode...")
                 self.euslisp.read_mode = False
+                self.euslisp.read_busy = False
                 yield [Symbol(":read-aborted"), 0, 1]
             for val in self.maybe_new_prompt():
                 yield val
