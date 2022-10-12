@@ -126,6 +126,7 @@ class DebuggerHandler(object):
         yield [Symbol(':debug-return'), 0, self.level, Symbol('nil')]
         yield [Symbol(':return'), {response_type: msg}, self.id]
 
+
 class EuslimeHandler(object):
     def __init__(self, *args, **kwargs):
         self.euslisp = EuslispProcess(*args, **kwargs)
