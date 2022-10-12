@@ -2,8 +2,8 @@
 Changelog for package euslime
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.1.3 (2022-10-12)
+------------------
 * Lint
 * Wrap multiple s-exp in a single prompt
 * Add ros shortcut commands
