@@ -2,6 +2,15 @@
 Changelog for package euslime
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Lint
+* Wrap multiple s-exp in a single prompt
+* Add ros shortcut commands
+* Better submodule and source build support
+* Bugfix
+* Contributors: Guilherme Affonso
+
 1.1.2 (2022-05-02)
 ------------------
 * Enable do-until-key function
