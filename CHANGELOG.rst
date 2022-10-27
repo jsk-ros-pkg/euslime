@@ -2,9 +2,13 @@
 Changelog for package euslime
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Fix build
+* Contributors: Guilherme Affonso
+
 1.1.3 (2022-10-12)
 ------------------
-* Lint
 * Wrap multiple s-exp in a single prompt
 * Add ros shortcut commands
 * Better submodule and source build support
