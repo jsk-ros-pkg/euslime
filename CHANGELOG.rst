@@ -2,8 +2,8 @@
 Changelog for package euslime
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.1.4 (2022-10-27)
+------------------
 * Fix build
 * Contributors: Guilherme Affonso
 
