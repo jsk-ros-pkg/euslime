@@ -34,6 +34,37 @@ For a quick guide to emacs try the following links:
     M-x euslime
     ```
 
+## Using with eus10
+Compile from source with the `eus10` branch: https://github.com/jsk-ros-pkg/euslime/tree/eus10.
+
+The following command allows to automatically shift between apt and source euslisp builds.
+```lisp
+;; ~/.emacs.el
+(if (string-prefix-p "/opt" (getenv "EUSDIR"))
+    (progn
+      (add-to-list 'load-path "/opt/ros/melodic/share/euslime")
+      (setq euslime-compile-path (expand-file-name "~/.euslime_opt/")))
+  (add-to-list 'load-path "/home/affonso/euslime_ws/install/share/euslime"))
+(require 'euslime-config)
+(setq inferior-euslisp-program "roseus")
+(slime-setup '(slime-fancy slime-banner slime-repl-ansi-color))
+```
+
+## Logging
+The following setting will save logs of all your sessions on exit.
+```lisp
+;; ~/.emacs.el
+(defun euslime-save-logs ()
+  (when (get-buffer "*slime-events*")
+    (with-current-buffer (get-buffer "*slime-events*")
+      (let* ((logdir (concat (file-name-as-directory euslime-compile-path) "log"))
+             (filename (concat "euslog." (format-time-string "%s" (current-time)))))
+        (unless (file-exists-p logdir)
+          (make-directory logdir t))
+        (write-file (expand-file-name filename logdir))))))
+(add-hook 'kill-emacs-hook 'euslime-save-logs)
+```
+
 ## Cheat sheet
 
 | On slime buffer | |
@@ -67,28 +98,24 @@ For a quick guide to emacs try the following links:
 1. Setup
     ```bash
     # Clone code
-    mkdir ~/euslime_ws/src -p
+    mkdir ~/catkin_ws/src -p
     cd euslime_ws/src
     git clone https://github.com/jsk-ros-pkg/euslime.git
-    # Update submodules
-    cd euslime
-    git submodule init
-    git submodule update
     # Install dependencies
     rosdep install -yr --from-paths . --ignore-src
     ```
 
 1. Build
     ```bash
-    cd ~/euslime_ws
-    catkin config --install
+    cd ~/catkin_ws
     catkin build
+    ```
 
-1. Configure your emacs init file
+1. Configure your emacs init file with the source directory
 
     ```lisp
     ;; ~/.emacs.el
-    (add-to-list 'load-path "~/euslime_ws/install/share/euslime")
+    (add-to-list 'load-path "~/catkin_ws/src/euslime")
     (require 'euslime-config)
     (setq inferior-euslisp-program "roseus")
     (slime-setup '(slime-fancy slime-banner slime-repl-ansi-color))
