@@ -36,7 +36,9 @@ if (NOT $ENV{DH_OPTIONS})
 endif()
 
 
-catkin_generate_virtualenv()
+catkin_generate_virtualenv(
+  PYTHON_INTERPRETER python2
+)
 
 # Install files
 install(FILES
